@@ -1,0 +1,243 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>最佳實驗流程:elec_all F1m 51.22%</title>
+<style>
+:root{
+  --paper:#FAFAF8; --card:#FFFFFF; --ink:#1E2530; --muted:#5B6472;
+  --line:#D8DCE2; --faint:#EEF0F3;
+  --blue:#2563EB;  --blue-bg:#EFF4FE;  --blue-ln:#B9CDF6;
+  --green:#0E8A6A; --green-bg:#ECF7F2; --green-ln:#BBDFD2;
+  --amber:#C2690A; --amber-bg:#FBF3E8; --amber-ln:#EBD3B2;
+  --purple:#6D45C8;--purple-bg:#F3EFFB;--purple-ln:#D5C8F0;
+  --red:#C23B3B;   --red-bg:#FAEEEE;   --red-ln:#E8C4C4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#12151A; --card:#1A1E25; --ink:#E8EAEE; --muted:#9AA3B0;
+    --line:#333A45; --faint:#232830;
+    --blue:#7AA2F7;  --blue-bg:#1B2334;  --blue-ln:#33456B;
+    --green:#4FC49B; --green-bg:#16261F; --green-ln:#2C4A3C;
+    --amber:#E5A155; --amber-bg:#2A2015; --amber-ln:#55401F;
+    --purple:#AB8FE8;--purple-bg:#231D33;--purple-ln:#453461;
+    --red:#E07A7A;   --red-bg:#2C1A1A;   --red-ln:#573030;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12151A; --card:#1A1E25; --ink:#E8EAEE; --muted:#9AA3B0;
+  --line:#333A45; --faint:#232830;
+  --blue:#7AA2F7;  --blue-bg:#1B2334;  --blue-ln:#33456B;
+  --green:#4FC49B; --green-bg:#16261F; --green-ln:#2C4A3C;
+  --amber:#E5A155; --amber-bg:#2A2015; --amber-ln:#55401F;
+  --purple:#AB8FE8;--purple-bg:#231D33;--purple-ln:#453461;
+  --red:#E07A7A;   --red-bg:#2C1A1A;   --red-ln:#573030;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",system-ui,sans-serif;
+  font-size:14px; line-height:1.45;
+}
+.scroller{overflow-x:auto; padding:28px 20px 40px}
+.poster{min-width:1150px; max-width:1360px; margin:0 auto}
+header{text-align:center; margin-bottom:6px}
+header h1{font-size:25px; margin:0 0 4px; letter-spacing:.01em; text-wrap:balance}
+header p{margin:0; color:var(--muted); font-size:14.5px}
+header .proto{
+  display:inline-block; margin-top:8px; font-family:Consolas,Menlo,monospace;
+  font-size:12px; color:var(--muted); background:var(--faint);
+  border:1px solid var(--line); border-radius:4px; padding:3px 10px;
+}
+.row{display:flex; gap:14px; align-items:stretch; margin-top:16px}
+.panel{
+  border:1.6px solid var(--pc,var(--line)); border-radius:10px;
+  background:var(--card); padding:12px 14px 14px; min-width:0;
+}
+.panel>h2{
+  margin:-12px -14px 10px; padding:8px 14px 7px;
+  font-size:13.5px; letter-spacing:.02em; color:var(--pc,var(--ink));
+  background:var(--pb,transparent); border-bottom:1px solid var(--pl,var(--line));
+  border-radius:8px 8px 0 0;
+}
+.panel>h2 small{color:var(--muted); font-weight:400; margin-left:6px}
+.p-blue  {--pc:var(--blue);  --pb:var(--blue-bg);  --pl:var(--blue-ln)}
+.p-green {--pc:var(--green); --pb:var(--green-bg); --pl:var(--green-ln)}
+.p-amber {--pc:var(--amber); --pb:var(--amber-bg); --pl:var(--amber-ln)}
+.p-purple{--pc:var(--purple);--pb:var(--purple-bg);--pl:var(--purple-ln)}
+.p-red   {--pc:var(--red);   --pb:var(--red-bg);   --pl:var(--red-ln)}
+.steps{display:flex; gap:0; align-items:stretch}
+.step{
+  flex:1 1 0; min-width:0; border:1px solid var(--pl,var(--line));
+  border-radius:8px; padding:9px 10px; background:var(--card);
+}
+.step h3{margin:0 0 5px; font-size:12.5px; color:var(--pc,var(--ink))}
+.step ul{margin:0; padding-left:15px; color:var(--muted); font-size:12px}
+.step li{margin:2.5px 0}
+.step .out{
+  margin-top:7px; padding-top:6px; border-top:1px dashed var(--pl,var(--line));
+  font-family:Consolas,Menlo,monospace; font-size:11.3px; color:var(--pc,var(--ink));
+}
+.arr{
+  align-self:center; flex:0 0 auto; padding:0 4px;
+  color:var(--pc,var(--muted)); font-size:17px; font-weight:600;
+}
+kbd{
+  font-family:Consolas,Menlo,monospace; font-size:11.5px; background:var(--faint);
+  border:1px solid var(--line); border-radius:3px; padding:0 4px; color:var(--ink);
+}
+.note{color:var(--muted); font-size:12px; margin:8px 0 0}
+.note b{color:var(--ink)}
+.tbl{width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums}
+.tbl td{padding:4px 6px; border-top:1px solid var(--faint); vertical-align:top}
+.tbl tr:first-child td{border-top:0}
+.tbl td:first-child{white-space:nowrap; color:var(--ink); font-weight:600}
+.tbl td:last-child{color:var(--muted)}
+.mtb{border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; width:100%}
+.mtb th,.mtb td{padding:3.5px 8px; text-align:right; border-bottom:1px solid var(--faint)}
+.mtb th:first-child,.mtb td:first-child{text-align:left}
+.mtb th{color:var(--muted); font-weight:600; border-bottom:1px solid var(--pl,var(--line))}
+.good{color:var(--green); font-weight:700}
+.bad{color:var(--red)}
+.stats{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 0}
+.stat{background:var(--faint); border:1px solid var(--line); border-radius:7px;
+padding:5px 10px; min-width:88px}
+.stat b{display:block; font-size:16px; font-variant-numeric:tabular-nums}
+.stat span{font-size:11px; color:var(--muted)}
+.stat.hi{border-color:var(--pl)} .stat.hi b{color:var(--pc)}
+.chain{display:flex; gap:0; align-items:stretch; margin-top:2px}
+.cnode{
+  flex:1 1 0; min-width:0; text-align:center; border:1px solid var(--red-ln);
+  background:var(--card); border-radius:8px; padding:8px 6px;
+}
+.cnode b{display:block; font-size:12.3px; color:var(--ink)}
+.cnode span{display:block; font-size:11px; color:var(--muted); margin-top:2px}
+.cnode .big{display:block; color:var(--red); font-weight:700; font-size:14px; margin-top:3px}
+.verdict{
+  flex:1.5 1 0; border:1.6px solid var(--red); background:var(--red-bg);
+  border-radius:8px; padding:9px 11px; text-align:left;
+}
+.verdict b{font-size:12.8px; color:var(--red)}
+.verdict p{margin:4px 0 0; font-size:11.8px; color:var(--ink)}
+footer{margin-top:16px; text-align:center; color:var(--muted); font-size:12px}
+</style>
+
+<div class="scroller"><div class="poster">
+
+<header>
+  <h1>最佳實驗流程卡 — 全電子 450 檔・1 日標籤</h1>
+  <p>乾淨協定歷來最高 F1 macro(51.22%)・唯一「均衡 + 回測勝大盤」的組合・2026-07-27 族群實驗</p>
+  <div class="proto">EXP-20260726-232550_sector-date-elec455・date 批次 + raw + w140/m80/N10/g4 + stride 1 + seed 42</div>
+</header>
+
+<div class="row">
+  <div class="panel p-green" style="flex:0 0 225px">
+    <h2>1) 資料<small>本地快取,零下載</small></h2>
+    <table class="tbl">
+      <tr><td>股票池</td><td><kbd>TW_ELEC_ALL</kbd> 自 TWSE ISIN 電子類產生,455 檔 → 450 檔有資料</td></tr>
+      <tr><td>訓練期</td><td>2016-01-01 ~ 2023-12-31(8 年)</td></tr>
+      <tr><td>測試期</td><td>2024 全年(嚴格分離)</td></tr>
+      <tr><td>邊界</td><td>warmup 2×140 天供指標暖機,<kbd>min_date</kbd> 過濾邊界樣本</td></tr>
+    </table>
+  </div>
+  <div class="arr" style="color:var(--muted)">→</div>
+
+  <div class="panel p-blue" style="flex:1 1 auto">
+    <h2>2) 樣本建構<small>耗時 41 分(2,484s),dscache 快取後續命中</small></h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Step 1:滑動窗</h3>
+        <ul><li>140 日收盤序列</li><li>stride 1,決策日 = 窗末日 t</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Step 2:PIP + VG</h3>
+        <ul><li>m=80 轉折點</li><li>可見性連邊(Eq.3)</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Step 3:BFS 子圖</h3>
+        <ul><li>前 N=10 重要 PIP 為錨,各取 g=4 節點</li><li>depth→importance→degree 排序</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Step 4:節點特徵</h3>
+        <ul><li>9 指標(n=140),raw 無 z-score</li></ul>
+        <div class="out">X: 10×4×9</div>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>標籤 Eq.(11)</h3>
+        <ul><li><kbd>close[t+1] &gt; close[t]</kbd></li><li>平盤 = 跌,h=1</li></ul>
+      </div>
+    </div>
+    <div class="stats" style="margin-top:10px">
+      <div class="stat hi"><b>736,530</b><span>訓練樣本(漲 45.4%)</span></div>
+      <div class="stat hi"><b>105,215</b><span>測試樣本(漲 44.9%)</span></div>
+      <div class="stat"><b>~1,636 日</b><span>訓練期決策日</span></div>
+      <div class="stat"><b>41 分</b><span>建構耗時</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel p-purple" style="flex:0 0 300px">
+    <h2>3) 訓練<small>Chart GCN(paper_exact)</small></h2>
+    <div class="steps">
+      <div class="step">
+        <h3>date 批次</h3>
+        <ul><li>同日 ~450 檔同批互相 attend(橫斷面)</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>選模</h3>
+        <ul><li>val F1 macro 最佳 epoch</li><li>random 80/20 val(論文 4.3)</li></ul>
+        <div class="out">val F1m 48.61%</div>
+      </div>
+    </div>
+    <table class="tbl" style="margin-top:8px">
+      <tr><td>最佳化</td><td>Adam 1e-3・wd 5e-5・CE・30 epochs</td></tr>
+      <tr><td>耗時</td><td>訓練 9 分(547s),CPU</td></tr>
+    </table>
+  </div>
+  <div class="arr" style="color:var(--muted)">→</div>
+
+  <div class="panel p-amber" style="flex:1 1 auto">
+    <h2>4) 測試結果<small>2024 全年・105,215 筆</small></h2>
+    <table class="mtb">
+      <tr><th>指標</th><th>本實驗</th><th>論文 SZ-50</th><th>差距</th></tr>
+      <tr><td>Accuracy</td><td>51.29%</td><td>69.26%</td><td class="bad">−17.97</td></tr>
+      <tr><td>Pre_1 / Pre_0</td><td>46.31 / 56.55</td><td>65.76 / 72.26</td><td>—</td></tr>
+      <tr><td>Rec_1 / Rec_0</td><td>52.97 / 49.92</td><td>—</td><td>—</td></tr>
+      <tr><td>F1_1 / F1_0</td><td>49.42 / 53.03</td><td>66.40 / 71.67</td><td>—</td></tr>
+      <tr><td><b>F1 macro</b></td><td><b>51.22%</b></td><td>69.04%</td><td class="bad">−17.82</td></tr>
+    </table>
+    <p class="note"><b>形態:均衡</b>——押漲率 ~51%、兩類召回都在 50% 上下,所有乾淨實驗中唯一不塌縮;但 Acc <b>低於「全押跌」地板 55.1%</b>,未達訊號判準(Acc 高於先驗 + 均衡需同時成立)。</p>
+  </div>
+  <div class="arr" style="color:var(--muted)">→</div>
+
+  <div class="panel p-amber" style="flex:0 0 265px">
+    <h2>5) 回測<small>論文 §6.3 規則・2024</small></h2>
+    <div class="stats">
+      <div class="stat hi"><b>1.2113</b><span>策略平均淨值</span></div>
+      <div class="stat"><b>1.2078</b><span>等權 buy-and-hold</span></div>
+      <div class="stat hi"><b class="good">+0.35%</b><span>超額(全實驗唯一為正)</span></div>
+    </div>
+    <p class="note">預測漲→買;預測跌或 MACD&lt;0→賣。<b>未含交易成本</b>(0.1425%×2 + 稅 0.3%),含成本後必為大幅負值。</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel p-red" style="flex:1">
+    <h2>6) 後續診斷與判定<small>2026-08-11・用的就是這顆模型(_model.pt)</small></h2>
+    <div class="chain">
+      <div class="cnode"><b>推論重現</b><span>date 批次重跑測試集</span><span class="big">51.29% 分毫不差</span></div>
+      <div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>跨度分層</b><span>105,215 樣本逐一重算子圖跨度</span><span class="big">四分位全距 0.65pp</span></div>
+      <div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>相關係數</b><span>子圖跨度 vs 預測對錯</span><span class="big">r = −0.0002</span></div>
+      <div class="arr" style="color:var(--red)">→</div>
+      <div class="verdict">
+        <b>判定:均衡亂猜態的上緣,不是訊號</b>
+        <p>40+ 場乾淨實驗中最好——唯一同時「均衡、F1m &gt; 51、回測小勝」;但 Acc 未過先驗地板,且低於論文最弱消融變體(Chart GCN-3,54.35%)。同批對照:半導體 F1m 38.2%(反向塌縮)、零組件 48.9%、金融 39.1%(塌縮)——「最好」是相對的,天花板結論不變。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>詳細記錄:實驗記錄_論文對齊.md 第九節・experiments_paper/EXP-20260726-232550_sector-date-elec455.{json, _model.pt, _backtest.png}</footer>
+
+</div></div>

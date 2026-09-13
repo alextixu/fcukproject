@@ -1,0 +1,1166 @@
+Knowledge-BasedSystems248(2022)108842
+Contents lists available at ScienceDirect
+Knowledge-BasedSystems
+journal homepage: www.elsevier.com/locate/knosys
+ChartGCN:Learningchartinformationwithagraphconvolutional
+networkforstockmovementprediction
+ShangzheLi a,c,JunranWu c,∗,XinJiang b,d,e,∗∗,KeXu c
+a School of Mathematical Science, Beihang University, Beijing 100191, China
+b LMIB and Institute of Artificial Intelligence, Beihang University, Beijing 100191, China
+c State Key Laboratory of Software Development Environment, Beihang University, Beijing 100191, China
+d Zhengzhou Aerotropolis Institute of Artificial Intelligence, Zhengzhou, Henan, 451162, China
+e Peng Cheng Laboratory, Shenzhen, Guangdong 5180552, China
+a r t i c l e i n f o
+Article history:
+Received26August2021
+Receivedinrevisedform22March2022
+Accepted15April2022
+Availableonline25April2022
+Keywords:
+Technicalchartsandindicators
+Graphconvolutionalnetwork
+Stockmovementprediction
+a b s t r a c t
+Advanced deep learning methods have been widely adopted in stock movement prediction with
+technical analysis (TA), while researchers prefer technical indicators to technical charts due to the
+divergenceinquantificationdifficulty.IntraditionalTA,researchersusuallyutilizechartsimilarityto
+solvethequantifyingproblem,whilechartsimilarityisoftenlimitedtospecificchartsasthetemplates
+forcomparison,resultinginmassiveinadequateuseofinformation.Accordingly,weproposeanovel
+similarityframeworktoovercomethelimitationofchartsimilaritytospecificcharts.Specifically,after
+extractingthekeypointsequence(i.e.,thedraftchart)fromthestockpriceseries,wetransformit
+intoagraphandultimatelyemployanarbitrarygraphkernelsuchastheWeisfeiler-Lehmangraph
+kernel and graph convolutional network (GCN) to sufficiently mine the information in the chart
+for stock movement prediction. Our similarity framework is more robust than the chart similarity
+measurescommonlyusedintraditionalTA.Additionally,wefurtherevaluatetheeffectivenessofour
+framework on real-world stock data and show that our framework achieves the best performance
+comparedtoseveralstate-of-the-artbaselinesinstockmovementpredictionandobtainsthehighest
+averagenetvaluesinatradingsimulation.Ourresultscomplementtheexistingapplicationofthe
+chartsimilaritymethodindeeplearningandprovidesupportfortheinvestingapplicationoffinancial
+marketdecisions.
+©2022ElsevierB.V.Allrightsreserved.
+1. Introduction
+Technicalanalysis(TA)playsanimportantroleinquantitative
+investment; in this method, technical indicators and technical
+chartsareadoptedtoanalyzeandpredictthefuturemovement
+ofstockprices.ThecoreassumptionofTAisthatallinformation
+relatedtoinvestmentdecisionsiscontainedintechnicalindica-
+torsandtechnicalcharts[1,2].Recentstudiesshowthatmany
+technicalanalystshaveemployedveryadvanceddeeplearning
+methods to predict future price movements and design profit
+strategies[3–5].
+In the recent literature employing deep learning with TA
+[4–6],mosttechnicalanalystschoosetousetechnicalindicators
+ratherthantechnicalcharts,althoughtheeffectivenessoftech-
+nicalchartshasalreadybeenproveninstockpricemovement
+∗ Correspondingauthor.
+∗∗ Corresponding author at: LMIB and Institute of Artificial Intelligence,
+BeihangUniversity,Beijing100191,China.
+E-mail addresses: wu_junran@buaa.edu.cn(J.Wu),jiangxin@buaa.edu.cn
+(X.Jiang).
+prediction without deep learning methods [7–11]. For charts
+with simple rules, the features generated are sparse Boolean
+values[12],whichisunfavorabletodeeplearninginputfeatures.
+Additionally,thevariationinthetimescaleandjudgmentrulesof
+complexchartsleadstodifficultyinquantifyingtechnicalcharts
+in the same way as quantifying technical indicators [13]. For
+example,themostfamouscharts,suchas‘head-and-shoulders’,
+‘bull flags’ or ‘rounding bottoms’, have dozens of variations
+[14–16].IntraditionalTA,researchersusuallyusechartsimilarity
+to analyze and identify charts [17], which can avoid the need
+for chart quantification. However, most of the existing studies
+focusononeorseveralspecificcharts,whichleadstoextensive
+inadequate use of the information contained in the technical
+charts[6].
+At present, although there are various technical charts, we
+havenotfoundanyevidenceorstatementsupportingthattech-
+nicalchartsreportedintheresearchbynoware(orbetter,should
+be)theonlycharts.Moreover,thecurrenttechnicalchartsknown
+andusedbyindustryandacademiaarenotexhaustive[13].Inthe
+actualstockmarket,noalgorithmcanfindallchartinformation
+https://doi.org/10.1016/j.knosys.2022.108842
+0950-7051/©2022ElsevierB.V.Allrightsreserved.
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Fig. 1. The10bestchartsintheCSI-300from2015to2021.
+bydesigningchartjudgmentrules.Evenifsomeprofitablecharts
+arefound,theyarenotnecessarilythebest.Moreimportantly,
+thesechartscannotbeusedallthetimeandmaynotbeapplica-
+bleafteraperiodoftime.Toverifythis,werank60-dayprice
+seriesintheCSI-300from2015to2021withtheirreturnsin
+thenext10daysandfinallysimplifythesepriceseriestocharts
+inFig.1,accordingtothemethodin[1,13],whichassessedthe
+top10chartseveryyearaccordingtotheirprofitability.These
+chartsaredifferentfromeachother,anditisdifficulttoplace
+themintoonecategoryoraclassicalchart,whichmeansthat
+the existing technical charts cannot be utilized to capture all
+possibleregularitiesinthepricepathoffinancialinstruments,
+and important information can be ignored because of the fo-
+cusonaparticularchart[13].Consideringthewideapplication
+of the graph similarity algorithm in deep learning [18], chart
+information can be efficiently captured by transforming charts
+intographs[3].Agraphconvolutionalnetwork(GCN),whichis
+currently very popular, can be used to compare the similarity
+of transformed graphs [18], thus providing new insights into
+addressingtheinsufficientutilizationofchartinformation.
+To address the insufficient utilization of technical charts in
+stockmovementprediction,wedevelopanovelframeworkto
+fullyexploittheinformationcontainedintechnicalcharts.Our
+frameworkisessentiallyamethodformeasuringchartsimilarity.
+Weusetheperceptuallyimportantpoints(PIP) 1[19]algorithm
+toobtainthekeypointsequencefromstockpriceseries,which
+arealsodraftcharts.Subsequently,thevisibilitygraph(VG)[20]
+algorithmisappliedtoconverttheextractedkeypointsequence
+intoagraph.Then,wecalculatethesimilaritybetweenthetrans-
+formed graphs through an arbitrary graph kernel according to
+different applications. Similar to other methods for measuring
+chartsimilarity,wedonotneedtoquantifythecharts.Finally,
+aGCNkernelisadoptedinourframeworktosufficientlymine
+thechartinformationforstockmovementprediction.
+Consideringthatrobustnessservesasanimportantcriterion
+in measuring chart similarity methods [21], we first compare
+ourframeworkwithcommonlyusedmethodsinchartsimilarity
+measurement,includingdynamictimewarping(DTW)andthe
+Pearsoncorrelationcoefficient.Ourframeworkachievesthebest
+resultsunderseveralchartvariations.Additionally,oursimilarity
+frameworkdoesnotneedstandardizedpreprocessing(e.g.,nor-
+malization in DTW), which means faster online processing in
+1 Fortheconvenienceandsimplicityofexpression,weusePIPtorepresent
+thealgorithmandPIPstorepresenttheresultofthealgorithm.
+stocktrading.Second,basedonourproposedsimilarityframe-
+work, we select the spatial GCN [22] as the last graph kernel
+tomakeitpossibletopredictstockpricemovementandsuffi-
+cientlyminethechartinformation.Moreover,forthepurposes
+ofenrichingtheinformationcontainedinthepriceandmeeting
+theneedsofthespatialGCN,technicalindicatorsofstockprice
+are integrated into our framework. On the SZ-50 and CSI-300
+stocksin2018,ourframeworkachievesthebestpredictionaccu-
+racies,69.26%and68.62%,comparedwithseveralstate-of-the-art
+baselines.Basedonthepredictionresultsofourframework,we
+furtherdesignatradingstrategyontheSZ-50andCSI-300stocks
+andgainthehighestpurevalues,1.24and1.19,in2018.
+To summarize, the main contributions of this paper are as
+follows:
+•Weproposeanovelframeworktosufficientlyutilizetech-
+nicalchartsindeeplearningforstockmovementprediction.
+•Bycomparingthesimilarityofthegraphstransformedfrom
+the key point series of charts with an appropriate graph
+kernel, we overcome the limitation of chart similarity to
+specificchartsinvolvedinchartuseindeeplearning.
+•The similarity part of our framework exceeds the com-
+monlyusedchartsimilarityinrobustness.Additionally,our
+framework with GCN surpasses the baseline methods in
+predictionaccuracyandachievesthehighestexcessreturn
+onrealstockdata.
+Therestofthispaperisorganizedasfollows:InSection2,
+relatedworksandresearcharepresented.Then,inSection3,the
+proposedmethodispresentedindetail,followedbytheintroduc-
+tionofvariousutilizedvariables.InSection4,theexperimental
+settingsarereported.TheresultsarereportedinSection5.In
+Section6,wediscusstheresults,andaconclusionispresented
+inSection7.
+2. Related work
+2.1. Technical chart similarity
+Technical charts are usually identified by connecting price
+points with lines; therefore, technical analysts usually employ
+patternmatchingtechnologytofindtechnicalchartsfortrading
+decisions[23].Instockmovementprediction,manystudieson
+patternmatchingtechnologyarebasedonexaminingthespe-
+cificchartsobservedinpaststockpricechartsanddetermining
+whethertherearesimilartrendssuchas‘roundingbottoms’,‘bull
+flags’or‘head-and-shoulders’inthecurrentstockprices[7–11].
+2
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+However, these methods are subjective, and the charts are
+difficulttoquantify[13];thus,thereisalargebodyofliterature
+investigating the use of similarity, with measures such as the
+PearsoncorrelationcoefficientandDTW,toidentifycurrentstock
+priceseriescharts;thisisachievedbycalculatingthesimilarity
+betweenchartsrecognizedinhistoricaldataorchartsdesigned
+byexpertsandthecurrentstockpriceseries[1].Nevertheless,the
+charttimelengthinTAisnotfixed.Somechartsmaybeformed
+inafewdays,whileothersmayspanoneortwomonths[13].
+The similarity calculated by the Pearson correlation coefficient
+cannotaccuratelycomparetimeseriesofdifferentlengths,re-
+sulting in the inability to identify charts of price series with
+differentlengths.Accordingly,somepapersproposedcalculating
+the similarity by DTW [24], which is an algorithm for finding
+theoptimalalignmentbetweentwogiven(time-dependent)se-
+quencesthatcanhandleunequaltimelengthsinchartmatching.
+Nevertheless,mostarticlesusingDTWarestillconfinedtoone
+or bundles of specific charts [17,25] and susceptible to noise
+points.Consequently,thePIPalgorithmisutilizedtocalculatethe
+keypointsinthetime-seriescharttopreventtheinfluenceof
+noise[26],andDTWisappliedtofindthemostsimilarsequences
+inthetrainingset.Additionally,sequencesaremarkedasrising,
+fallingorfluctuatinginthetestingset[13],whichisanattempt
+tousetheinformationinthechartratherthanrigidlyidentifying
+aspecificchart.
+Although the charts vary according to the training set, the
+chartsusedarelimitedinnature,andthesemethodsarehard
+toutilizewithdeeplearningmethods[13].Graphsimilaritycan
+minedifferentstructuralinformationinagraph[27],andusing
+a VG to convert a time series into a graph effectively utilizes
+thestructuralinformationincharts[3];thus,thecombination
+of these strategies overcomes the limitation to specific charts.
+TheVGalgorithmisamethodthattransformstimeseriesinto
+complexnetworkrepresentationsandhasarousedgreatinterest
+inrecentyears[19,20,28,29].Generally,aVGconstitutesaseries
+ofgeometricandrankingcriteriaofscalar,real-valuedtimese-
+riesandprovidesacombinedrepresentationoftheunderlying
+dynamical system [29]. In previous studies, the VG of a time
+series remains invariant under several time-series transforma-
+tionsandcanactuallydistinguishdifferenttypesoffractality[20].
+Therefore,apromisingsimilaritymethodwithPIPandtheVG
+algorithmcanpotentiallyidentifyvariouschartsinstockprice
+seriesandinspiresustotakeadvantageoftechnicalchartsfor
+stockmovementprediction.
+2.2. Deep learning in stock movement prediction
+Differentmethodsinthefieldofstockmovementprediction
+canbedividedintotwocategories.Thefirstalgorithmattemptsto
+improvethepredictionperformancebyimprovingtheprediction
+model, while the second algorithm focuses on improving the
+featuresusedintheprediction.
+In the first category of algorithm, researchers use a vari-
+etyofmethods,includingnaiveBayesclassifiers,supportvector
+machines (SVMs), recurrent neural networks (RNNs) and their
+variants[30–33].Thesecondcategoryofalgorithmsfocuseson
+improvingthefeatures.Anetworkoffundstocksforobtaining
+thefundmanager’spreferenceforstockswasproposed,where
+this preference information is fused with the stock price indi-
+cator to obtain a stronger index [5]. Structured events can be
+extracted from financial news to obtain event embedding and
+thencombinedwithpricevaluestoforecaststocktrends[34].
+Multiscalestockpriceinformationhasbeenobtainedthrougha
+convolutionalneuralnetwork(CNN)andwavelettransform[6].
+Inthetwocategoriesofmethods,fewarticlesemploytechni-
+calchartswithdeeplearningforstockpredictionforthereason
+Fig. 2. An illustration of how our new chart similarity measurement could
+addressthechallengeofutilizingcharts.
+mentionedabove.Recently,theGCNhasemergedasapowerful
+methodformeasuringgraphsimilarity[18,22,35],andthework
+of [36–38] successfully addressed key problems in dynamical
+graphlearningandachievedfantasticandvaluableresults.The
+wayaspatialGCNprocessesgraphsissimilartothewayaCNN
+processesimages[22].InsomepapersonCNNvisualization,the
+CNNcanusuallyextractthelocalimagefeatures.Forexample,
+foranimageofadog,aCNNcanrecognizethedog’sheadand
+feetandthenobtainamoreadvancedfeaturerepresentationby
+further convolution of the local features. Inspired by this, we
+applyagraphconvolutionmasktothesubgraphsofthetrans-
+formingseriesgraph(correspondingtothelocalimageblock).
+The combination of the distant price points mined from the
+transformedgraphcanformalow-levelchart,suchastheleft
+shoulderofthehead–shoulderchart.Byfurtherconvolutingthe
+convolutionoutput,wecanobtainahigher-levelchart,suchas
+thecompletehead–shouldermode.
+Therefore,wecanutilizeaspatialGCNasthefinalcompo-
+nentofourframeworktomakefulluseoftheextractedchart
+informationinstockpricemovementprediction.
+3. Method
+Inthispaper,wepresentanovelframeworkthatcanaddress
+the main issue that limits the application of technical charts.
+Specifically, first, we propose a novel chart similarity method
+thatcanidentifychartsmorerobustly.Themethodconsistsof
+PIP,VGandarbitrarygraphkernel.Afterextractingthekeypoint
+sequencefromastockpriceserieswithPIP[13],wetransform
+itintoagraphbytheVGmethod.Then,wecanuseanarbitrary
+graphkerneltomeasurethesimilarityofthetransformedseries
+graph.Accordingtodifferentapplicationrequirements,wecan
+choosethefinalcomponentsofoursimilarityframeworkasdif-
+ferentgraphkernels,suchastheWeisfeiler-Lehman(WL)graph
+kernelandGCN.Tosufficientlyminethechartinformation,we
+proposeanovelmethod,thechartspatialgraphconvolutional
+network(ChartGCN),topredictstockmovementbasedonour
+similarityframework.
+Anillustrationofhowournewchartsimilaritymeasurement
+couldaddressthechallengeofutilizingchartsisshowninFig.2.
+Givenastockpriceseries,ournewsimilaritymethodcanremove
+the influence of noise points through PIP, avoid the influence
+of chart size and different judgment criteria by turning price
+seriesintographs(theexampleoftheabovetwoadvancescan
+beseeninSection3.1)andfinallyavoiddirectcomparisonwith
+achartdescribedbyaspecificrulethroughsomegraphkernel.
+Differentfromthepreviousmethod,whichcanonlyidentifya
+specificchart,ourmethodcanrecognizeallthreedifferentcharts
+containedinthisseriesandthenobtainamoreadvancedfeature
+3
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Fig. 3. Themultistagedesignoftheproposedsimilaritymethodanditssuperiority.Themostimportantcriterionintheevaluationofthechartsimilaritymethodis
+robustness,thatis,whetherthecorrespondingchartscanstillbeidentifiedundervariations.Thevariationsareshowninfigure:(a.)Amplitudescaling,(b.)amplitude
+shift,(c.)timeshift,(d.)timescaling,(e.)rotation,and(f.)WGNadded.Therefore,wecomparetherobustnessofourframeworkwiththetwomostcommonlyused
+chartsimilaritymethodsonthesesixvariations.Theformulasofthevariationsandspecificresultsaredescribedindetailintheresultssection.
+representation by further convolving the local features in the
+spatialGCN.Inmoredetail,thenormalizedsubgraphcombined
+withthedistantpricepointsminedfromthetransformedgraph
+canformalow-levelchart,suchastheleftshoulderofthehead–
+shoulder chart. By further convolving the convolution output,
+wecanobtainahigher-levelchart,suchasthecompletehead–
+shouldermode.Therefore,ourmethodcandeeplyandfullymine
+thepriceserieschartinformation.
+3.1. Chart similarity
+In this section, we propose a novel chart similarity mea-
+surementmethodbasedonPIP,VGandarbitrarygraphkernel.
+Fig.3illustratesthemultistagedesignoftheproposedsimilarity
+methodanditssuperiorrobustness.
+3.1.1. PIP
+Chartsarecharacterizedbyasetofkeypoints;forexample,
+the head-and-shoulders chart is defined by a head point, two
+pointsfortheshouldersandtwomorepointsfortheneckline.
+Thesekeypointsarethemostrelevanttotheshapeofthechart,
+andtheotherpointsarenoiseinthechartidentification[39].
+Accordingly,weobtainthekeypointsetthatisthedraftchartand
+importantforchartrecognitionbasedonPIP;thisisapromising
+methodforidentifyingthesalientpointsandfilteringnoisepoints
+on a time series [26,39]. The PIPs calculation is described in
+Algorithm1.
+Formally,let {c1, c2, . . . ,cn}bethepriceseries Cn oflength
+nand {t1, t2, . . . ,tn}bethecorrespondingtimestamp.Wecan
+obtain two draft PIPsx1 = (t1, c1) and xn = (tn, cn). The
+Euclideandistance dE ofeachintermediatepoint xk = (tk, ck),
+tk ∈ {t2, . . . ,tn−1}tothetwodraftPIPsisdefinedas
+dE (xk, x1, xn) =
+√
+(tk − t1)2 + (ck − c1)2
++
+√
+(tn − tk)2 + (cn − ck)2. (1)
+ThenewPIPs, x∗
+k =
+(
+tk∗ , c∗
+k
+)
+,maximizesthedistance dEat tk∗,
+k∗ =argmax
+k
+(d (xk, x1, xn)) , (2)
+where‘argmax’denotesthemaximumfunctionargument.Ifwe
+settheusernumberofPIPsto m < n,weextractakeypoint
+sequence {x1, xk∗ , . . . ,xn}oflengthmfrom Cn,denoted Km.
+Specifically,thefewerpointsweneed,themorerepresentative
+thepointsare.Wedefinethechartimportancescoretodescribe
+the importance of points for identifying charts in time series
+accordingtothemaximumdistancefromadjacentpointswhen
+addedtoPIPs.Inparticular,thestartpointandstoppointare
+reserved at the first step; therefore, their importance score is
+thehighest.ThepseudocodeforcalculatingPIPsandthechart
+importancescoreisdescribedinAlgorithm1.
+Algorithm 1 Calculating PIPs and the chart importance score
+series
+Input:Closingpriceseries Xi = (xi, . . . ,xi+T ),PIPsnumberm
+Output:PIPs,chartimportancescoreseries ISi = (si, . . . ,si+T )
+1: for p = i → i + T do
+2: sp =0
+3: end for
+4:add xi, xi+TtoPIPs
+5: m∗ = the number of PIPs; denote PIPs timestamps as
+p1, . . . ,pm∗
+6: while m∗ < m do
+7: for p = i → i + T do
+8: initialmaximumdistance dmax=0
+9: for j =2 → m∗ do
+10: k = j −1
+11: if p > pkand p < pj then
+12: ppointdistance dp= dE (xk, xi, xi+T )
+13: if dp > dmax then
+14: CandidatePIPstimestamp p∗ = p, dmax = dp
+15: end if
+16: end if
+17: end for
+18: end for
+19: add xp∗toPIPs
+20: add p∗toPIPstimestamps
+21: sp∗ = dmax
+22: end while
+23: si, si+T = max(ISi) +1
+24: return ISi
+3.1.2. VG algorithm
+In this paper, we employ the VG algorithm to transform
+the key point sequences into graphs. In previous studies, the
+VGofatimeseriesremainsinvariantunderseveraltime-series
+4
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Fig. 4. ChartGCNdetailedframework.
+transformations and can actually distinguish different types of
+graphs[20];inotherwords,theVGalgorithmcanidentifycharts
+andisrobustagainstdifferentvariations.Wefirsttakeallthe
+data points in the key point sequence as the vertices of the
+transformed graph. Then, the connection between vertices is
+determinedaccordingtothefollowingrules:weplotthevertical
+barchartofthenewtimeseriesaccordingtothecorresponding
+price.Ifwecandrawastraightlinethatconnectsanytwodata
+points,providedthatthis‘visibilityline’doesnotintersectany
+intermediate price height, we add an edge between the ver-
+ticescorrespondingtothesetwodatapointstothegraph.More
+formally,aVGisobtainedfromatimeseriesaccordingtothe
+followingvisibilitycriterion[5]:twoarbitrarydatapoints( t ∗
+a , c∗
+a)
+and( t ∗
+b , c∗
+b)where t ∗
+a , t ∗
+b >0inthetimeserieshavevisibilityand
+consequentlybecometwoverticesintheassociatedgraphifany
+otherdatapoint( t ∗
+c , c∗
+c)suchthat t ∗
+a < t ∗
+c < t ∗
+b fulfills
+c∗
+c < c∗
+a +
+(
+c∗
+b − c∗
+a
+) t ∗
+c − t ∗
+a
+t ∗
+b − t ∗
+a
+. (3)
+3.1.3. Graph kernel
+Afterweconvertkeypointsequence Kmintograph G,wecan
+calculatethesimilarity S between Gp and Gq withanarbitrary
+graphkernel Kasin[40]:
+S
+(
+Gp, Gq
+)
+= K
+(
+Gp, Gq
+)
+. (4)
+DuetotheabilityofthePIPalgorithmtofilternoiseinforma-
+tion,theabilityofVGtodistinguishdifferenttypesofgraphs,and
+theinvariabilityunderseveraltransformationsofthetransformed
+seriesgraph,wecanidentifyvariouschartsandcompletelyutilize
+thechartinformationinthetransformedseriesgraph.Common
+chartsusuallyhavemanyvariations,andthesevariationscanbe
+roughlyclassifiedintosixtypes,asshowninFig.3[11,13,16].
+3.2. Stock movement prediction
+In this section, we introduce our framework with GCN in
+detail.Inthelaststepofoursimilarityframework,variousgraph
+kernelscanbeutilizedfordifferentapplications.Tosufficiently
+mine the chart information and address the combination with
+deeplearningtopredictstockpricemovement,weproposethe
+novelframeworkoftheChartGCNbasedonoursimilarityand
+spatial GCN that not only captures nonconsecutive and long-
+distanceinformationthatismoreconsistentwiththechartchar-
+acteristics [41] but is also a good measure of the isomorphic
+similarity between graphs [22]. Therefore, our design can ad-
+dress the proposed problem fully inheriting the advantages of
+oursimilarityframework.Wereferto[22]forthespatialGCN
+architecture. To assign nodes from two different graphs to a
+similarrelativepositionifandonlyiftheirstructuralroleswithin
+thegraphsaresimilar[22],aspatialGCNutilizesthebetween-
+nesscentralityofnodesasthejudgmentinthereceptivefield
+pointselectionstepandsubgraphnormalization,butbetween-
+nesscentralitydoesnothelpidentifychartsinourframework.
+Accordingly,wechangethejudgmentcriteriafortheimportance
+of points from the betweenness centrality in the graph to the
+chartimportancescore.WeshowourframeworkinFig.4.The
+PIPandVGstepsarethesameasthoseinthesimilaritymethod.
+Themaindifferenceisthatweinputa3Dfeaturematrixintothe
+convolutionlayerafterattachingthetechnicalindicatortothe
+PIPs.
+Givenatransformedseriesgraph,weusethefollowingtwo
+stepstoselectallsubgraphsinacompletegraphandnormalize
+them to create the receptive field of each PIPs and to have a
+consistentconvolutionmethod.
+3.2.1. The generation of subgraphs
+Wesortallnodesinagraphbasedontheirimportancescore.
+If the importance scores are the same, we sort the nodes by
+theirdegrees(numberofneighborhoodsofanode).Ifthedegrees
+arethesame,wesortthemwiththemeanimportancescoreof
+theirneighbors.Inthisway,weselectthetop Nnodesthatare
+themostimportantforchartrecognitionthroughthesimilarity
+algorithm proposed previously. After selecting the nodes, we
+expandthesubgraphforeachselectednodebythebreadth-first
+searchalgorithmaccordingtothepresetminimumsubgraphsize
+g.Ifthesizeofthecurrentdepthsubgraphisinsufficient,we
+expandonelayertoaddmorenodesandthencheckwhetherthe
+subgraphsizemeetstherequirements.Afterthesubgraphsize
+issatisfied,weobtain N subgraphs,eachofwhichcontainsat
+most gnodes.Forexample,inthemiddleofFig.4,wegenerate
+Nsubgraphs.
+3.2.2. The normalization of the subgraphs
+Givenasubgraph,weneedaconvolutionmasktoconvolve
+thenodeordertomakethenodelabelsconsistentwithalltimes-
+tampsandallsubgraphs.Wedefinetheoptimallabelasfollows.
+Letusassumethatthesubgraphs SGiand SGjcontain g nodes.
+5
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Giventhelabeling sofsubgraph SG,anadjacencymatrix As(SG)
+canbeconstructed.Then,wecandefineanoptimallabelas
+s∗ =argmin
+s
+E
+[
+DA
+(
+As(SGi),As (
+SGj
+))
+− DG
+(
+SGi, SGj
+)]
+, (5)
+where DA(·, ·)isthedistancemeasureoftwomatrices,suchasA −A′
+L1,and DG(·, ·)isthedistancemeasureoftwographs.
+Nevertheless,suchlabelingisNP-hard;thus,wefollow[22]to
+obtainalternativelabeling.First,weobtainasubgraphnodeas
+therootnodeintheabovestep.Then,weusethebreadth-first
+searchtosortthenodesbasedondepth.Next,inthesametier
+(depth)ofthegraph-basedspanningtree,thenodesaresorted
+bythechartimportancescore.Finally,iftwonodesinthesame
+tier have the same score, we use the node degree to sort the
+tier. After this step, we obtainG nodes for each subgraph. By
+calculating the rank of the subgraph adjacency matrix in the
+previous step, we add dummy nodes that have no connection
+withanypointsinthegraphtothesubgraphswhosenumber
+ofnodesnumberisfewerthan Gtomeetthenumberofnodes
+requirementandfilteroutthesubgraphswhosenumberofnodes
+ismorethan G.Wecaneasilyseethatthenormalizationapplied
+tothesubgraphsisconsistentwiththewayaCNN’sfirstlayer
+isappliedtoimages,whichcanextractthelocalfeaturesofthe
+image. Accordingly, normalization can also extract a low-level
+chartfromthetransformedseriesgraph.Anexampleofgraphic
+normalizationisshowninthemiddleofFig.4.
+To enrich the price information and meet the needs of the
+spatialGCN,insteadofrepresentingeachnodeinthesubgraphas
+anID,weuseatechnicalindicatortoattachtoeachpointinthe
+subgraph.Theselectionandcalculationoftechnicalindicatorsare
+describedindetailinthedatasection.For Nsubgraphs,thereare
+Gpointsineachgraph.Foreachpoint,weattachthe Ftechnical
+indicatorsofthecorrespondingpoints;thus,wecanobtainthe
+3Dfeature Xofsize N × G × F.
+3.2.3. Prediction architecture
+Thepredictionarchitectureisdesignedwithmultipleconvo-
+lutionlayersfollowingLeNet[42].Here,weuseatypicalconfig-
+urationtoillustratethearchitecture,shownintherightpanelof
+Fig.4.
+The3Dfeature X ofsize N × G × F isusedastheinputof
+thefirstconvolutionlayer,where N isthenumberofselected
+and normalized subgraphs,G is the size of the receptive field
+(thesizeofthenormalizedsubgraphs),and Fisthedimensionof
+thefeatures.Tocombinethechartsofeachinputsubgraphinto
+ahigher-levelchartrepresentation,weuseaconvolutionkernel
+of G × F toconvolvetheinputtensor.Then,weconvolveall N
+inputsubgraphsusingthe k1kernelstogeneratean N ×k1matrix
+inthesameway.Then,weuseakernelof5 ×1toconvolve
+N subgraphs to obtain a higher level of chart information (a
+combination of chart information in subgraphs). Here, we use
+k2 5 ×1kernelstogeneratethe k2 dimension.Thus,wehave
+a k1 × k2 matrix.Thusfar,wesuccessfullyconvolveddifferent
+dimensions of features, different points in each subgraph and
+differentsubgraphsinthecharts.Then,wecanfurtherconvolve
+ahigher-levelchart.Accordingly,weuse k3kernelstogeneratea
+k2 × k3matrix.Weaddtwofullyconnectedlayers F1, F2afterthe
+secondconvolutionlayer,asinLeNet.Inthewholeconvolution
+layerandfullyconnectedlayer,therectifiedlinearunit(ReLU)
+activationfunctionisusedtoavoidoverfitting.TheLeNetlayer
+calculationcanbesimplyexpressedas:
+l = fLeNet(X). (6)
+Toexploretheinnerconnectionbetweenstocks[43,44]and
+to perform better classification, we add a self-attention layer
+between Ssamples.AsshownintherightpanelofFig.4,wehave
+aself-attentionlayerfor Ssamplesof l.
+Asthefirstself-attentionstep, l ∈ RS×F2formedby Ssamples
+of lisfirsttransformedtothreefeaturespaces(Q,K,andV)using
+Eq.(7).
+Q(l) = l · WQ , K(l) = l · WK , V(l) = l · WV , (7)
+where WQ , WK ∈ RF2×kaand WV ∈ RF2×kv.Thechannelnumbers
+kafor Q(l)and K(l)needtobethesame.Thenumberofchannels
+kvfor V(l)canbedifferentfrom ka.Here, Q(l) ∈ RS×kaisgenerally
+calledthequeryspace, K(l) ∈ RS×kaiscalledthekeyspace,and
+V(l) ∈ RS×kv iscalledthevaluespace.Thethreefeaturespaces
+arenamedfollowingtheconventionof[45],wheretheattention
+capturesthemappingrelationshipsbetweenapossiblequeryand
+thekey–valuepairsinthedata.
+In the second self-attention step, the self-attention for one
+variable,denoted α ∈ RS×S,iscalculatedusingthefeaturesinthe
+queryspaceandkeyspacebytwooperationsshowninEqs.(7)
+and(8).
+S = Q(l) · K(l)T . (8)
+Thesoftmaxfunctionisappliedto S ∈ RS×Stonormalizethe
+attention,asshowninEq.(9).
+α = softmax(S). (9)
+Inthethirdself-attentionstep,thenormalizedattention αis
+appliedtothefeaturesinthevaluespace V(l).Thisstepobtains
+theattentionhiddenstates Va = α · V(l),where Va ∈ RS×kv.
+Thelastlayeraftertheself-attentionlayerisfurtherconnected
+to a fully connected layer that corresponds to the movement
+prediction of the stock price. Given a set of M labeled graphs
+transformedfromstockpriceseriesand {m = 1, . . . ,M},our
+modelutilizescrossentropytomeasuremodellossbetweenthe
+reallabeldistribution ynandtheforecastdistribution ˆyn:
+J = −1
+N
+N∑
+n=1
+ynlog
+(ˆyn
+)
+. (10)
+4. Experiments
+4.1. Data
+Thedatasetscollectedinthispapercontaindailyquotedata
+ofcomponentstocksintheSZ-50andCSI-300indices,whichin-
+cludemostoftheimportantstocksintheChineseA-sharemarket.
+Wecollectthedailyprices(includingtheopeningprices,high
+prices, low prices, closing prices, volumes and amounts) from
+2010to2018andcalculatenineclassesoftradingindicators[46],
+asshowninTable1,forthetwoindices.Thesourceofourdatais
+Tushare,afree,opensourceinterfacepackageofPythonfinancial
+datasupportedbySinaFinance,TencentFinance,theShanghai
+StockExchangeandtheShenzhenStockExchange.
+4.2. Comparison method
+Due to the popularity of deep neural networks, many re-
+cent studies on stock forecasting have focused on using long
+short-termmemory(LSTM)[31],CNNs[4]andattention-based
+methods[47,48]withmarketpriceorindexdataastheirfeatures
+and have ultimately obtained competitive performance. Please
+notethatnoneofthesestate-of-the-artpredictionmodels,tothe
+bestofourknowledge,havetakenadvantageoftechnicalcharts
+extractedfrompricetimeseries.Toverifytheeffectivenessof
+ourframeworkforinvestigatingtechnicalcharts,wecompareour
+proposedframeworkwiththefollowingbaselines:
+• CNN: the first baseline algorithm is a CNN with two-
+dimensionalinput[4].
+6
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Table 1
+Thetradingindicatorformulas.
+Indicatorname Formula
+Simple n-daymovingaverage
+ct+ct−1+···+ct−n+1
+n
+Weighted n-daymovingaverage
+(n)×c1+(n−1)×ct−1+···+ct−n+1
+n+(n−1)+···+1
+Momentum ct − ct−n+1
+MovingAverageConvergenceDivergence(MACD) MACD( n)t−1 + 2
+n+1 × (DIFFt −MACD(n)t−1)
+LarryWilliamsR% ht −ct
+ht −lt
+×100
+CommodityChannelIndex(CCI) Mt −SMt
+0.015×Dt
+StochasticK%
+ct −llt−(n−1)
+hht−(n−1)−llt−(n−1)
+×100
+StochasticD%
+∑n−1
+i=0 Kt−i
+10 %
+RelativeStrengthIndex(RSI) 100 − 100
+1+
+(∑n−1
+i−0 UPt−i/n
+)
+/
+(∑n−1
+i−0 DWt−i/n
+)
+ctistheclosingprice, ltisthelowpriceand htisthehighpriceattime t; DIFFt = EMA(12)t −EMA(26)t,
+EMA is the exponential moving average, andEMA(k)t = EMA(k)t−1 + α × (ct − EMA(k)t−1), α is
+a smoothing factor that is equal to2
+k1, k is the time period of thek-day exponential moving
+average, llt and hht arethelowestlowpriceandhighesthighpriceinthelasttdays,respectively.
+Mt = ht+lt+ct
+3 , SMt = (
+∑n
+i−1Mt−i+1)
+n ,and Dt = (
+∑n
+i−1|Mt−i+1−SMt |)
+n . UPt istheupwardpricechangeand
+DWt isthedownwardpricechangeattime t.nrepresentsthetimewindowsofallindicators.
+• LSTM:thesecondbaselinealgorithmisabasicLSTMnet-
+workforpredictingthefuturetrendsofstockpricesbased
+onhistoricalpricedata[31].
+• TCN:thethirdbaselinealgorithmisatemporalconvolution
+network(TCN)thatincludesmultilayerconvolutiononthe
+timestampdimension[49].
+• DARNN: the fourth baseline algorithm is a dual-stage
+attention-basedrecurrentneuralnetwork(DARNN)thatcan
+selectrelevantderivingseriesaswellastemporalfeatures
+andachievetime-seriespredictionperformancesuperiorto
+thatofLSTMandattention-basedLSTM[47].
+• CA-FSCN:thelastbaselineisthenewestmethodwithafully
+convolutionalnetwork(FCN)incorporatingcrossattention.
+Inthecrossattentionstabilizedfullyconvolutionalneural
+network (CA-FSCN), dual-stage attention on the variable
+and timestamp dimensions is used to select the relevant
+variablesateachtimestep[48].
+Inparticular,allfivebaselinemethodsremainconsistentwith
+theoriginalmodelandusetechnicalindicatordataasinputto
+show the effectiveness of our framework in stock movement
+predictionwiththeactualdata.
+4.3. Parameter setting
+To prevent data snooping, we strictly divide the training/
+validation/testsetaccordingtothetimestampofthesampledata.
+Inparticular,wetakethedatafromJanuary2010toDecember
+2017asthetrainingsetandvalidationsetandtherestofthe
+data,whichisthewholeyearof2018,asthetestset.Tomake
+fulluseofhistoricalinformation,werandomlyselect80%ofthe
+samplesasthetrainingsetandtheremaining20%ofthesamples
+astheverificationsetinthetrainingprocess.Thestatisticsofthe
+SZ-50andCSI-300indicesdatasetsarepresentedinTable2.Note
+thattheproportionofthetwotrendsinboththetrainingand
+testingdatasetsisalmostequal.Forthepurposeofactualtrading,
+wechoosetheclosingpricetoperformgraphtransformation.The
+targetofourmodelisdefinedasfollows:
+y =
+{
+1 if ct+1 > ct ,
+0 else . (11)
+In this paper, a grid search is used to select the optimal
+hyperparametersintermsofthebestperformanceforallmeth-
+ods.Specifically,wetunethetimewindows nofallindicators
+within {100,120,130,140},theminimumnumberofPIPswithin
+{30,40,60,80},thewidthofthetopnodes Nequaltotheaverage
+Table 2
+SummarystatisticsoftheSZ-50andCSI-300indicesforthetraining,validation
+andtestdatasets.
+Dataset Training Validation Testing
+(%) Samples (%) Samples (%) Samples
+SZ-50 ↓ 51.04 85,767 50.92 14,426 51.84 10,837↑ 48.96 49.07 48.16
+CSI-300 ↓ 50.34 543,262 50.27 82,764 50.07 68,710↑ 49.66 49.74 49.93
+numberofnodeswithin {10,15,20,25}[22],andtheminimum
+subgraphsize Gwithin {3,4,5,6}.Weset F1 =84and F2 =32
+forthetwofullyconnectedlayers[41].Allbaselinesmentioned
+aboveutilizethesameempiricallysetcommonparameters;for
+example, the regularization weight decay= 0.00005 and the
+batchsize =128.
+5. Results
+To verify the robustness of our proposed framework, we
+choosetheWLgraphkernelasthelastpartofourframeworkand
+compareitwiththetwomostcommonlyusedmethodsinchart
+similaritymeasuring.Then,employingaspatialGCN,weinspect
+ourframeworkinstockmovementpredictionandsharetrading
+onreal-worldstockdatatofurtherverifytheeffectivenessofour
+framework.
+5.1. The robustness of our framework in similarity measurement
+Toverifytherobustnessofoursimilaritymethod,thePearson
+correlation coefficient, DTW distance and DTW distance with-
+out normalization are compared when several levels of small
+variationsintimescalingandshift,amplitudescalingandshift,
+rotation and additive Gaussian noise, as in [21], are added to
+theclose-pricetimeseries.Wefocusontheperformanceofthe
+similaritymethodsintermsoftheirinsensibilitytosmalldata
+variations.Thetime-seriesvariationsaredefinedasfollows:
+a. Amplitude scaling: XAS(t) = β ∗ X(t)
+b. Amplitude shift: XAt(t) = X(t) + β
+c. Time scaling: XTs(t) = X(β ∗ t)
+d. Time shift: XTt(t) = X(t + β)
+e. Rotation: XB(t) =rotate(X(t), θ)
+f. WGN added: XWGN(t) = X(t) + Zi ∼ N (Xi, N)
+7
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Fig. 5. Comparisonofdifferentsimilaritymethodsondifferentvariations.
+The corresponding diagrams of different variations are also
+showninthecorrespondingserialnumbersofFig.3,where βis
+aconstantthatrepresentsthescalingorshiftmagnitude, θisthe
+rotationangleandWGNiswhiteGaussiannoise.Weperform20–
+100smallincrementalchangeson βand θvalues,whoseinitial
+valuesareexperimentallydetermined.Thehorizontalordinateof
+thefigurespresentedinFig.5indicatesthese20–100degreesof
+variationforeachvariationtype(from(a)to(f)),andthevertical
+ordinaterepresentsthesimilaritybetweenthevariationandthe
+originaltimeseries.WeselectthestockclosingpriceintheCSI-
+300 from 2015 to 2018 and take 20 trading days (almost one
+month)asanintervalforinterceptingthepriceseries.Theirsim-
+ilarityiscalculatedwiththeoriginalpriceseriesunderdifferent
+degreesofvariation.Theaveragevalueofallinterceptedprice
+seriesunderacertaindegreeofvariationisdisplayedinFig.5.The
+largerthesimilarityis,thelessthevariationaffectsthesimilarity
+method.
+AsseeninFig.5,theresultsdemonstratethatoursimilarity
+method is the most robust. Although our method deteriorates
+fasterthanthePearsoncorrelationcoefficientmethodwhenWGN
+is added, the Pearson correlation coefficient method performs
+verypoorlywhenthetimescalechangesormoves,whileour
+methodandtheDTWmethodbothperformverywellandcan
+evenbeunaffected.Inparticular,thesimilarityofourmethod
+remainsatthehighestlevelunderhigh-levelWGNvariation,and
+it is stable. These results show the superiority of our method
+undertheimportantrobustnessindex,butnotethatthecharts
+inrealdataoftenhavemultiplesimultaneousvariations;thus,we
+needtouserealdatatoverifyourframework.
+5.2. The effectiveness of our framework on real stock data
+Tofurtherverifytheoverallperformanceofourframework
+onrealstockdata,wecompareourframeworkwithsixstate-
+of-the-artstockmovementpredictionbaselines.Theoverallper-
+formanceinprecision,accuracyandF1scoreisshowninTable3.
+Becauseofthestocktradingcharacteristics,wecanmakeprofits
+as long as we ensure that every trading behavior is accurate.
+Obviously,fromtheperspectiveofallmetrics,theperformance
+ofourproposedmodelbasedonchartinformationisthebest
+onthetwodatasets.Theperformanceondifferentdatasetscan
+reflectthedifferentadvantagesofourmodel.
+Note that the performance of the CA-FSCN and our model
+on SZ-50 differs more than that on the CSI-300. One possi-
+ble explanation is that compared with the CSI-300, the SZ-50
+hasfewerstocksandmorerepresentativecharts,whichmakes
+our method advantageous in distinguishing different charts by
+similarity. Specifically, compared with the CA-FSCN, the Chart
+GCNfurtherconsiderstheinformationcontainedinthetechnical
+chart.TheChartGCNcancapturemorecomplexinformationin
+stockpricemovementsandismoresuitableforchartrecognition.
+Theprecisionofallmethodsonnegativecasesishigherthan
+thatonpositivecases.Thisisbecauseitisimpossibletoshort
+inChina’sstockmarket,resultinginarbitragespacewhenstocks
+fall. According to the efficient market hypothesis [50], this is
+reasonable.
+6. Discussion
+6.1. Ablation
+TofurtherverifytheeffectivenessoftheChartGCNonreal
+stockdata,wecompareourmethodwithdifferentvariants. Chart
+GCN-1:thismodelexcludesthechartimportanceselectioncom-
+ponent;inotherwords,weusenodebetweennesstosortnodes
+oftheselectedsubgraphinnormalization,whichisequivalentto
+normalizationinaspatialGCN. Chart GCN-2:TheChartGCNhas
+noself-attentionmechanismbutapersistentchartimportance
+selectioncomponent. Chart GCN-3:TheChartGCNhasneithera
+chartimportanceselectioncomponentnoraself-attentionmech-
+anism. Chart GCN-4:TheChartGCNusestheoriginalpriceasan
+attachmenttoeachpointinthesubgraph.Weshowtheprecision
+resultsinTable4andobtainthefollowingfindings.
+Chart GCN-3 is consistently inferior to Chart GCN-2. This
+illustratestheimportanceoftheaccurateextractionandexplicit
+modeling of chart information, which suggests that the chart
+importance selection component is more capable of capturing
+chartinformationthanthevanillaspatialGCNmodel.Ourmodel
+performs better than Chart GCN-3 and Chart GCN-2, possibly
+because the chart importance selection component and self-
+attentionmechanismcanmutuallyreinforceeachother:thechart
+importanceselectioncomponentcanbeusedtocapturecomplex
+chart information, while dot-product attention can distinguish
+importanthistoricaltechnicalindicatorinformation.
+TheperformanceofChartGCN-2onSZ-50isverygood,butthe
+performanceontheCSI-300isaveragebecausethechartsinthe
+stockpriceofSZ-50aremorerepresentativewhilethechartsin
+theCSI-300containmorenoise;thus,thereisalargegapbetween
+theperformanceofChartGCN-2onthetwoindices.
+Ourmodelperformslessthan2%betterthanChartGCN-4on
+theSZ-50andCSI-300.Thisresultverifiesthattheimprovement
+of the technical indicators in the model is limited compared
+8
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Table 3
+Results(%):ourproposedframeworkandbaselines.Allmodelspredictpricetrendlabelsatthenexttimestep.
+SZ-50 CSI-300
+Acc(%) Pre_1(%) Pre_0(%) F1_1(%) F1_0(%) Acc(%) Pre_1(%) Pre_0(%) F1_1(%) F1_0(%)
+CNN 54.78 50.09 58.85 50.72 58.22 54.54 49.84 58.62 50.44 58.02
+LSTM 54.64 49.95 58.63 50.26 58.32 54.89 50.22 58.89 50.65 58.47
+TCN 56.11 51.55 59.96 51.81 59.71 55.48 50.84 59.48 51.44 58.90
+GRU 58.03 53.54 62.02 54.57 60.99 61.13 56.83 64.95 57.93 63.87
+DARNN 60.68 56.42 64.41 57.24 63.62 61.93 57.80 65.52 58.50 64.85
+CA-FSCN 63.03 58.81 66.82 60.09 65.58 64.74 60.76 68.23 61.67 67.36
+Chart GCN 69.26 65.76 72.26 66.40 71.67 68.62 64.87 71.91 65.93 70.91
+Table 4
+Results(%):Ablationanalysis,accuracy,precisionandF1-scoreofeachmodelvariant(%).
+SZ-50 CSI-300
+Acc(%) Pre_1(%) Pre_0(%) F1_1(%) F1_0(%) Acc(%) Pre_1(%) Pre_0(%) F1_1(%) F1_0(%)
+ChartGCN-1 58.69 54.27 62.57 55.13 61.72 57.66 53.23 61.42 53.57 61.09
+ChartGCN-2 64.59 60.75 67.88 61.24 67.41 58.21 53.83 61.92 54.17 61.60
+ChartGCN-3 54.35 49.63 58.39 50.04 57.98 54.94 50.27 58.98 50.84 58.42
+ChartGCN-4 66.58 62.87 69.76 63.46 69.20 65.58 61.69 68.98 62.54 68.17
+Chart GCN 69.26 65.76 72.26 66.40 71.67 68.62 64.87 71.91 65.93 70.91
+withtheoriginalprice.Furthermore,thisshowsthatourmodel
+caneffectivelyextractthechartinformationfromthepriceand
+integrateitwiththetechnicalindicator.
+6.2. Further illustration of the advantages of our framework
+Tofurtherillustratetheadvantagesofourframeworkinchart
+informationminingandutilization,wereplacedthekernelpartof
+ourframework(spatialGCN)withthebaselinemodelsmentioned
+above.TheresultsareshowninTable5.Wecanseethatour
+modelimprovedfortheCNN,TCNandCA-FSCNmodelsbutnot
+forLSTM,GRUandDARNN.Thismaybebecausethesemodelscan
+onlyhandlesequentialdataandlackthecapabilityofcapturing
+chartinformationinconvertedgraphs.Nevertheless,CNN,TCN,
+CA-FSCNandspatialGCNmodels(themodelweselected)can
+obtainamoreadvancedfeaturerepresentationbyfurthercon-
+volutionofthelocalfeatureswhenthesemodelsarecombined
+withoursimilarityframework.
+The most common and feasible method for utilizing chart
+information in deep learning is identifying charts as Boolean
+valuesandinputtingthemtogetherwithtechnicalindicators.To
+explicitlyshowthedisharmonybetweendeeplearningmodels
+and Boolean values of charts, we conduct an experiment with
+Booleanvaluesof61charts 2asmodelinputs.Itcanbeseenin
+Table5thattheperformanceofallmodelsworsensafteradding
+theBooleanvaluesofthechartsasfeatures.Themainreasonfor
+this result is that chart features are very sparse. As shown in
+Fig.6,wherewecounttheaverageannualrateof61chartsin
+theCSI-300from2015to2021,theproportionofmostchartsis
+lessthan1%.Additionally,thecomplexchartalsohastheproblem
+ofjudgmentstandardsandsizes,whichfurtherleadstodifficulty
+inquantifyingtechnicalchartsinthesamewayasquantifying
+technicalindicators[13].
+6.3. Trading simulation
+Althoughthetransactioncostaffectsthefinalprofit,therel-
+ativepositionbasedonmodelprofitdoesnotchangeowingto
+thesametradingstrategy.Wealsocalculatetheaveragereturn
+on the component stocks of the SZ-50 and CSI-300 by evenly
+holding every stock as the benchmarks, indicating the overall
+market trend. Due to regulationsin the Chinese stockmarket,
+2 ‘‘https://www.ta-lib.org/’’.
+Fig. 6. RateofchartsintheCSI-300.
+onecanonlyexecutelongoperationsonthestocks.Specifically,
+the trading signals can be generated as follows: for the long
+signal, once our model prediction is positive, we will hold a
+long position before the close of the day. However, it should
+benotedthatiftherearepreviouslongpositions,wewillnot
+operate.Similarly,fortheshortsignal,onceourmodelprediction
+isnegative,wewillsellalongpositionbeforethecloseofthe
+day.However,iftherearepreviousshortpositions,wewillnot
+operate. To avoid fluctuation risk, another technical indicator,
+movingaverageconvergencedivergence(MACD),isalsoused.If
+theMACDvalueofthestockdecreasesthan0,thelong-selling
+operationisalsoexecuted.Detailsofthemodels’netvaluecurves
+duringsimulationsareshowninFig.7.Ourproposedframework
+cangainthebestprofitresultsofallthebaselinemethods,even
+whenthemarketexhibitedadownturnin2018.
+Tofurtherverifythepredictionperformanceofourmodelon
+theactualdata,wecollecttheminutepricedataofRebarfutures
+rb2010intheShanghaiStockExchange 3andtakethedatafrom
+10February2020to2April2020asthetrainingsetandvalidation
+setandtherestofthedatafrom3April2020to13April2020
+asthetestset.Thetradingstrategyissimilartothestrategyon
+stocksabove.AsseeninFig.8,ourmodelcanalsoachievegood
+returnsonfuturestransactions.
+3 ‘‘https://www.myquant.cn/gm2/’’.
+9
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Table 5
+Accuracies(%)ofbaselineswithchartBooleanorsimilarity.
+SZ-50 CSI-300
+Technicalindicator(%) +ChartBoolean(%) +Chartsimilarity(%) Technicalindicator(%) +ChartBoolean(%) +Chartsimilarity(%)
+CNN 54.78 48.21 57.77 54.54 50.41 56.38
+LSTM 54.64 50.38 53.35 54.89 51.08 54.47
+TCN 56.11 50.14 52.26 55.48 51.27 56.00
+GRU 58.03 52.12 58.33 61.13 53.54 60.17
+DARNN 60.68 52.47 53.23 61.93 57.80 65.52
+CA-FSCN 63.03 54.84 65.09 64.74 56.55 66.87
+Fig. 7. Thebacktestresults. upper panel:SZ-50 lower panel:CSI-300.
+Fig. 8. Thebacktestresultoffuturestransactions.
+10
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+Insummary,alltheseresultsindicatethatourframeworkcan
+effectivelyutilizecharts.Moreover,thelearnedpredictionmodel
+canhelpinvestorsmakemoreaccuratetradingdecisions.
+7. Conclusion
+Inthispaper,weproposeanovelframeworktosufficiently
+utilize the information from technical charts for stock move-
+mentprediction.Comparedwiththechartsimilarityintraditional
+TA, our framework is more robust. Based on our framework,
+wecaneffectivelyutilizechartsthroughthetransformedgraph
+tosolvethebasicstockmovementpredictionproblemswhere
+chartsarerarelyemployedbymachinelearningmodels.Through
+thisframework,adeeplearningmodelcanmakeuseofinforma-
+tioncontainedinvariouschartsratherthanacoupleofspecific
+chartsandhasgoodperformanceinpracticalapplicationsinstock
+forecastingandtrading.Theresultsofthispaperhighlighttherole
+ofchartsinstockmovementprediction.Comparedwiththeuse
+oforiginalfinancialinformationsuchasmarketpricedata,the
+chartinformationoffinancialmarketseriesiswell-matchedwith
+marketpricedataonfinancialmarkettasks.
+Despite the valid performance of our Chart GCN, there are
+some limitations to this research. For example, there may be
+multiple charts within a period of time, and the information
+betweenthesechartsmaybemutualandconflicting.Inaddition,
+weusedonlyoneclassofGCNmodelasthegraphkernel.Given
+theuniversalityofGCNsinvarioustime-seriesproblems,suchas
+eventprediction[51]andtransportationelasticityprediction[52],
+there are more complex end-to-end models that may be pre-
+ferred. These two limitations are promising directions for our
+futurework.
+CRediT authorship contribution statement
+Shangzhe Li: Datacuration,Investigation,Writing–original
+draft. Junran Wu:Conceptualization,Methodology,Writing–re-
+view&editing. Xin Jiang:Supervision,Conceptualization,Writing
+–review&editing. Ke Xu:Conceptualization,Supervision.
+Declaration of competing interest
+Theauthorsdeclarethattheyhavenoknowncompetingfinan-
+cialinterestsorpersonalrelationshipsthatcouldhaveappeared
+toinfluencetheworkreportedinthispaper.
+Acknowledgment
+ThisworkhasbeensupportedbyGuangxiProvinceScience
+andTechnologyProgram(2021AA11006),BeijingNaturalScience
+Foundation(Z180005)andNaturalScienceFoundationofChina
+(GrantsNo.12171023).
+References
+[1] ProdromosTsinaslanidis,FranciscoGuijarro,Whatmakestradingstrategies
+basedonchartpatternrecognitionprofitable?ExpertSyst.38(5)(2021)
+e12596.
+[2] P.E.Tsinaslanidis,A.D.Zapranis,Technicalanalysisforalgorithmicpattern
+recognition, in: Technical Analysis for Algorithmic Pattern Recognition,
+2016.
+[3] JunranWu,KeXu,XueyuanChen,ShangzheLi,JichangZhao,Pricegraphs:
+Utilizing the structural information of financial time series for stock
+prediction,Inform.Sci.588(2022)405–424.
+[4] EhsanHoseinzade,SamanHaratizadeh,CNNpred:CNN-basedstockmarket
+predictionusingadiversesetofvariables,ExpertSyst.Appl.129(2019)
+273–285.
+[5] ZhigeLi,DerekYang,LiZhao,JiangBian,TaoQin,Tie-YanLiu,Individu-
+alized indicator for all: Stock-wise technical indicator optimization with
+stockembedding,in:Proceedingsofthe25thACMSIGKDDInternational
+ConferenceonKnowledgeDiscovery&DataMining,2019,pp.894–902.
+[6] Guang Liu, Yuzhao Mao, Qi Sun, Hailong Huang, Weiguo Gao, Xuan Li,
+JianPingShen,RuifanLi,XiaojieWang,Multi-scaletwo-waydeepneural
+networkforstocktrendprediction.
+[7] A.W.Lo,H.Mamaysky,J.Wang,FoundationsofTechnicalAnalysis:Com-
+putationalAlgorithms,StatisticalInference,andEmpiricalImplementation,
+SocialScienceElectronicPublishing.
+[8] W. Leigh, N. Modani, R. Purvis, T. Roberts, Stock market trading rule
+discoveryusingtechnicalchartingheuristics,ExpertSyst.Appl.(2)(2002)
+155–159.
+[9] W. Leigh, N. Modani, R. Hightower, A computational implementation of
+stock charting: abrupt volume increase as signal for movement in New
+Yorkstockexchangecompositeindex,Decis.SupportSyst.37(4)(2004)
+515–530.
+[10] A. Tai Liang Chen, B. Feng Yu Chen, An intelligent pattern recognition
+model for supporting investment decisions in stock market, Inform. Sci.
+s346–347(2016)261–274.
+[11] RobertoCervello-Royo,F.Guijarro,K.Michniuk,Stockmarkettradingrule
+basedonpatternrecognitionandtechnicalanalysis:ForecastingtheDJIA
+indexwithintradaydata,ExpertSyst.Appl.42(14)(2015)5963–5975.
+[12] YuechuZheng,Yain-WharSi,RaymondWong,Featureextractionforchart
+patternclassificationinfinancialtimeseries,Knowl.Inf.Syst.63(7)(2021)
+1807–1848.
+[13] ProdromosE.Tsinaslanidis,Subsequencedynamictimewarpingforchart-
+ing:BullishandbearishclasspredictionsforNYSEstocks,ExpertSyst.Appl.
+94(2018)193–204.
+[14] Achilleas Zapranis, Prodromos E. Tsinaslanidis, A novel, rule-based tech-
+nicalpatternidentificationmechanism:Identifyingandevaluatingsaucers
+andresistantlevelsintheUSstockmarket,ExpertSyst.Appl.39(7)(2012)
+6301–6308.
+[15] CarolL.Osler,P.H.Chang,HeadandShoulders:NotJustaFlakyPattern,
+FRBofNewYorkStaffReport(4),1995.
+[16] Rubén Arévalo, Jorge García, Francisco Guijarro, Alfred Peris, A dynamic
+trading rule based on filtered flag pattern recognition for stock market
+priceforecasting,ExpertSyst.Appl.81(2017)177–192.
+[17] SangHyukKim,HeeSooLee,HanJunKo,SeungHwanJeong,HyunWoo
+Byun, Kyong Joo Oh, Pattern matching trading system based on the
+dynamictimewarpingalgorithm,Sustainability10(12)(2018)4641.
+[18] KeyuluXu,JinglingLi,MozhiZhang,SimonS.Du,Ken-ichiKawarabayashi,
+Stefanie Jegelka, What can neural networks reason about? 2019, arXiv
+preprintarXiv:1905.13211.
+[19] Tomás Lozano-Pérez, Michael A. Wesley, An algorithm for planning
+collision-free paths among polyhedral obstacles, Commun. ACM 22 (10)
+(1979)560–570.
+[20] LucasLacasa,BartoloLuque,FernandoBallesteros,JordiLuque,JuanCarlos
+Nuno,From timeseries tocomplexnetworks: Thevisibility graph,Proc.
+Natl.Acad.Sci.105(13)(2008)4972–4975.
+[21] A.Kianimajd,M.G.Ruano,P.Carvalho,J.Henriques,T.Rocha,S.Paredes,
+A.E. Ruano, Comparison of different methods of measuring similarity in
+physiologictimeseries,IFAC-PapersOnLine50(1)(2017)11005–11010.
+[22] MathiasNiepert,MohamedAhmed,KonstantinKutzkov,Learningconvolu-
+tionalneuralnetworksforgraphs,in:InternationalConferenceonMachine
+Learning,PMLR,2016,pp.2014–2023.
+[23] G.J.Deboeck,Tradingontheedge:neural,genetic,andfuzzysystemsfor
+chaotic financial markets, in: Trading on the Edge: Neural, Genetic, and
+FuzzySystemsforChaoticFinancialMarkets,1994.
+[24] Pavel Senin, Dynamic time warping algorithm review, Inf. Comput. Sci.
+Dep.Univ.HawaiiManoaHonoluluUSA855(1–23)(2008)40.
+[25] SukJunLee,KyongJooOh,TaeYoonKim,Howmanyreferencepatterns
+canimproveprofitabilityforreal-timetradinginfuturesmarket?Expert
+Syst.Appl.39(8)(2012)7458–7470.
+[26] ProdromosE.Tsinaslanidis,DimitrisKugiumtzis,Apredictionschemeusing
+perceptually important points and dynamic time warping, Expert Syst.
+Appl.41(15)(2014)6848–6860.
+[27] K. Xu, W. Hu, J. Leskovec, S. Jegelka, How powerful are graph neural
+networks?2018.
+[28] Na Wang, Dong Li, Qiwen Wang, Visibility graph analysis on quarterly
+macroeconomicseriesofChinabasedoncomplexnetworktheory,Physica
+A391(24)(2012)6543–6555.
+[29] Lucas Lacasa, Wolfram Just, Visibility graphs and symbolic dynamics,
+PhysicaD374(2018)35–44.
+[30] LucaDiPersio,OleksandrHonchar,Artificialneuralnetworksarchitectures
+for stock price prediction: Comparisons and applications, Int. J. Circuits
+Syst.SignalProcess.10(2016)(2016)403–413.
+[31] David M.Q. Nelson, Adriano C.M. Pereira, Renato A. de Oliveira, Stock
+market’spricemovementpredictionwithLSTMneuralnetworks,in:2017
+InternationalJointConferenceonNeuralNetworks(IJCNN),IEEE,2017,pp.
+1419–1426.
+11
+S. Li, J. Wu, X. Jiang et al. Knowledge-Based Systems 248 (2022) 108842
+[32] Jince Li, Bo Yang, Hongguang Li, Yongjian Wang, Chu Qi, Yi Liu, DTDR–
+ALSTM: Extracting dynamic time-delays to reconstruct multivariate data
+for improving attention-based LSTM industrial time series prediction
+models,Knowl.-BasedSyst.211(2021)106508.
+[33] HengxuLin,DongZhou,WeiqingLiu,JiangBian,Learningmultiplestock
+tradingpatternswithtemporalroutingadaptorandoptimaltransport,in:
+Proceedingsofthe27thACMSIGKDDConferenceonKnowledgeDiscovery
+&DataMining,2021,pp.1017–1026.
+[34] Xin Du, Kumiko Tanaka-Ishii, Stock embeddings acquired from news
+articles and price history, and an application to portfolio optimization,
+in: Proceedings of the 58th Annual Meeting of the Association for
+ComputationalLinguistics,2020,pp.3353–3363.
+[35] Jiancan Wu, Xiangnan He, Xiang Wang, Qifan Wang, Weijian Chen,
+Jianxun Lian, Xing Xie, Graph convolution machine for context-aware
+recommendersystem,Front.Comput.Sci.16(6)(2022)1–12.
+[36] Jia Chen, Ming Zhong, Jianxin Li, Dianhui Wang, Tieyun Qian, Hang Tu,
+Effective deep attributed network representation learning with topology
+adaptedsmoothing,IEEETrans.Cybern. (2021).
+[37] ZhaoLi,XinWang,JianxinLi,QingpengZhang,Deepattributednetwork
+representationlearningofcomplexcouplingandinteraction,Knowl.-Based
+Syst.212(2021)106618.
+[38] GuotongXue,MingZhong,JianxinLi,JiaChen,ChengshuaiZhai,Ruochen
+Kong, Dynamic network embedding survey, Neurocomputing 472 (2022)
+212–223.
+[39] Joo Leito, F.N. Rui, N. Horta, Combining rules between PIPs and SAX
+to identify patterns in financial markets, Expert Syst. Appl. 65 (2016)
+242–254.
+[40] Nino Shervashidze, Pascal Schweitzer, Erik Jan Van Leeuwen, Kurt
+Mehlhorn, Karsten M. Borgwardt, Weisfeiler-lehman graph kernels, J.
+Mach.Learn.Res.12(9)(2011).
+[41] Hao Peng, Jianxin Li, Yu He, Yaopeng Liu, Mengjiao Bao, Lihong Wang,
+YangqiuSong,QiangYang,Large-scalehierarchicaltextclassificationwith
+recursivelyregularizeddeepgraph-cnn,in:Proceedingsofthe2018World
+WideWebConference,2018,pp.1063–1072.
+[42] Y. Lecun, L. Bottou, Gradient-based learning applied to document
+recognition,Proc.IEEE86(11)(1998)2278–2324.
+[43] Jingyuan Wang, Yang Zhang, Ke Tang, Junjie Wu, Zhang Xiong, Al-
+phastock: A buying-winners-and-selling-losers investment strategy using
+interpretable deep reinforcement attention networks, in: Proceedings of
+the25thACMSIGKDDInternationalConferenceonKnowledgeDiscovery
+&DataMining,2019,pp.1900–1908.
+[44] Genan Dai, Xiaoyang Hu, Youming Ge, Zhiqing Ning, Yubao Liu, Atten-
+tion based simplified deep residual network for citywide crowd flows
+prediction,Front.Comput.Sci.15(2)(2021)1–12.
+[45] AshishVaswani,NoamShazeer,NikiParmar,JakobUszkoreit,LlionJones,
+Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin, Attention is all you
+need, in: Advances in Neural Information Processing Systems, 2017, pp.
+5998–6008.
+[46] Jigar Patel, Sahil Shah, Priyank Thakkar, Ketan Kotecha, Predicting stock
+and stock price index movement using trend deterministic data prepa-
+rationandmachinelearningtechniques,ExpertSyst.Appl.42(1)(2015)
+259–268.
+[47] Yao Qin, Dongjin Song, Haifeng Chen, Wei Cheng, Guofei Jiang, Garrison
+Cottrell, A dual-stage attention-based recurrent neural network for time
+seriesprediction,2017,arXivpreprintarXiv:1704.02971.
+[48] YifanHao,HuipingCao,Anewattentionmechanismtoclassifymultivari-
+ate time series, in: Proceedings of the Twenty-Ninth International Joint
+ConferenceonArtificialIntelligence,2020.
+[49] Hongyan Hao, Yan Wang, Yudi Xia, Jian Zhao, Furao Shen, Temporal
+convolutionalattention-basednetworkforsequencemodeling,2020,arXiv
+preprintarXiv:2002.12530.
+[50] T.Journal,Theefficientmarkethypothesisanditscritics,2004.
+[51] Ziniu Hu, Weiqing Liu, Jiang Bian, Xuanzhe Liu, Tie-Yan Liu, Listen-
+ing to chaotic whispers: A deep learning framework for news-oriented
+stocktrendprediction,in:ProceedingsoftheEleventhACMInternational
+ConferenceonWebSearchandDataMining,2018,pp.261–269.
+[52] Hong-WeiWang,Zhong-RenPeng,DongshengWang,YuanMeng,Tianlong
+Wu,WeiliSun,Qing-ChangLu,Evaluationandpredictionoftransportation
+resilienceunderextremeweatherevents:Adiffusiongraphconvolutional
+approach,Transp.Res.C115(2020)102619.
+12

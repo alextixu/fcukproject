@@ -1,0 +1,108 @@
+[CACHE] 5 檔已標記查無資料, 略過下載 (重試: python test/download_data.py --retry-empty): 6921.TW, 7711.TW, 7749.TW, 7768.TW, 7822.TW
+[DATA] elec_all: 440 檔
+[CHIP] 440/440 檔有籌碼資料(三種齊全 431 檔)
+  特徵 50/440
+  特徵 100/440
+  特徵 150/440
+  特徵 200/440
+  特徵 250/440
+  特徵 300/440
+  特徵 350/440
+C:\Users\alex\Desktop\專題進度\xgb_ta_pipeline\src\lowmem.py:57: RuntimeWarning: overflow encountered in cast
+  arrs = [df[OHLCV].values.astype(np.float32), feats.values.astype(np.float32), p9]
+  特徵 400/440
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+C:\Python312\Lib\site-packages\numpy\_core\_methods.py:52: RuntimeWarning: overflow encountered in reduce
+  return umr_sum(a, axis, dtype, out, keepdims, initial, where)
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+C:\Python312\Lib\site-packages\numpy\_core\_methods.py:52: RuntimeWarning: overflow encountered in reduce
+  return umr_sum(a, axis, dtype, out, keepdims, initial, where)
+[FEAT] lowmem 建構完成 107s → C:\Users\alex\Desktop\專題進度\xgb_ta_pipeline\experiments\features_elec_all_2016-01-01_2024-12-31_chip_lowmem.dat;載入 293 欄 (441892, 293)
+[SPLIT] train 229124 / val 102363 / test 103840  label=y_cs_h5 漲比例 train 0.498 test 0.499
+
+=== family:chip: 35 欄 → 過濾後 26 ===
+  [family:chip s42] iters=110 test acc=52.51% f1m=52.12% auc=0.5349 | h5 H-L -3.4% ρ=-0.10 (5s)
+  [family:chip s43] iters=148 test acc=52.57% f1m=52.28% auc=0.5360 | h5 H-L +1.5% ρ=+0.16 (5s)
+  [family:chip s44] iters=143 test acc=52.73% f1m=52.47% auc=0.5357 | h5 H-L +4.5% ρ=+0.26 (6s)
+
+=== nofamily:chip: 248 欄 → 過濾後 245 ===
+  [nofamily:chip s42] iters=299 test acc=53.80% f1m=53.58% auc=0.5546 | h5 H-L +69.8% ρ=+0.92 (59s)
+  [nofamily:chip s43] iters=306 test acc=53.59% f1m=53.33% auc=0.5539 | h5 H-L +55.1% ρ=+0.83 (61s)
+  [nofamily:chip s44] iters=263 test acc=53.71% f1m=53.46% auc=0.5538 | h5 H-L +56.9% ρ=+0.93 (56s)
+
+=== full: 283 欄 → 過濾後 271 ===
+  [full s42] iters=333 test acc=53.84% f1m=53.78% auc=0.5546 | h5 H-L +61.3% ρ=+0.95 (202s)
+  [full s43] iters=363 test acc=53.79% f1m=53.72% auc=0.5552 | h5 H-L +69.5% ρ=+0.83 (211s)
+  [full s44] iters=311 test acc=53.68% f1m=53.62% auc=0.5538 | h5 H-L +60.9% ρ=+0.87 (193s)
+
+[DEDUPE] |ρ|>0.95: 271 → 221 欄 (剔 50)
+
+=== full_top20: 20 欄 ===
+  [full_top20 s42] iters=337 test acc=53.31% f1m=53.25% auc=0.5482 | h5 H-L +37.5% ρ=+0.65 (7s)
+  [full_top20 s43] iters=285 test acc=53.41% f1m=53.33% auc=0.5485 | h5 H-L +30.4% ρ=+0.48 (7s)
+  [full_top20 s44] iters=293 test acc=53.42% f1m=53.35% auc=0.5481 | h5 H-L +32.7% ρ=+0.53 (7s)
+
+=== full_permpos: 139 欄 ===
+  [full_permpos s42] iters=429 test acc=53.79% f1m=53.79% auc=0.5538 | h5 H-L +53.1% ρ=+0.77 (42s)
+  [full_permpos s43] iters=463 test acc=53.79% f1m=53.78% auc=0.5552 | h5 H-L +61.0% ρ=+0.92 (45s)
+  [full_permpos s44] iters=380 test acc=53.83% f1m=53.82% auc=0.5545 | h5 H-L +54.4% ρ=+0.94 (40s)
+
+| 特徵集 | 欄數 | Acc | F1 macro | AUC | prob std | H-L h5 (年化%) | H-L t | 單調 ρ | 週轉 | 成本年化% | 淨 H-L | 淨 t | H-L h5 | H-L h20 | 零分佈百分位(H-L / ρ) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| family:chip | 26 | 52.60 ± 0.11% | 52.29 ± 0.18% | 0.5355 ± 0.0006 | 0.0315 ± 0.0009 | 0.9 ± 4.0 | 0.07 ± 0.27 | 0.11 ± 0.19 | 0.35 ± 0.02 | 20 ± 1 | -19.2 ± 3.1 | -1.29 ± 0.15 | 0.9 ± 4.0 | 5.5 ± 2.1 | 60.9 / 58.7 |
+| nofamily:chip | 245 | 53.70 ± 0.11% | 53.46 ± 0.13% | 0.5541 ± 0.0004 | 0.0534 ± 0.0011 | 60.6 ± 8.0 | 3.38 ± 0.21 | 0.89 ± 0.05 | 0.72 ± 0.00 | 42 ± 0 | 19.0 ± 7.8 | 1.04 ± 0.33 | 60.6 ± 8.0 | 30.2 ± 0.8 | 100.0 / 98.7 |
+| full | 271 | 53.77 ± 0.08% | 53.71 ± 0.08% | 0.5545 ± 0.0007 | 0.0560 ± 0.0010 | 63.9 ± 4.9 | 3.70 ± 0.07 | 0.88 ± 0.06 | 0.72 ± 0.00 | 41 ± 0 | 22.5 ± 4.7 | 1.29 ± 0.14 | 63.9 ± 4.9 | 22.6 ± 3.7 | 100.0 / 98.8 |
+| full_top20 | 20 | 53.38 ± 0.06% | 53.31 ± 0.05% | 0.5483 ± 0.0002 | 0.0494 ± 0.0009 | 33.5 ± 3.6 | 2.24 ± 0.16 | 0.55 ± 0.09 | 0.72 ± 0.01 | 42 ± 1 | -8.1 ± 3.1 | -0.54 ± 0.23 | 33.5 ± 3.6 | 18.3 ± 3.5 | 100.0 / 93.4 |
+| full_permpos | 139 | 53.80 ± 0.02% | 53.80 ± 0.02% | 0.5545 ± 0.0007 | 0.0575 ± 0.0012 | 56.1 ± 4.2 | 3.49 ± 0.19 | 0.87 ± 0.09 | 0.71 ± 0.00 | 41 ± 0 | 15.1 ± 4.0 | 0.94 ± 0.23 | 56.1 ± 4.2 | 27.3 ± 5.1 | 100.0 / 99.4 |
+
+[SAVED] experiments/e8c-elec-h5-cs-chip.json  (1112s)
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+C:\Python312\Lib\site-packages\numpy\_core\_methods.py:52: RuntimeWarning: overflow encountered in reduce
+  return umr_sum(a, axis, dtype, out, keepdims, initial, where)
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+C:\Python312\Lib\site-packages\numpy\_core\_methods.py:52: RuntimeWarning: overflow encountered in reduce
+  return umr_sum(a, axis, dtype, out, keepdims, initial, where)
+[FEAT] 讀 lowmem 快取 C:\Users\alex\Desktop\專題進度\xgb_ta_pipeline\experiments\features_elec_all_2016-01-01_2024-12-31_chip_lowmem → 只載入 293 欄, (441892, 293)
+[SPLIT] train 222641 / val 95763 / test 97240  label=y_cs_h20 漲比例 train 0.499 test 0.500
+
+=== family:chip: 35 欄 → 過濾後 26 ===
+  [family:chip s42] iters=75 test acc=53.57% f1m=53.42% auc=0.5517 | h20 H-L +18.8% ρ=+0.16 (4s)
+  [family:chip s43] iters=73 test acc=53.50% f1m=53.34% auc=0.5520 | h20 H-L +11.6% ρ=+0.20 (4s)
+  [family:chip s44] iters=56 test acc=53.47% f1m=53.26% auc=0.5500 | h20 H-L +5.6% ρ=+0.22 (4s)
+
+=== nofamily:chip: 248 欄 → 過濾後 245 ===
+  [nofamily:chip s42] iters=170 test acc=53.61% f1m=52.89% auc=0.5547 | h20 H-L +28.0% ρ=+0.66 (40s)
+  [nofamily:chip s43] iters=194 test acc=53.59% f1m=53.03% auc=0.5533 | h20 H-L +27.5% ρ=+0.39 (43s)
+  [nofamily:chip s44] iters=175 test acc=53.57% f1m=52.86% auc=0.5539 | h20 H-L +27.0% ρ=+0.43 (41s)
+
+=== full: 283 欄 → 過濾後 271 ===
+  [full s42] iters=188 test acc=53.54% f1m=53.33% auc=0.5543 | h20 H-L +28.8% ρ=+0.58 (133s)
+  [full s43] iters=120 test acc=53.53% f1m=53.29% auc=0.5543 | h20 H-L +26.8% ρ=+0.34 (110s)
+  [full s44] iters=142 test acc=53.40% f1m=53.22% auc=0.5534 | h20 H-L +21.8% ρ=+0.44 (115s)
+
+[DEDUPE] |ρ|>0.95: 271 → 221 欄 (剔 50)
+
+=== full_top20: 20 欄 ===
+  [full_top20 s42] iters=89 test acc=53.16% f1m=53.15% auc=0.5490 | h20 H-L +16.7% ρ=+0.49 (3s)
+  [full_top20 s43] iters=93 test acc=53.27% f1m=53.26% auc=0.5489 | h20 H-L +19.4% ρ=+0.24 (4s)
+  [full_top20 s44] iters=97 test acc=53.17% f1m=53.16% auc=0.5488 | h20 H-L +17.9% ρ=+0.32 (4s)
+
+=== full_permpos: 130 欄 ===
+  [full_permpos s42] iters=134 test acc=53.50% f1m=53.47% auc=0.5548 | h20 H-L +26.1% ρ=+0.65 (18s)
+  [full_permpos s43] iters=186 test acc=53.69% f1m=53.67% auc=0.5556 | h20 H-L +26.4% ρ=+0.62 (21s)
+  [full_permpos s44] iters=149 test acc=53.60% f1m=53.57% auc=0.5550 | h20 H-L +20.2% ρ=+0.55 (19s)
+
+| 特徵集 | 欄數 | Acc | F1 macro | AUC | prob std | H-L h20 (年化%) | H-L t | 單調 ρ | 週轉 | 成本年化% | 淨 H-L | 淨 t | H-L h5 | H-L h20 | 零分佈百分位(H-L / ρ) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| family:chip | 26 | 53.51 ± 0.05% | 53.34 ± 0.08% | 0.5513 ± 0.0011 | 0.0359 ± 0.0033 | 12.0 ± 6.6 | 0.83 ± 0.60 | 0.20 ± 0.03 | 0.50 ± 0.02 | 7 ± 0 | 4.9 ± 6.8 | 0.37 ± 0.51 | 8.9 ± 2.0 | 12.0 ± 6.6 | 95.5 / 71.6 |
+| nofamily:chip | 245 | 53.59 ± 0.02% | 52.93 ± 0.09% | 0.5540 ± 0.0007 | 0.0499 ± 0.0009 | 27.5 ± 0.5 | 1.48 ± 0.03 | 0.50 ± 0.14 | 0.63 ± 0.01 | 9 ± 0 | 18.4 ± 0.5 | 0.98 ± 0.03 | 40.2 ± 6.3 | 27.5 ± 0.5 | 99.8 / 90.3 |
+| full | 271 | 53.49 ± 0.08% | 53.28 ± 0.05% | 0.5540 ± 0.0005 | 0.0495 ± 0.0029 | 25.8 ± 3.6 | 1.44 ± 0.23 | 0.45 ± 0.12 | 0.60 ± 0.01 | 9 ± 0 | 17.1 ± 3.5 | 0.96 ± 0.22 | 43.9 ± 3.2 | 25.8 ± 3.6 | 99.8 / 90.9 |
+| full_top20 | 20 | 53.20 ± 0.07% | 53.19 ± 0.06% | 0.5489 ± 0.0001 | 0.0428 ± 0.0007 | 18.0 ± 1.3 | 1.08 ± 0.14 | 0.35 ± 0.13 | 0.50 ± 0.01 | 7 ± 0 | 10.8 ± 1.2 | 0.65 ± 0.11 | 29.2 ± 2.3 | 18.0 ± 1.3 | 98.4 / 78.2 |
+| full_permpos | 130 | 53.60 ± 0.09% | 53.57 ± 0.10% | 0.5551 ± 0.0004 | 0.0496 ± 0.0017 | 24.2 ± 3.5 | 1.23 ± 0.22 | 0.61 ± 0.05 | 0.58 ± 0.02 | 8 ± 0 | 15.9 ± 3.3 | 0.81 ± 0.19 | 40.2 ± 3.9 | 24.2 ± 3.5 | 99.1 / 92.9 |
+
+[SAVED] experiments/e8d-elec-h20-cs-chip.json  (589s)
+EXIT 0

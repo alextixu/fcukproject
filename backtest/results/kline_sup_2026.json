@@ -1,0 +1,539 @@
+{
+ "system": "KLINE 有監督版(AE + 分類器,取代 OC-SVM)",
+ "train_end": "2025-12-22",
+ "test": [
+  "2026-01-01",
+  "2026-09-10"
+ ],
+ "sig_frac": 0.1,
+ "trade_cost_pct": 0.42,
+ "hold_days": 5,
+ "ew_buyhold_pct": 73.92,
+ "original": {
+  "1日-7特徵": {
+   "n_trades": 1494,
+   "n_buy": 1494,
+   "n_sell": 0,
+   "n_tickers_traded": 50,
+   "close": {
+    "avg_trade_pct": 1.006,
+    "win_rate": 0.5281,
+    "t_stat": 5.37,
+    "portfolio_ret_pct": 32.17,
+    "long_avg_pct": 1.006,
+    "short_avg_pct": null
+   },
+   "open": {
+    "avg_trade_pct": 1.276,
+    "win_rate": 0.5337,
+    "t_stat": 6.69,
+    "portfolio_ret_pct": 44.59,
+    "long_avg_pct": 1.276,
+    "short_avg_pct": null
+   }
+  },
+  "2日-10特徵": {
+   "n_trades": 1401,
+   "n_buy": 1093,
+   "n_sell": 308,
+   "n_tickers_traded": 50,
+   "close": {
+    "avg_trade_pct": 0.69,
+    "win_rate": 0.4839,
+    "t_stat": 3.09,
+    "portfolio_ret_pct": 19.52,
+    "long_avg_pct": 1.411,
+    "short_avg_pct": -1.868
+   },
+   "open": {
+    "avg_trade_pct": 0.676,
+    "win_rate": 0.4943,
+    "t_stat": 3.11,
+    "portfolio_ret_pct": 18.93,
+    "long_avg_pct": 1.481,
+    "short_avg_pct": -2.169
+   }
+  },
+  "3日-12特徵": {
+   "n_trades": 1622,
+   "n_buy": 1622,
+   "n_sell": 0,
+   "n_tickers_traded": 50,
+   "close": {
+    "avg_trade_pct": 1.157,
+    "win_rate": 0.529,
+    "t_stat": 5.88,
+    "portfolio_ret_pct": 40.86,
+    "long_avg_pct": 1.157,
+    "short_avg_pct": null
+   },
+   "open": {
+    "avg_trade_pct": 1.279,
+    "win_rate": 0.5357,
+    "t_stat": 6.66,
+    "portfolio_ret_pct": 46.86,
+    "long_avg_pct": 1.279,
+    "short_avg_pct": null
+   }
+  }
+ },
+ "results": {
+  "1日-7特徵|logistic|latent": {
+   "n_trades": 763,
+   "n_buy": 714,
+   "n_sell": 49,
+   "close": {
+    "avg_trade_pct": 1.548,
+    "win_rate": 0.5085,
+    "t_stat": 4.06,
+    "portfolio_ret_pct": 27.84,
+    "long_avg_pct": 1.968,
+    "short_avg_pct": -4.576
+   },
+   "open": {
+    "avg_trade_pct": 1.517,
+    "win_rate": 0.4967,
+    "t_stat": 4.01,
+    "portfolio_ret_pct": 26.75,
+    "long_avg_pct": 1.941,
+    "short_avg_pct": -4.77
+   },
+   "val": {
+    "bull": {
+     "auc": 0.6667187153599083,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.24730737365368682,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6309117601317248,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.1859983429991715,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 9.42,
+   "buy_hit_5d_pct": 54.34,
+   "up_all_pct": 55.08
+  },
+  "1日-7特徵|logistic|raw": {
+   "n_trades": 835,
+   "n_buy": 741,
+   "n_sell": 94,
+   "close": {
+    "avg_trade_pct": 1.415,
+    "win_rate": 0.509,
+    "t_stat": 4.04,
+    "portfolio_ret_pct": 27.65,
+    "long_avg_pct": 1.865,
+    "short_avg_pct": -2.137
+   },
+   "open": {
+    "avg_trade_pct": 1.286,
+    "win_rate": 0.5097,
+    "t_stat": 3.69,
+    "portfolio_ret_pct": 22.33,
+    "long_avg_pct": 1.77,
+    "short_avg_pct": -2.533
+   },
+   "val": {
+    "bull": {
+     "auc": 0.6478080736997744,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.2332228666114333,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6046202020460836,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.18144159072079535,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 10.3,
+   "buy_hit_5d_pct": 53.85,
+   "up_all_pct": 55.08
+  },
+  "1日-7特徵|xgb|latent": {
+   "n_trades": 791,
+   "n_buy": 650,
+   "n_sell": 141,
+   "close": {
+    "avg_trade_pct": 1.142,
+    "win_rate": 0.5032,
+    "t_stat": 3.14,
+    "portfolio_ret_pct": 19.3,
+    "long_avg_pct": 1.944,
+    "short_avg_pct": -2.554
+   },
+   "open": {
+    "avg_trade_pct": 1.1,
+    "win_rate": 0.5038,
+    "t_stat": 2.92,
+    "portfolio_ret_pct": 16.92,
+    "long_avg_pct": 1.937,
+    "short_avg_pct": -2.73
+   },
+   "val": {
+    "bull": {
+     "auc": 0.6985273555482591,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.2618061309030654,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6498606059002685,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.19221209610604806,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 9.76,
+   "buy_hit_5d_pct": 54.92,
+   "up_all_pct": 55.08
+  },
+  "1日-7特徵|xgb|raw": {
+   "n_trades": 844,
+   "n_buy": 686,
+   "n_sell": 158,
+   "close": {
+    "avg_trade_pct": 1.108,
+    "win_rate": 0.5012,
+    "t_stat": 3.11,
+    "portfolio_ret_pct": 18.57,
+    "long_avg_pct": 1.98,
+    "short_avg_pct": -2.68
+   },
+   "open": {
+    "avg_trade_pct": 1.143,
+    "win_rate": 0.4976,
+    "t_stat": 3.25,
+    "portfolio_ret_pct": 19.16,
+    "long_avg_pct": 2.005,
+    "short_avg_pct": -2.573
+   },
+   "val": {
+    "bull": {
+     "auc": 0.7226758039787945,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.27174813587406793,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6583688458946744,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.1876553438276719,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 10.42,
+   "buy_hit_5d_pct": 54.81,
+   "up_all_pct": 55.08
+  },
+  "2日-10特徵|logistic|latent": {
+   "n_trades": 714,
+   "n_buy": 672,
+   "n_sell": 42,
+   "close": {
+    "avg_trade_pct": 1.662,
+    "win_rate": 0.5336,
+    "t_stat": 4.19,
+    "portfolio_ret_pct": 25.76,
+    "long_avg_pct": 1.991,
+    "short_avg_pct": -3.61
+   },
+   "open": {
+    "avg_trade_pct": 1.765,
+    "win_rate": 0.5386,
+    "t_stat": 4.56,
+    "portfolio_ret_pct": 28.98,
+    "long_avg_pct": 2.054,
+    "short_avg_pct": -2.85
+   },
+   "val": {
+    "bull": {
+     "auc": 0.6905397693084891,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.2526926263463132,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6224829466922678,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.17647058823529413,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 8.81,
+   "buy_hit_5d_pct": 56.25,
+   "up_all_pct": 55.08
+  },
+  "2日-10特徵|logistic|raw": {
+   "n_trades": 762,
+   "n_buy": 677,
+   "n_sell": 85,
+   "close": {
+    "avg_trade_pct": 1.468,
+    "win_rate": 0.5236,
+    "t_stat": 3.81,
+    "portfolio_ret_pct": 22.99,
+    "long_avg_pct": 1.976,
+    "short_avg_pct": -2.583
+   },
+   "open": {
+    "avg_trade_pct": 1.438,
+    "win_rate": 0.5251,
+    "t_stat": 3.81,
+    "portfolio_ret_pct": 22.49,
+    "long_avg_pct": 2.0,
+    "short_avg_pct": -3.006
+   },
+   "val": {
+    "bull": {
+     "auc": 0.6813917279521056,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.2502071251035626,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6293562292293609,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.1859983429991715,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 9.4,
+   "buy_hit_5d_pct": 55.39,
+   "up_all_pct": 55.08
+  },
+  "2日-10特徵|xgb|latent": {
+   "n_trades": 800,
+   "n_buy": 666,
+   "n_sell": 134,
+   "close": {
+    "avg_trade_pct": 1.477,
+    "win_rate": 0.5387,
+    "t_stat": 4.06,
+    "portfolio_ret_pct": 30.77,
+    "long_avg_pct": 2.178,
+    "short_avg_pct": -2.008
+   },
+   "open": {
+    "avg_trade_pct": 1.389,
+    "win_rate": 0.522,
+    "t_stat": 3.89,
+    "portfolio_ret_pct": 27.44,
+    "long_avg_pct": 2.053,
+    "short_avg_pct": -1.919
+   },
+   "val": {
+    "bull": {
+     "auc": 0.7169822926599847,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.2655343827671914,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6495131816548576,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.17191383595691798,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 9.87,
+   "buy_hit_5d_pct": 57.66,
+   "up_all_pct": 55.08
+  },
+  "2日-10特徵|xgb|raw": {
+   "n_trades": 830,
+   "n_buy": 669,
+   "n_sell": 161,
+   "close": {
+    "avg_trade_pct": 1.103,
+    "win_rate": 0.4976,
+    "t_stat": 3.06,
+    "portfolio_ret_pct": 19.84,
+    "long_avg_pct": 2.05,
+    "short_avg_pct": -2.834
+   },
+   "open": {
+    "avg_trade_pct": 1.119,
+    "win_rate": 0.5024,
+    "t_stat": 3.1,
+    "portfolio_ret_pct": 18.26,
+    "long_avg_pct": 2.036,
+    "short_avg_pct": -2.657
+   },
+   "val": {
+    "bull": {
+     "auc": 0.7225746321891325,
+     "base_rate": 0.10427796413633164,
+     "prec_top": 0.27257663628831813,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6667965487505915,
+     "base_rate": 0.0956226446349443,
+     "prec_top": 0.19718309859154928,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 10.24,
+   "buy_hit_5d_pct": 55.9,
+   "up_all_pct": 55.08
+  },
+  "3日-12特徵|logistic|latent": {
+   "n_trades": 786,
+   "n_buy": 761,
+   "n_sell": 25,
+   "close": {
+    "avg_trade_pct": 1.591,
+    "win_rate": 0.5305,
+    "t_stat": 4.58,
+    "portfolio_ret_pct": 25.12,
+    "long_avg_pct": 1.807,
+    "short_avg_pct": -4.982
+   },
+   "open": {
+    "avg_trade_pct": 1.467,
+    "win_rate": 0.5244,
+    "t_stat": 4.14,
+    "portfolio_ret_pct": 23.14,
+    "long_avg_pct": 1.665,
+    "short_avg_pct": -4.524
+   },
+   "val": {
+    "bull": {
+     "auc": 0.6413807638225288,
+     "base_rate": 0.10428660178090703,
+     "prec_top": 0.24937862468931235,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.5735195894336068,
+     "base_rate": 0.09563056533443777,
+     "prec_top": 0.15741507870753935,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 9.7,
+   "buy_hit_5d_pct": 55.58,
+   "up_all_pct": 55.08
+  },
+  "3日-12特徵|logistic|raw": {
+   "n_trades": 835,
+   "n_buy": 741,
+   "n_sell": 94,
+   "close": {
+    "avg_trade_pct": 1.523,
+    "win_rate": 0.5174,
+    "t_stat": 4.17,
+    "portfolio_ret_pct": 30.64,
+    "long_avg_pct": 2.062,
+    "short_avg_pct": -2.721
+   },
+   "open": {
+    "avg_trade_pct": 1.564,
+    "win_rate": 0.5254,
+    "t_stat": 4.37,
+    "portfolio_ret_pct": 31.17,
+    "long_avg_pct": 2.125,
+    "short_avg_pct": -2.807
+   },
+   "val": {
+    "bull": {
+     "auc": 0.6669342549889007,
+     "base_rate": 0.10428660178090703,
+     "prec_top": 0.23985086992543497,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6101147647279046,
+     "base_rate": 0.09563056533443777,
+     "prec_top": 0.19594034797017398,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 10.3,
+   "buy_hit_5d_pct": 54.66,
+   "up_all_pct": 55.08
+  },
+  "3日-12特徵|xgb|latent": {
+   "n_trades": 799,
+   "n_buy": 630,
+   "n_sell": 169,
+   "close": {
+    "avg_trade_pct": 1.125,
+    "win_rate": 0.5156,
+    "t_stat": 3.19,
+    "portfolio_ret_pct": 19.21,
+    "long_avg_pct": 2.135,
+    "short_avg_pct": -2.642
+   },
+   "open": {
+    "avg_trade_pct": 1.202,
+    "win_rate": 0.5251,
+    "t_stat": 3.37,
+    "portfolio_ret_pct": 21.83,
+    "long_avg_pct": 2.168,
+    "short_avg_pct": -2.437
+   },
+   "val": {
+    "bull": {
+     "auc": 0.7004982629713036,
+     "base_rate": 0.10428660178090703,
+     "prec_top": 0.256006628003314,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6381124824283642,
+     "base_rate": 0.09563056533443777,
+     "prec_top": 0.1623860811930406,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 9.86,
+   "buy_hit_5d_pct": 56.35,
+   "up_all_pct": 55.08
+  },
+  "3日-12特徵|xgb|raw": {
+   "n_trades": 840,
+   "n_buy": 671,
+   "n_sell": 169,
+   "close": {
+    "avg_trade_pct": 1.153,
+    "win_rate": 0.4929,
+    "t_stat": 3.33,
+    "portfolio_ret_pct": 21.72,
+    "long_avg_pct": 2.116,
+    "short_avg_pct": -2.67
+   },
+   "open": {
+    "avg_trade_pct": 1.184,
+    "win_rate": 0.5084,
+    "t_stat": 3.38,
+    "portfolio_ret_pct": 23.19,
+    "long_avg_pct": 2.121,
+    "short_avg_pct": -2.491
+   },
+   "val": {
+    "bull": {
+     "auc": 0.7242346803206492,
+     "base_rate": 0.10428660178090703,
+     "prec_top": 0.27299088649544323,
+     "n_top": 2414
+    },
+    "bear": {
+     "auc": 0.6638339796067079,
+     "base_rate": 0.09563056533443777,
+     "prec_top": 0.19096934548467273,
+     "n_top": 2414
+    }
+   },
+   "signal_cover_pct": 10.37,
+   "buy_hit_5d_pct": 55.89,
+   "up_all_pct": 55.08
+  }
+ },
+ "elapsed_s": 235
+}

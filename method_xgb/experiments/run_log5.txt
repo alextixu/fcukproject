@@ -1,0 +1,106 @@
+[DATA] tw500: 552 檔
+[CHIP] 552/552 檔有籌碼資料(三種齊全 546 檔)
+  特徵 50/552
+  特徵 100/552
+  特徵 150/552
+  特徵 200/552
+  特徵 250/552
+  特徵 300/552
+  特徵 350/552
+  特徵 400/552
+  特徵 450/552
+  特徵 500/552
+  特徵 550/552
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+[FEAT] lowmem 建構完成 138s → C:\Users\alex\Desktop\專題進度\xgb_ta_pipeline\experiments\features_tw500_2016-01-01_2024-12-31_chip_lowmem.dat;載入 252 欄 (574314, 252)
+[SPLIT] train 298426 / val 120796 / test 121992  label=y_cs_h20 漲比例 train 0.499 test 0.500
+
+=== family:chip: 35 欄 → 過濾後 26 ===
+  [family:chip s42] iters=38 test acc=53.28% f1m=53.26% auc=0.5404 | h20 H-L -16.1% ρ=-0.28 (5s)
+  [family:chip s43] iters=35 test acc=52.98% f1m=52.96% auc=0.5397 | h20 H-L -12.0% ρ=-0.31 (4s)
+  [family:chip s44] iters=38 test acc=53.14% f1m=53.10% auc=0.5395 | h20 H-L -17.0% ρ=-0.03 (4s)
+
+=== nofamily:chip: 207 欄 → 過濾後 204 ===
+  [nofamily:chip s42] iters=47 test acc=54.09% f1m=52.40% auc=0.5609 | h20 H-L +21.1% ρ=+0.47 (27s)
+  [nofamily:chip s43] iters=83 test acc=54.58% f1m=53.42% auc=0.5659 | h20 H-L +25.6% ρ=+0.56 (32s)
+  [nofamily:chip s44] iters=79 test acc=54.64% f1m=53.41% auc=0.5651 | h20 H-L +20.8% ρ=+0.67 (32s)
+
+=== full: 242 欄 → 過濾後 230 ===
+  [full s42] iters=52 test acc=54.53% f1m=53.54% auc=0.5667 | h20 H-L +18.8% ρ=+0.61 (84s)
+  [full s43] iters=51 test acc=54.41% f1m=53.43% auc=0.5652 | h20 H-L +14.9% ρ=+0.43 (84s)
+  [full s44] iters=50 test acc=54.58% f1m=53.54% auc=0.5677 | h20 H-L +17.1% ρ=+0.55 (84s)
+
+[DEDUPE] |ρ|>0.95: 230 → 181 欄 (剔 49)
+
+=== full_top20: 20 欄 ===
+  [full_top20 s42] iters=79 test acc=55.26% f1m=54.99% auc=0.5702 | h20 H-L +15.2% ρ=+0.70 (5s)
+  [full_top20 s43] iters=85 test acc=55.34% f1m=55.11% auc=0.5712 | h20 H-L +17.7% ρ=+0.95 (5s)
+  [full_top20 s44] iters=88 test acc=55.17% f1m=54.87% auc=0.5697 | h20 H-L +22.1% ρ=+0.83 (5s)
+
+=== full_permpos: 115 欄 ===
+  [full_permpos s42] iters=125 test acc=54.59% f1m=54.38% auc=0.5668 | h20 H-L +21.5% ρ=+0.69 (22s)
+  [full_permpos s43] iters=92 test acc=54.91% f1m=54.61% auc=0.5691 | h20 H-L +18.9% ρ=+0.55 (19s)
+  [full_permpos s44] iters=165 test acc=54.78% f1m=54.53% auc=0.5686 | h20 H-L +18.8% ρ=+0.65 (25s)
+
+| 特徵集 | 欄數 | Acc | F1 macro | AUC | prob std | H-L h20 (年化%) | H-L t | 單調 ρ | 週轉 | 成本年化% | 淨 H-L | 淨 t | H-L h5 | H-L h20 | 零分佈百分位(H-L / ρ) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| family:chip | 26 | 53.13 ± 0.15% | 53.11 ± 0.15% | 0.5399 ± 0.0005 | 0.0222 ± 0.0004 | -15.0 ± 2.7 | -1.50 ± 0.41 | -0.21 ± 0.15 | 0.47 ± 0.00 | 7 ± 0 | -21.7 ± 2.7 | -2.17 ± 0.49 | -8.3 ± 0.9 | -15.0 ± 2.7 | 4.6 / 19.7 |
+| nofamily:chip | 204 | 54.44 ± 0.30% | 53.08 ± 0.59% | 0.5640 ± 0.0027 | 0.0392 ± 0.0054 | 22.5 ± 2.7 | 2.16 ± 0.46 | 0.57 ± 0.10 | 0.61 ± 0.00 | 9 ± 0 | 13.7 ± 2.7 | 1.33 ± 0.39 | 26.9 ± 2.1 | 22.5 ± 2.7 | 99.9 / 97.7 |
+| full | 230 | 54.51 ± 0.09% | 53.50 ± 0.07% | 0.5666 ± 0.0013 | 0.0355 ± 0.0009 | 16.9 ± 2.0 | 1.25 ± 0.19 | 0.53 ± 0.09 | 0.58 ± 0.00 | 8 ± 0 | 8.6 ± 1.9 | 0.64 ± 0.16 | 29.8 ± 1.2 | 16.9 ± 2.0 | 99.3 / 91.5 |
+| full_top20 | 20 | 55.26 ± 0.08% | 54.99 ± 0.12% | 0.5704 ± 0.0008 | 0.0440 ± 0.0008 | 18.3 ± 3.5 | 1.32 ± 0.28 | 0.83 ± 0.13 | 0.59 ± 0.01 | 8 ± 0 | 9.9 ± 3.5 | 0.72 ± 0.27 | 26.5 ± 1.5 | 18.3 ± 3.5 | 99.5 / 98.2 |
+| full_permpos | 115 | 54.76 ± 0.16% | 54.51 ± 0.12% | 0.5682 ± 0.0012 | 0.0498 ± 0.0040 | 19.8 ± 1.5 | 1.40 ± 0.06 | 0.63 ± 0.07 | 0.60 ± 0.02 | 9 ± 0 | 11.0 ± 1.5 | 0.79 ± 0.08 | 28.3 ± 3.7 | 19.8 ± 1.5 | 99.8 / 95.7 |
+
+[SAVED] experiments/e7b-tw500-h20-cs-chip.json  (606s)
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+C:\Python312\Lib\site-packages\pandas\core\nanops.py:1025: RuntimeWarning: overflow encountered in cast
+  result = result.astype(dtype, copy=False)
+[FEAT] 讀 lowmem 快取 C:\Users\alex\Desktop\專題進度\xgb_ta_pipeline\experiments\features_tw500_2016-01-01_2024-12-31_chip_lowmem → 只載入 252 欄, (574314, 252)
+[SPLIT] train 306691 / val 129076 / test 130272  label=y_cs_h5 漲比例 train 0.497 test 0.498
+
+=== classic4: 15 欄 → 過濾後 15 ===
+  [classic4 s42] iters=78 test acc=52.37% f1m=52.05% auc=0.5355 | h5 H-L +14.3% ρ=+0.55 (4s)
+  [classic4 s43] iters=76 test acc=52.40% f1m=52.12% auc=0.5356 | h5 H-L +15.5% ρ=+0.50 (4s)
+  [classic4 s44] iters=66 test acc=52.38% f1m=52.05% auc=0.5354 | h5 H-L +10.7% ρ=+0.39 (4s)
+
+=== family:chip: 35 欄 → 過濾後 26 ===
+  [family:chip s42] iters=88 test acc=51.97% f1m=51.96% auc=0.5264 | h5 H-L -4.1% ρ=-0.08 (6s)
+  [family:chip s43] iters=64 test acc=51.97% f1m=51.95% auc=0.5261 | h5 H-L -5.4% ρ=-0.06 (5s)
+  [family:chip s44] iters=58 test acc=52.11% f1m=52.09% auc=0.5263 | h5 H-L -7.6% ρ=-0.01 (5s)
+
+=== nofamily:chip: 207 欄 → 過濾後 204 ===
+  [nofamily:chip s42] iters=143 test acc=53.78% f1m=53.40% auc=0.5569 | h5 H-L +42.0% ρ=+0.76 (45s)
+  [nofamily:chip s43] iters=158 test acc=53.81% f1m=53.48% auc=0.5577 | h5 H-L +39.0% ρ=+0.85 (48s)
+  [nofamily:chip s44] iters=152 test acc=53.76% f1m=53.41% auc=0.5574 | h5 H-L +36.9% ρ=+0.94 (47s)
+
+=== full: 242 欄 → 過濾後 230 ===
+  [full s42] iters=219 test acc=53.94% f1m=53.75% auc=0.5589 | h5 H-L +41.6% ρ=+0.90 (167s)
+  [full s43] iters=149 test acc=53.79% f1m=53.55% auc=0.5569 | h5 H-L +38.3% ρ=+0.67 (136s)
+  [full s44] iters=194 test acc=53.72% f1m=53.51% auc=0.5575 | h5 H-L +44.8% ρ=+0.70 (158s)
+
+[DEDUPE] |ρ|>0.95: 230 → 184 欄 (剔 46)
+
+=== full_top20: 20 欄 ===
+  [full_top20 s42] iters=161 test acc=53.45% f1m=53.45% auc=0.5502 | h5 H-L +24.7% ρ=+0.98 (7s)
+  [full_top20 s43] iters=180 test acc=53.50% f1m=53.50% auc=0.5519 | h5 H-L +35.0% ρ=+0.82 (7s)
+  [full_top20 s44] iters=193 test acc=53.49% f1m=53.49% auc=0.5520 | h5 H-L +30.8% ρ=+0.84 (7s)
+
+=== full_permpos: 124 欄 ===
+  [full_permpos s42] iters=268 test acc=54.16% f1m=54.11% auc=0.5597 | h5 H-L +36.9% ρ=+0.89 (37s)
+  [full_permpos s43] iters=295 test acc=54.33% f1m=54.26% auc=0.5611 | h5 H-L +46.7% ρ=+0.73 (41s)
+  [full_permpos s44] iters=269 test acc=54.22% f1m=54.17% auc=0.5605 | h5 H-L +44.2% ρ=+0.92 (38s)
+
+| 特徵集 | 欄數 | Acc | F1 macro | AUC | prob std | H-L h5 (年化%) | H-L t | 單調 ρ | 週轉 | 成本年化% | 淨 H-L | 淨 t | H-L h5 | H-L h20 | 零分佈百分位(H-L / ρ) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| classic4 | 15 | 52.38 ± 0.02% | 52.07 ± 0.04% | 0.5355 ± 0.0001 | 0.0258 ± 0.0010 | 13.5 ± 2.5 | 1.01 ± 0.22 | 0.48 ± 0.08 | 0.71 ± 0.01 | 41 ± 1 | -27.6 ± 3.0 | -2.05 ± 0.18 | 13.5 ± 2.5 | 10.5 ± 4.5 | 96.9 / 92.1 |
+| family:chip | 26 | 52.02 ± 0.08% | 52.00 ± 0.08% | 0.5263 ± 0.0001 | 0.0220 ± 0.0023 | -5.7 ± 1.8 | -0.58 ± 0.16 | -0.05 ± 0.04 | 0.32 ± 0.02 | 18 ± 1 | -24.0 ± 1.0 | -2.44 ± 0.04 | -5.7 ± 1.8 | -14.9 ± 1.6 | 14.9 / 33.3 |
+| nofamily:chip | 204 | 53.78 ± 0.02% | 53.43 ± 0.04% | 0.5573 ± 0.0004 | 0.0450 ± 0.0004 | 39.3 ± 2.6 | 2.63 ± 0.10 | 0.85 ± 0.09 | 0.68 ± 0.00 | 39 ± 0 | 0.2 ± 2.7 | 0.01 ± 0.18 | 39.3 ± 2.6 | 19.6 ± 0.6 | 100.0 / 99.6 |
+| full | 230 | 53.81 ± 0.11% | 53.60 ± 0.13% | 0.5578 ± 0.0010 | 0.0478 ± 0.0023 | 41.6 ± 3.2 | 2.78 ± 0.19 | 0.76 ± 0.13 | 0.67 ± 0.01 | 39 ± 0 | 2.7 ± 2.9 | 0.18 ± 0.19 | 41.6 ± 3.2 | 18.0 ± 2.2 | 100.0 / 98.9 |
+| full_top20 | 20 | 53.48 ± 0.03% | 53.48 ± 0.03% | 0.5513 ± 0.0010 | 0.0432 ± 0.0011 | 30.2 ± 5.2 | 2.00 ± 0.33 | 0.88 ± 0.09 | 0.73 ± 0.00 | 42 ± 0 | -11.8 ± 5.1 | -0.79 ± 0.35 | 30.2 ± 5.2 | 13.8 ± 2.8 | 100.0 / 99.4 |
+| full_permpos | 124 | 54.24 ± 0.09% | 54.18 ± 0.08% | 0.5605 ± 0.0007 | 0.0516 ± 0.0005 | 42.6 ± 5.1 | 3.16 ± 0.50 | 0.85 ± 0.10 | 0.69 ± 0.00 | 40 ± 0 | 2.9 ± 4.9 | 0.22 ± 0.37 | 42.6 ± 5.1 | 20.7 ± 0.7 | 100.0 / 99.8 |
+
+[SAVED] experiments/e7c-tw500-h5-cs-chip.json  (849s)
+EXIT 0

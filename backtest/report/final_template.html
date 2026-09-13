@@ -1,0 +1,566 @@
+<title>tw50 三檔輪動系統</title>
+<meta name="description" content="2026 年回測表現最好的台股選股系統:XGBoost 排名、每日檢視、只抱 3 檔、掉出前 8 名連續 2 天才換,含模型版本、訓練參數、95 個特徵與全部交易明細。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#F2F4F7; --surface:#FFFFFF; --ink:#16202E; --ink-2:#4A5566; --ink-3:#7D8796; --line:#DCE1E8; --grid:#E8ECF1;
+  --accent:#2A63C4; --accent-soft:#E3EBF8;
+  --s-sys:#2A63C4; --s-0050:#B26B12; --s-ew:#00968A; --s-prev:#7D8796;
+  --up:#C23B2E; --down:#1E7F4F; --warn:#9A6A00;
+  --font-text:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-board:"Barlow Condensed","Noto Sans TC","Arial Narrow",sans-serif;
+  --font-fig:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --ground:#0F1318; --surface:#171C23; --ink:#E6EBF2; --ink-2:#AEB8C6; --ink-3:#7C8797; --line:#27303C; --grid:#1F2731;
+  --accent:#4A84E0; --accent-soft:#1B2B45;
+  --s-sys:#4A84E0; --s-0050:#C4832A; --s-ew:#23AA8F; --s-prev:#8E99A9;
+  --up:#FF7064; --down:#3ECF8E; --warn:#E0B24A;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0F1318; --surface:#171C23; --ink:#E6EBF2; --ink-2:#AEB8C6; --ink-3:#7C8797; --line:#27303C; --grid:#1F2731;
+  --accent:#4A84E0; --accent-soft:#1B2B45;
+  --s-sys:#4A84E0; --s-0050:#C4832A; --s-ew:#23AA8F; --s-prev:#8E99A9;
+  --up:#FF7064; --down:#3ECF8E; --warn:#E0B24A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--ground);color:var(--ink);font-family:var(--font-text);font-size:15px;line-height:1.7;padding-inline:20px;padding-block:36px 72px}
+main{max-width:1080px;margin:0 auto;display:grid;gap:56px}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:34px;font-weight:900;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:700}
+h3{font-size:15.5px;font-weight:700}
+p{margin:0}
+a{color:var(--accent)}
+.lede{color:var(--ink-2);max-width:68ch;font-size:16px}
+.eyebrow{font-family:var(--font-fig);font-size:12px;letter-spacing:.06em;color:var(--ink-3)}
+.fig{font-family:var(--font-fig);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+section{display:grid;gap:16px;scroll-margin-top:16px}
+.sec-head{display:grid;gap:6px}
+.sec-head p{color:var(--ink-2);max-width:72ch}
+.kicker{font-family:var(--font-fig);font-size:11.5px;letter-spacing:.08em;color:var(--accent)}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13.5px;border-block:1px solid var(--line);padding-block:10px}
+nav.toc a{color:var(--ink-2);text-decoration:none}
+nav.toc a:hover{color:var(--accent)}
+nav.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 規則單 */
+.verdict{display:grid;gap:18px}
+.verdict h1 .hl{color:var(--accent)}
+.ticket{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));overflow:hidden}
+.ticket dl{margin:0;display:grid;grid-template-columns:7.5em 1fr}
+.ticket dt,.ticket dd{margin:0;padding:11px 16px;border-bottom:1px solid var(--line)}
+.ticket dt{color:var(--ink-3);font-size:13px;letter-spacing:.04em}
+.ticket dd{font-weight:500}
+.ticket dd small{display:block;color:var(--ink-3);font-weight:400;font-size:12.5px}
+.ticket dl:first-child{border-right:1px solid var(--line)}
+.ticket .off{color:var(--ink-3)}
+.ticket .new{color:var(--accent)}
+
+/* 看板 */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-block:1px solid var(--line)}
+.board div{padding:14px 18px 12px;display:grid;gap:2px}
+.board div+div{border-left:1px solid var(--line)}
+.board .k{font-size:12.5px;color:var(--ink-3)}
+.board .v{font-family:var(--font-board);font-size:40px;font-weight:600;line-height:1.05;font-variant-numeric:tabular-nums}
+.board .s{font-size:12.5px;color:var(--ink-2)}
+@media (max-width:640px){.board div+div{border-left:0;border-top:1px solid var(--line)}}
+
+/* 面板、圖 */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 18px 12px;position:relative}
+.panel-top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.tabs button{font:inherit;font-size:13px;padding:5px 14px;border:0;background:transparent;color:var(--ink-2);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:500}
+button:focus-visible,.cell:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px}
+.legend button{font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:7px;border:0;background:none;color:var(--ink-2);cursor:pointer;padding:2px 0}
+.legend button[aria-pressed="false"]{opacity:.45}
+.legend i{width:18px;height:0;border-top:2px solid var(--c);display:inline-block}
+.legend i.dash{border-top-style:dashed}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{font-family:var(--font-fig);font-size:11px;fill:var(--ink-3)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-family:var(--font-fig);font-size:12px;line-height:1.55;box-shadow:0 4px 14px rgba(10,20,40,.12);display:none;white-space:nowrap;z-index:3;color:var(--ink)}
+.tip b{font-weight:500}
+.caption{font-size:12.5px;color:var(--ink-3)}
+
+/* 表 */
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}
+th{font-weight:500;font-size:12px;color:var(--ink-3);letter-spacing:.04em;background:var(--surface);position:sticky;top:0;z-index:1}
+td.n,th.n{text-align:right;font-family:var(--font-fig);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}
+tfoot td{border-top:1px solid var(--line);border-bottom:0}
+tr.pick td{background:var(--accent-soft)}
+tr.muted td{color:var(--ink-3)}
+td.wrap{white-space:normal;min-width:15em}
+.scroll{max-height:520px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px;align-items:start}
+.two>div{display:grid;gap:10px;align-content:start}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.pill.hold{border-color:var(--accent);color:var(--accent)}
+.pill.watch{border-color:var(--warn);color:var(--warn)}
+.fam{font-size:12px;color:var(--ink-3)}
+code,.mono{font-family:var(--font-fig);font-size:12.5px}
+
+/* 模型 */
+.spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.spec dl{margin:0;display:grid;grid-template-columns:8.5em 1fr}
+.spec dt,.spec dd{margin:0;padding:10px 16px;border-bottom:1px solid var(--line)}
+.spec dt{color:var(--ink-3);font-size:13px}
+.spec dd{font-size:14px}
+.spec dd small{display:block;color:var(--ink-3);font-size:12.5px}
+.spec dl:first-child{border-right:1px solid var(--line)}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.flow div{padding:14px 16px;display:grid;gap:2px}
+.flow div+div{border-left:1px solid var(--line)}
+.flow .n{font-family:var(--font-board);font-size:34px;font-weight:600;line-height:1}
+.flow .t{font-size:12.5px;color:var(--ink-2)}
+@media (max-width:640px){.flow div+div{border-left:0;border-top:1px solid var(--line)}}
+.bars{display:grid;gap:6px}
+.bars .row{display:grid;grid-template-columns:9em 1fr 4.5em;gap:10px;align-items:center;font-size:13px}
+.bars .track{height:10px;background:var(--grid);border-radius:0 4px 4px 0;position:relative}
+.bars .fill{height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.bars .v{font-family:var(--font-fig);text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{font-size:12.5px;padding:2px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);white-space:nowrap}
+.chips span b{font-family:var(--font-fig);font-weight:500;color:var(--ink-3);margin-right:4px}
+.filter{display:flex;flex-wrap:wrap;gap:6px}
+.filter button{font:inherit;font-size:12.5px;padding:3px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.filter button[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+
+/* 熱圖 */
+.heat{display:grid;grid-template-columns:auto repeat(3,minmax(64px,1fr));gap:3px;font-family:var(--font-fig);font-size:13px}
+.heat .hd{color:var(--ink-3);font-size:12px;display:flex;align-items:center;justify-content:center;padding:4px}
+.heat .rh{justify-content:flex-end;padding-right:8px;font-family:var(--font-text)}
+.heat .cell{padding:10px 4px;text-align:center;border-radius:4px;font-variant-numeric:tabular-nums;cursor:default;line-height:1.3}
+.heat .cell small{display:block;font-size:10.5px;opacity:.8}
+.heat .cell.pick{outline:2px solid var(--ink);outline-offset:1px}
+
+.risks{display:grid;gap:10px;max-width:76ch;padding:0;margin:0;list-style:none}
+.risks li{padding-left:16px;position:relative;color:var(--ink-2)}
+.risks li::before{content:"";position:absolute;left:0;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.risks b{color:var(--ink)}
+footer{font-size:12.5px;color:var(--ink-3);display:grid;gap:4px;max-width:84ch}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+</style>
+
+<main>
+  <header class="verdict">
+    <div class="eyebrow">2026-01-02 → 2026-09-11 · tw50 · 老師的 NCKU 回測框架 · 證交所官方日資料 · 本金 NT$1,000,000</div>
+    <h1>2026 年最好的一組:<span class="hl">每天看排名,只抱 3 檔,掉出前 8 名連續 2 天才換</span></h1>
+    <p class="lede" id="lede"></p>
+    <nav class="toc" aria-label="本頁目錄">
+      <a href="#rules">交易規則</a><a href="#perf">績效</a><a href="#years">前幾年回測</a><a href="#model">模型版本與參數</a><a href="#features">95 個特徵</a><a href="#now">目前持股與排名</a><a href="#ledger">交易明細</a><a href="#why">為什麼是這組</a><a href="#risk">風險</a>
+    </nav>
+  </header>
+
+  <section id="rules">
+    <div class="sec-head"><span class="kicker">交易規則</span><h2>每天收盤後照這張單子做</h2></div>
+    <div class="ticket">
+      <dl>
+        <dt>選股池</dt><dd>tw50,台灣市值前 50 大<small>另測過 tw100、tw200、tw500、電子股等 8 個池子,都比 tw50 差</small></dd>
+        <dt>排名來源</dt><dd>XGBoost 預測「未來 5 天報酬贏過 tw50 當天中位數」的機率<small>模型細節見下方「模型版本與參數」</small></dd>
+        <dt>檢視頻率</dt><dd>每個交易日收盤後重新排名</dd>
+        <dt>持股</dt><dd>3 檔,買進時各配置三分之一資金</dd>
+        <dt>流動性</dt><dd>5 日均量 ≥ 2,000 張才列入候選<small>tw50 裡幾乎不會擋到</small></dd>
+      </dl>
+      <dl>
+        <dt>賣出條件</dt><dd class="new">持股連續 2 個交易日排在前 8 名以外<small>只掉出 1 天、隔天回到前 8 名,就不賣</small></dd>
+        <dt>買進條件</dt><dd>有空位時,買排名最前面、手上沒有的股票</dd>
+        <dt>下單時點</dt><dd>今天收盤決定,明天開盤價成交</dd>
+        <dt>大盤濾網</dt><dd class="off">不使用<small>2026 多頭年開著只會少賺</small></dd>
+        <dt>停損停利</dt><dd class="off">不設<small>以最大報酬為目標</small></dd>
+      </dl>
+    </div>
+  </section>
+
+  <section id="perf">
+    <div class="sec-head"><span class="kicker">績效</span><h2>2026 年回測</h2></div>
+    <div class="board" id="board"></div>
+    <p class="caption">報酬一律扣除手續費 0.1425%(買賣各一次)與證交稅 0.3%(賣出)。表格沿用台股慣例 <span class="up">紅色 = 賺</span>、<span class="down">綠色 = 賠</span>,數字前另有正負號。</p>
+    <div class="panel chart" id="eqPanel">
+      <div class="panel-top">
+        <div class="tabs" role="group" aria-label="期間">
+          <button type="button" id="tab-full" aria-pressed="true">全年 1/2 起</button>
+          <button type="button" id="tab-jul" aria-pressed="false">7/1 起全新起跑</button>
+        </div>
+        <div class="legend" id="eqLegend"></div>
+      </div>
+      <svg id="eq" viewBox="0 0 960 380" role="img" aria-label="累積報酬折線圖"></svg>
+      <div class="tip" id="eqTip"></div>
+      <p class="caption" id="eqCap"></p>
+    </div>
+    <div class="two">
+      <div>
+        <h3>每月報酬</h3>
+        <div class="tbl"><table id="monthly"></table></div>
+      </div>
+      <div>
+        <h3>和上一版比</h3>
+        <div class="tbl"><table id="vsprev"></table></div>
+        <p class="caption">上一版的規則是「掉出前 3 名且抱滿 10 天才換」。因為排名每天跳動,到第 10 天股票幾乎總是剛好不在前 3 名,結果變成大多抱 10 天就換掉。新版只看「是否連續 2 天掉出前 8 名」,好股票可以一直抱。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="years">
+    <div class="sec-head">
+      <span class="kicker">前幾年回測</span>
+      <h2>同一套系統放回 2021–2025:一年都沒贏過 tw50 等權</h2>
+      <p>每一年都用「那年以前」的資料重新訓練模型(例如 2024 年用 2016–2022 訓練、2023 驗證挑特徵),交易規則完全沿用 2026 選出的這一套、不再調整。資料用 yfinance 還原價餵同一個框架(2026 用這個方法算出 +252.9%,和官方資料的 +237.4% 接近)。</p>
+    </div>
+    <div class="tbl"><table id="yearsTbl"></table></div>
+    <div class="two">
+      <div><h3>各年模型的選股能力(未扣成本)</h3><div class="tbl"><table id="yearsModel"></table></div>
+        <p class="caption">每 5 天取模型前 5 名與後 5 名,看後 5 天的實際報酬累積。後 5 名每年都輸等權,前 5 名 5 年裡有 4 年贏等權,代表排名本身有用,只是很弱。</p></div>
+      <div><h3>怎麼解讀</h3>
+        <ul class="risks" id="yearsNotes"></ul></div>
+    </div>
+  </section>
+
+  <section id="model">
+    <div class="sec-head">
+      <span class="kicker">模型版本與參數</span>
+      <h2>排名是怎麼算出來的</h2>
+      <p>老師的方法:大量技術指標丟進 XGBoost,用重要性剔除沒用的,再重新訓練。模型只負責「排名」,買賣時機全由上面的交易規則決定。</p>
+    </div>
+    <div class="spec" id="spec"></div>
+    <div class="two">
+      <div>
+        <h3>XGBoost 超參數</h3>
+        <div class="tbl"><table id="params"></table></div>
+      </div>
+      <div>
+        <h3>3 個 seed 的訓練結果</h3>
+        <div class="tbl"><table id="seeds"></table></div>
+        <p class="caption" id="seedCap"></p>
+      </div>
+    </div>
+    <div class="sec-head" style="margin-top:8px">
+      <h3>特徵怎麼從 242 個篩到 95 個</h3>
+      <p class="caption">重要性只用訓練與驗證資料計算,2026 測試期完全沒有參與篩選。</p>
+    </div>
+    <div class="flow" id="flow"></div>
+    <div class="two">
+      <div>
+        <h3>2026 測試期:模型分數分成 10 組的年化報酬</h3>
+        <p class="caption">每 5 天依機率把 tw50 分成 10 組,看各組後 5 天的實際報酬(收盤到收盤、未扣成本)。第 10 組是模型最看好的 5 檔。</p>
+        <div class="bars" id="decile"></div>
+      </div>
+      <div>
+        <h3>不同特徵集在 2026 的 AUC</h3>
+        <div class="tbl"><table id="altauc"></table></div>
+        <p class="caption">AUC 是「整體排序正確率」,0.5 等於亂猜。論文 9 個指標的 AUC 反而最高,但系統只買最前面 3 檔,真正重要的是「頭部選得準不準」;這方面 permpos 在交易回測中最好,所以採用它。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="sec-head">
+      <span class="kicker">95 個特徵</span>
+      <h2>模型實際使用的特徵明細</h2>
+      <p>依重要性排序。「增益」是該特徵在 3 棵樹模型中的平均分裂增益占比;「排列重要性」是在 2025 驗證集把這一欄打亂後 AUC 下降多少(×1000),大於 0 才會被留下。所有特徵只用當天收盤前已知的資料。</p>
+    </div>
+    <div class="chips" id="famChips"></div>
+    <div class="filter" role="group" aria-label="依族群篩選" id="famFilter"></div>
+    <div class="tbl scroll"><table id="feat"></table></div>
+  </section>
+
+  <section id="now">
+    <div class="sec-head"><span class="kicker">目前持股與排名</span><h2>9/11 收盤的狀態</h2></div>
+    <div class="two">
+      <div>
+        <h3>持股</h3>
+        <div class="tbl"><table id="held"></table></div>
+        <p class="caption" id="heldCap"></p>
+      </div>
+      <div>
+        <h3>最新排名(<span id="latestDate"></span> 收盤)</h3>
+        <div class="tbl"><table id="latest"></table></div>
+        <p class="caption">機率是模型認為「未來 5 天贏過 tw50 中位數」的可能性。前 8 名以內的持股都會續抱。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="ledger">
+    <div class="sec-head"><span class="kicker">交易明細</span><h2>全年每一筆交易</h2><p id="ledgerLede"></p></div>
+    <div class="tbl scroll"><table id="trades"></table></div>
+  </section>
+
+  <section id="why">
+    <div class="sec-head">
+      <span class="kicker">為什麼是這組</span>
+      <h2>一路比較過來的結果</h2>
+      <p>5 天檢視的版本會因為「從哪一天開始算」差很多,所以取 5 種起跑日平均;每天檢視的版本沒有這個問題。</p>
+    </div>
+    <div class="tbl"><table id="path"></table></div>
+    <div class="two">
+      <div>
+        <h3>穩健度:名次和天數往旁邊挪一格</h3>
+        <p class="caption">抱 3 檔、不看大盤、不設停損停利,全年扣成本報酬(%);小字是 7/1 起的報酬。</p>
+        <div class="panel" style="padding:14px">
+          <div class="heat" id="heat" role="img" aria-label="續抱名次與連續天數的報酬格點"></div>
+          <div class="tip" id="heatTip"></div>
+        </div>
+      </div>
+      <div>
+        <h3>「還在一定名次內就不換」的三種做法</h3>
+        <div class="tbl"><table id="fams"></table></div>
+        <p class="caption">只放寬名次的話,一天的雜訊就會把好股票賣掉,或讓轉弱的股票抱太久;用幾天平均分數排名帳面高,但 7/1 以後多半是虧的。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="risk">
+    <div class="sec-head"><span class="kicker">風險</span><h2>用之前要知道的事</h2></div>
+    <ul class="risks">
+      <li><b>只抱 3 檔、沒有停損。</b>每檔約三分之一資金,單一檔崩跌會直接反映在帳上。全年最大回撤 <span id="rk-mdd"></span>。</li>
+      <li><b>前幾年回測不成立。</b>交易規則是在 2026 挑出來的;放回 2021–2025 年,5 年都輸 tw50 等權、4 年輸 0050,2022 空頭年最大回撤 −46.5%。目前沒有證據顯示它在一般年份能賺贏大盤。</li>
+      <li><b>模型本身的排序能力不強。</b>2026 的 AUC 約 0.53,只比亂猜好一點。報酬主要來自「頭部幾檔選中強勢股」,而且 2026 是少數強勢股帶動的大多頭。</li>
+      <li><b>框架本身不扣成本、用未還原權息價。</b>本頁扣成本數字由框架委託紀錄逐筆估算;模型特徵則用 yfinance 還原價計算。</li>
+      <li><b>假設開盤價一定成交。</b>tw50 流動性足夠,但實盤會有滑價,開盤跳空漲停買不到的情況沒有模擬。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <div>程式:<code>xgb_ta_pipeline/src/run_pipeline.py</code>(模型)、<code>backtest_2026/predict_full_tw50.py</code>(補齊預測)、<code>backtest_2026/ncku/prep_final_v3.py</code>(本頁資料)。框架原生 Excel 在 <code>backtest_2026/ncku/out/final_best/v3_full.xlsx</code>。</div>
+    <div>完整研究過程在另一份「2026 台股回測對照」報告。</div>
+  </footer>
+</main>
+
+<script>
+const D = /*__DATA__*/null;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const pct = (v, d = 1) => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d) + "%";
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+const num = v => v.toLocaleString("zh-TW", {maximumFractionDigits: 2});
+const md = s => s.slice(5).replace("-", "/");
+const $ = id => document.getElementById(id);
+const F = D.full, J = D.jul, B = F.best, M = D.model;
+const YRS = ["2021", "2022", "2023", "2024", "2025"].filter(y => D.years[y]);
+const geo = k => (Math.pow(YRS.reduce((a, y) => a * (1 + D.years[y][k].ret / 100), 1), 1 / YRS.length) - 1) * 100;
+const YR = {v3: geo("v3"), ew: geo("tw50等權"), b0050: geo("0050"), prev: geo("上一版"), alt: geo("5日前5檔續抱前10")};
+
+$("lede").innerHTML = `全年扣成本 <b class="up">${pct(B.net_return_pct)}</b>,同期 0050 ${pct(F.b0050.total_return_pct)}、tw50 等權 ${pct(F.ew.total_return_pct)}。` +
+  `一年 ${B.n_days} 個交易日只有 ${B.n_trade_days} 天需要下單。<b>但把同一套系統放回 2021–2025 年,5 年都輸給 tw50 等權,年化約 ${pct(YR.v3)} 對 ${pct(YR.ew)};2026 的成績很可能是這一年特有的。</b>`;
+
+$("board").innerHTML = [
+  ["全年報酬(扣成本)", pct(B.net_return_pct), `0050 ${pct(F.b0050.total_return_pct)}`, "up"],
+  ["最大回撤", pct(B.net_max_dd_pct), `0050 ${pct(F.b0050.max_dd_pct)}`, "down"],
+  ["Sharpe(扣成本)", B.net_sharpe.toFixed(2), "年化,日報酬計", ""],
+  ["下單天數", `${B.n_trade_days}<small style="font-size:22px;color:var(--ink-3)"> / ${B.n_days}</small>`, `${B.n_round_trips} 筆已結清,勝率 ${(B.win_rate * 100).toFixed(0)}%`, ""],
+  ["7/1 起全新起跑", pct(J.best.net_return_pct), `tw50 等權 ${pct(J.ew.total_return_pct)}`, "up"],
+].map(([k, v, s, c]) => `<div><span class="k">${k}</span><span class="v ${c}">${v}</span><span class="s">${s}</span></div>`).join("");
+
+/* ── 資產走勢 ── */
+const SERIES = [
+  {key: "best", label: "最佳系統(扣成本)", color: "--s-sys", w: 2.5},
+  {key: "prev", label: "上一版(扣成本)", color: "--s-prev", w: 1.6, dash: true},
+  {key: "b0050", label: "0050 買進持有", color: "--s-0050", w: 2},
+  {key: "ew", label: "tw50 等權買進持有", color: "--s-ew", w: 2},
+];
+let win = "full";
+const vis = new Set(["best", "prev", "b0050", "ew"]);
+function drawEq() {
+  const W = 960, H = 380, m = {t: 16, r: 124, b: 30, l: 52}, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const src = D[win], dates = Object.keys(src.best.curve).sort(), on = SERIES.filter(s => vis.has(s.key));
+  const data = Object.fromEntries(SERIES.map(s => { let last = 0; return [s.key, dates.map(d => { const v = src[s.key].curve[d]; if (v != null) last = v; return last; })]; }));
+  let lo = 0, hi = 0; on.forEach(s => data[s.key].forEach(v => { lo = Math.min(lo, v); hi = Math.max(hi, v); }));
+  const span = hi - lo || 1; lo -= span * .05; hi += span * .06;
+  const raw = span / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= raw);
+  const x = i => m.l + i / Math.max(1, dates.length - 1) * iw, y = v => m.t + (hi - v) / (hi - lo) * ih;
+  let g = "";
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    g += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y(v)}" y2="${y(v)}" stroke="${css(Math.abs(v) < 1e-9 ? "--ink-3" : "--grid")}" ${Math.abs(v) < 1e-9 ? 'stroke-dasharray="3 3"' : ""}/>`;
+    g += `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v > 0 ? "+" : ""}${+v.toFixed(1)}%</text>`;
+  }
+  const seen = new Set();
+  dates.forEach((d, i) => { const k = d.slice(0, 7); if (!seen.has(k)) { seen.add(k); g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${+d.slice(5, 7)}月</text>`; } });
+  let p = "", labs = [];
+  on.forEach(s => {
+    const col = css(s.color), arr = data[s.key];
+    p += `<path d="${arr.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join("")}" fill="none" stroke="${col}" stroke-width="${s.w}" ${s.dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lv = arr[arr.length - 1];
+    p += `<circle cx="${x(arr.length - 1)}" cy="${y(lv)}" r="4" fill="${col}" stroke="${css("--surface")}" stroke-width="2"/>`;
+    labs.push({s, lv, yy: y(lv)});
+  });
+  labs.sort((a, b) => a.yy - b.yy);
+  for (let i = 1; i < labs.length; i++) if (labs[i].yy - labs[i - 1].yy < 30) labs[i].yy = labs[i - 1].yy + 30;
+  labs.forEach(l => { p += `<text x="${m.l + iw + 10}" y="${l.yy + 1}" style="font-size:13px;font-weight:500;fill:${css("--ink")}">${pct(l.lv)}</text><text x="${m.l + iw + 10}" y="${l.yy + 15}" style="font-size:10.5px;font-family:var(--font-text)">${l.s.label.replace("(扣成本)", "")}</text>`; });
+  const svg = $("eq");
+  svg.innerHTML = g + p + `<line id="xh" y1="${m.t}" y2="${m.t + ih}" stroke="${css("--ink-3")}" style="display:none"/><rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+  const tip = $("eqTip"), xh = $("xh"), panel = $("eqPanel");
+  svg.onmousemove = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(dates.length - 1, Math.round((px - m.l) / iw * (dates.length - 1))));
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.style.display = "";
+    tip.innerHTML = `<b>${dates[i].replaceAll("-", "/")}</b><br>` + on.map(s => `<span style="color:${css(s.color)}">━</span> ${s.label} <b>${pct(data[s.key][i])}</b>`).join("<br>");
+    tip.style.display = "block";
+    const pr = panel.getBoundingClientRect(); let tx = e.clientX - pr.left + 14; if (tx + tip.offsetWidth > pr.width - 8) tx = e.clientX - pr.left - tip.offsetWidth - 14;
+    tip.style.left = tx + "px"; tip.style.top = (e.clientY - pr.top + 12) + "px";
+  };
+  svg.onmouseleave = () => { tip.style.display = "none"; xh.style.display = "none"; };
+  $("eqLegend").innerHTML = SERIES.map(s => `<button type="button" id="lg-${s.key}" aria-pressed="${vis.has(s.key)}"><i class="${s.dash ? "dash" : ""}" style="--c:${css(s.color)}"></i>${s.label}</button>`).join("");
+  SERIES.forEach(s => $("lg-" + s.key).onclick = () => { if (vis.has(s.key)) { if (vis.size > 1) vis.delete(s.key); } else vis.add(s.key); drawEq(); });
+  $("eqCap").textContent = win === "full"
+    ? `4 月單月 ${pct(B.monthly["2026-04"])} 是全年最大貢獻;3 月、7 月、9 月跟著大盤回檔。`
+    : `7/1 開盤滿倉買進。這段最大回撤 ${pct(J.best.net_max_dd_pct)},0050 同期 ${pct(J.b0050.max_dd_pct)}。`;
+}
+function setWin(w) { win = w; $("tab-full").setAttribute("aria-pressed", w === "full"); $("tab-jul").setAttribute("aria-pressed", w === "jul"); drawEq(); }
+$("tab-full").onclick = () => setWin("full"); $("tab-jul").onclick = () => setWin("jul");
+
+/* ── 每月、比上一版 ── */
+(function () {
+  const ms = Object.keys(B.monthly);
+  $("monthly").innerHTML = `<thead><tr><th>月份</th><th class="n">最佳系統</th><th class="n">上一版</th><th class="n">0050</th><th class="n">tw50 等權</th></tr></thead><tbody>` +
+    ms.map(m => `<tr><td>${+m.slice(5)} 月</td>` + [B.monthly[m], F.prev.monthly[m], F.b0050.monthly[m], F.ew.monthly[m]].map(v => `<td class="n ${cls(v)}">${pct(v)}</td>`).join("") + "</tr>").join("") + "</tbody>" +
+    `<tfoot><tr><td><b>合計</b></td>` + [B.net_return_pct, F.prev.net_return_pct, F.b0050.total_return_pct, F.ew.total_return_pct].map((v, i) => `<td class="n ${cls(v)}">${i ? pct(v) : `<b>${pct(v)}</b>`}</td>`).join("") + "</tr></tfoot>";
+  const P = F.prev, rows = [
+    ["賣出規則", "連續 2 天在前 8 名外", "掉出前 3 名且抱滿 10 天"],
+    ["全年報酬(扣成本)", pct(B.net_return_pct), pct(P.net_return_pct)],
+    ["最大回撤", pct(B.net_max_dd_pct), pct(P.net_max_dd_pct)],
+    ["Sharpe", B.net_sharpe.toFixed(2), P.net_sharpe.toFixed(2)],
+    ["下單天數", B.n_trade_days + " 天", P.n_trade_days + " 天"],
+    ["已結清交易 / 勝率", `${B.n_round_trips} 筆 / ${(B.win_rate * 100).toFixed(0)}%`, `${P.n_round_trips} 筆 / ${(P.win_rate * 100).toFixed(0)}%`],
+    ["一年手續費 + 稅", `${Math.round(B.fees_total).toLocaleString()} 元`, `${Math.round(P.fees_total).toLocaleString()} 元`],
+    ["7/1 起全新起跑", pct(J.best.net_return_pct), pct(J.prev.net_return_pct)],
+  ];
+  $("vsprev").innerHTML = `<thead><tr><th></th><th class="n">最佳系統</th><th class="n">上一版</th></tr></thead><tbody>` + rows.map(r => `<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td class="n" style="color:var(--ink-2)">${r[2]}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 前幾年 ── */
+(function () {
+  const ys = Object.keys(D.years).sort(), V = [["v3", "最佳系統 v3"], ["上一版", "上一版"], ["5日前5檔續抱前10", "5 日換、抱 5 檔、前 10 名續抱"], ["0050", "0050"], ["tw50等權", "tw50 等權"]];
+  const cell = (y, k) => { const r = D.years[y][k]; return `<td class="n ${cls(r.ret)}">${pct(r.ret)}</td>`; };
+  $("yearsTbl").innerHTML = `<thead><tr><th>年份</th>${V.map(v => `<th class="n">${v[1]}</th>`).join("")}<th class="n">v3 最大回撤</th><th class="n">v3 下單天數</th><th>模型訓練 / 驗證</th></tr></thead><tbody>` +
+    ys.map(y => { const r = D.years[y], m = r.model; return `<tr class="${y === "2026" ? "pick" : ""}"><td>${y}${y === "2026" ? "(選規則的年份)" : ""}</td>${V.map(v => cell(y, v[0])).join("")}<td class="n">${pct(r.v3.mdd)}</td><td class="n">${r.v3.trade_days} 天</td><td class="fig" style="color:var(--ink-3)">≤${m.train_end.slice(0, 4)} / ${m.val_end.slice(0, 4)}</td></tr>`; }).join("") +
+    `</tbody><tfoot><tr><td><b>2021–2025 年化</b></td>${[YR.v3, YR.prev, YR.alt, YR.b0050, YR.ew].map(v => `<td class="n ${cls(v)}"><b>${pct(v)}</b></td>`).join("")}<td></td><td></td><td></td></tr></tfoot>`;
+  const MD = D.years_model || [];
+  $("yearsModel").innerHTML = `<thead><tr><th>年份</th><th class="n">AUC</th><th class="n">前 5 名</th><th class="n">後 5 名</th><th class="n">等權</th></tr></thead><tbody>` +
+    MD.map(r => `<tr class="${r.year === 2026 ? "pick" : ""}"><td>${r.year}</td><td class="n">${r.auc.toFixed(3)}</td><td class="n ${cls(r.top5)}">${pct(r.top5)}</td><td class="n ${cls(r.bot5)}">${pct(r.bot5)}</td><td class="n ${cls(r.ew)}">${pct(r.ew)}</td></tr>`).join("") + "</tbody>";
+  $("yearsNotes").innerHTML = [
+    `<li><b>模型有一點選股能力,但很弱。</b>各年 AUC 0.51–0.56,前 5 名多數年份贏等權,後 5 名每年都輸。</li>`,
+    `<li><b>交易規則是在 2026 挑出來的。</b>只抱 3 檔、不設停損,在 2026 這種少數強勢股帶動的大多頭最吃香;其他年份扣掉成本就追不上等權。</li>`,
+    `<li><b>2023、2024 的模型很弱。</b>驗證年(2022、2023)幾乎沒有訊號,模型只訓練了 6–37 棵樹就停止,排名接近隨機。</li>`,
+    `<li><b>跨年最穩的是「5 日換、抱 5 檔、前 10 名續抱」</b>,2021–2025 年化 ${pct(YR.alt)},仍輸 tw50 等權 ${pct(YR.ew)} 與 0050 ${pct(YR.b0050)}。</li>`,
+  ].join("");
+})();
+
+/* ── 模型 ── */
+(function () {
+  const S = M.split, P = M.params;
+  $("spec").innerHTML = `<dl>
+    <dt>模型版本</dt><dd><span class="mono">${M.tag}</span> / <span class="mono">${M.featset}</span><small>訓練完成 ${M.trained.replace("T", " ")}</small></dd>
+    <dt>演算法</dt><dd>XGBoost 二元分類(XGBClassifier)<small>3 個隨機種子各訓練一個,預測機率取平均</small></dd>
+    <dt>預測目標</dt><dd>未來 ${M.horizon} 個交易日的報酬,是否高於同一天 tw50 的中位數<small>標籤 <span class="mono">${M.label}</span>;是 = 1、否 = 0,所以每天約一半股票是 1</small></dd>
+    <dt>資料</dt><dd>${M.data}<small>tw50 共 ${M.n_stocks} 檔,日資料截至 2026-09-10</small></dd>
+  </dl><dl>
+    <dt>訓練期</dt><dd>${S.train[0]} ~ ${S.train[1]}<small>${M.n.train.toLocaleString()} 筆(股票 × 交易日),尾端扣掉 ${M.horizon} 天避免標籤跨進驗證期</small></dd>
+    <dt>驗證期</dt><dd>${S.val[0]} ~ ${S.val[1]}<small>${M.n.val.toLocaleString()} 筆;用來提早停止訓練與計算特徵重要性</small></dd>
+    <dt>測試期</dt><dd>${S.test[0]} ~ ${S.test[1]}<small>${M.n.test.toLocaleString()} 筆有 5 日答案可評分;回測用的是全部 ${M.n.scored.toLocaleString()} 筆</small></dd>
+    <dt>篩選設定</dt><dd>缺值上限 ${M.max_nan * 100}%、相關去重門檻 |ρ| > ${M.corr_thr}<small>保留規則 permpos:驗證集排列重要性 > 0</small></dd>
+  </dl>`;
+  const PD = {n_estimators: ["樹的數量上限", "搭配提早停止,實際只用到約 200 棵"], learning_rate: ["學習率", "每棵樹的修正幅度"], max_depth: ["最大深度", "每棵樹最多分幾層"],
+    min_child_weight: ["葉節點最小權重", "避免用太少樣本做判斷"], subsample: ["列抽樣比例", "每棵樹隨機用 80% 的資料"], colsample_bytree: ["欄抽樣比例", "每棵樹隨機用 50% 的特徵"],
+    reg_lambda: ["L2 正則化", "壓抑過大的葉節點權重"], reg_alpha: ["L1 正則化", "未使用"], tree_method: ["建樹方法", "直方圖近似,速度快"], eval_metric: ["驗證指標", "驗證集的 log loss"],
+    early_stopping_rounds: ["提早停止", "驗證 log loss 連續 100 棵沒改善就停"], n_jobs: ["平行執行緒", "受本機分頁檔限制設為 4"]};
+  $("params").innerHTML = `<thead><tr><th>參數</th><th class="n">值</th><th>意思</th></tr></thead><tbody>` +
+    Object.entries(PD).map(([k, [zh, ex]]) => `<tr><td>${zh}<br><span class="mono" style="color:var(--ink-3)">${k}</span></td><td class="n">${P[k]}</td><td class="wrap" style="color:var(--ink-2)">${ex}</td></tr>`).join("") + "</tbody>";
+  $("seeds").innerHTML = `<thead><tr><th>seed</th><th class="n">實際樹數</th><th class="n">驗證 AUC</th><th class="n">驗證準確率</th><th class="n">測試 AUC</th><th class="n">測試準確率</th></tr></thead><tbody>` +
+    M.per_seed.map(s => `<tr><td class="fig">${s.seed}</td><td class="n">${s.iter}</td><td class="n">${s.val_auc.toFixed(4)}</td><td class="n">${(s.val_acc * 100).toFixed(1)}%</td><td class="n">${s.test_auc.toFixed(4)}</td><td class="n">${(s.test_acc * 100).toFixed(1)}%</td></tr>`).join("") +
+    `</tbody><tfoot><tr><td><b>3 seed 平均機率</b></td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n"><b>${M.ens_test.auc.toFixed(4)}</b></td><td class="n"><b>${(M.ens_test.acc * 100).toFixed(1)}%</b></td></tr></tfoot>`;
+  const E = M.ens_test;
+  $("seedCap").textContent = `只看模型最有把握的 5%、10%、20% 樣本時,測試準確率分別是 ${(E.acc_cov5 * 100).toFixed(1)}%、${(E.acc_cov10 * 100).toFixed(1)}%、${(E.acc_cov20 * 100).toFixed(1)}%。整體 AUC 不高,但頭部比較準,這正是只買前幾名的系統需要的。`;
+  $("flow").innerHTML = M.funnel.map(f => `<div><span class="n">${f.n}</span><span class="t">${f.step}</span></div>`).join("");
+  const dmax = Math.max(...M.decile.map(Math.abs));
+  $("decile").innerHTML = M.decile.map((v, i) => `<div class="row"><span>第 ${i + 1} 組${i === 9 ? "(最看好)" : i === 0 ? "(最不看好)" : ""}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(0, v) / dmax * 100}%;opacity:${i === 9 ? 1 : .55}"></span></span><span class="v ${cls(v)}">${pct(v, 0)}</span></div>`).join("");
+  const AN = {classic4: "四種經典指標(MA、MACD、KD、RSI)", paper9: "論文 9 個指標", full: "全部 242 個", full_top20: "重要性前 20 個", full_permpos: "permpos 95 個(採用)"};
+  $("altauc").innerHTML = `<thead><tr><th>特徵集</th><th class="n">測試 AUC</th></tr></thead><tbody>` +
+    Object.entries(M.alt_auc).map(([k, v]) => `<tr class="${k === M.featset ? "pick" : ""}"><td>${AN[k] || k}</td><td class="n">${v.toFixed(4)}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 特徵清單 ── */
+let famSel = "全部";
+function drawFeat() {
+  const rows = M.features.filter(f => famSel === "全部" || f.fam === famSel);
+  $("feat").innerHTML = `<thead><tr><th class="n">#</th><th>特徵</th><th>族群</th><th>說明</th><th class="n">增益 %</th><th class="n">排列重要性</th></tr></thead><tbody>` +
+    rows.map(f => `<tr><td class="n">${f.i}</td><td class="mono">${f.name}</td><td class="fam">${f.fam}</td><td class="wrap">${f.desc}</td><td class="n">${f.gain.toFixed(2)}</td><td class="n">${f.perm.toFixed(2)}</td></tr>`).join("") + "</tbody>";
+  document.querySelectorAll("#famFilter button").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === famSel));
+}
+(function () {
+  $("famChips").innerHTML = Object.entries(M.families).map(([k, v]) => `<span><b>${v}</b>${k}</span>`).join("");
+  $("famFilter").innerHTML = ["全部", ...Object.keys(M.families)].map((k, i) => `<button type="button" id="ff-${i}" data-f="${k}" aria-pressed="${k === famSel}">${k}</button>`).join("");
+  document.querySelectorAll("#famFilter button").forEach(b => b.onclick = () => { famSel = b.dataset.f; drawFeat(); });
+  drawFeat();
+})();
+
+/* ── 持股、最新排名 ── */
+(function () {
+  const C = D.config, H = F.held;
+  $("held").innerHTML = `<thead><tr><th>股票</th><th>買進日</th><th class="n">買進價</th><th class="n">9/11 收盤</th><th class="n">未實現</th><th class="n">最新名次</th><th>狀態</th></tr></thead><tbody>` +
+    H.map(h => {
+      const st = h.rank_now <= C.exit_rank ? `<span class="pill hold">前 ${C.exit_rank} 名內,續抱</span>` : `<span class="pill watch">已連 ${h.out_streak} 天在前 ${C.exit_rank} 名外</span>`;
+      return `<tr><td>${h.code} ${h.name}</td><td class="fig">${md(h.buy_date)}</td><td class="n">${num(h.buy)}</td><td class="n">${num(h.last)}</td><td class="n ${cls(h.ret_pct)}">${pct(h.ret_pct, 2)}</td><td class="n">第 ${h.rank_now} 名</td><td>${st}</td></tr>`;
+    }).join("") + "</tbody>";
+  const w = H.filter(h => h.rank_now > C.exit_rank);
+  $("heldCap").textContent = w.length
+    ? `${w.map(h => h.name).join("、")}在 ${md(D.latest.date)} 收盤排第 ${w.map(h => h.rank_now).join("、")} 名,已連 ${w[0].out_streak} 天在前 ${C.exit_rank} 名外。如果 9/11 收盤仍在前 ${C.exit_rank} 名外,就在下一個交易日開盤賣出,換成排名最前面、手上沒有的股票。`
+    : `三檔都在前 ${C.exit_rank} 名內,繼續持有。`;
+  $("latestDate").textContent = md(D.latest.date);
+  const held = new Set(H.map(h => h.code));
+  $("latest").innerHTML = `<thead><tr><th class="n">名次</th><th>股票</th><th class="n">機率</th><th></th></tr></thead><tbody>` +
+    D.latest.top.map(t => `<tr class="${held.has(t.code) ? "pick" : ""}"><td class="n">${t.rank}</td><td>${t.code} ${t.name}</td><td class="n">${(t.p * 100).toFixed(1)}%</td><td>${held.has(t.code) ? '<span class="pill hold">持有中</span>' : ""}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 交易明細 ── */
+(function () {
+  const T = F.trades, wins = T.filter(t => t.ret_pct > 0).length;
+  const top = [...T].sort((a, b) => b.ret_pct - a.ret_pct)[0], worst = [...T].sort((a, b) => a.ret_pct - b.ret_pct)[0];
+  const avgd = T.reduce((s, t) => s + t.days, 0) / T.length, longest = [...T].sort((a, b) => b.days - a.days)[0];
+  $("ledgerLede").textContent = `${T.length} 筆已結清,${wins} 筆賺錢,平均持有 ${avgd.toFixed(1)} 個交易日。最好的一筆是 ${top.name} ${pct(top.ret_pct)}(抱 ${top.days} 天),抱最久的是 ${longest.name} ${longest.days} 天,最差的是 ${worst.name} ${pct(worst.ret_pct)}。報酬為成交價差,未扣成本;另有 3 檔 9/11 仍持有,列在上方。`;
+  $("trades").innerHTML = `<thead><tr><th>股票</th><th>買進</th><th class="n">買價</th><th>賣出</th><th class="n">賣價</th><th class="n">持有</th><th class="n">股數</th><th class="n">報酬</th><th class="n">損益(元)</th></tr></thead><tbody>` +
+    T.map(t => `<tr><td>${t.code} ${t.name}</td><td class="fig">${md(t.buy_date)}</td><td class="n">${num(t.buy)}</td><td class="fig">${md(t.sell_date)}</td><td class="n">${num(t.sell)}</td><td class="n">${t.days} 天</td><td class="n">${t.shares.toLocaleString()}</td><td class="n ${cls(t.ret_pct)}">${pct(t.ret_pct, 2)}</td><td class="n ${cls(t.pnl)}">${(t.pnl > 0 ? "+" : t.pnl < 0 ? "−" : "") + Math.abs(t.pnl).toLocaleString()}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 為什麼 ── */
+(function () {
+  $("path").innerHTML = `<thead><tr><th>階段</th><th>設定</th><th class="n">全年報酬</th><th>說明</th></tr></thead><tbody>` +
+    D.path.map(r => { const v = r.net != null ? r.net : r.gross, tag = r.net != null ? "扣成本" : "未扣成本";
+      return `<tr class="${r.stage === "最佳系統" ? "pick" : ""}"><td>${r.stage}</td><td class="wrap">${r.setting}</td><td class="n ${cls(v)}">${pct(v)}<br><span style="font-size:11px;color:var(--ink-3)">${tag}</span></td><td class="wrap" style="color:var(--ink-2)">${r.note}</td></tr>`; }).join("") +
+    `<tr class="muted"><td>基準</td><td class="wrap">0050 / tw50 等權,期初買進持有</td><td class="n">${pct(F.b0050.total_return_pct)} / ${pct(F.ew.total_return_pct)}</td><td class="wrap">不調整</td></tr></tbody>`;
+  const FN = {"A 放寬名次": "只看還在前 N 名", "B 連續掉出": "連續 M 天在前 N 名外才賣(採用)", "C 平滑分數": "用幾天平均分數排名"};
+  $("fams").innerHTML = `<thead><tr><th>做法</th><th class="n">組數</th><th class="n">平均</th><th class="n">最好</th><th class="n">7/1 起平均</th></tr></thead><tbody>` +
+    D.families_cmp.map(r => `<tr class="${r.fam.startsWith("B") ? "pick" : ""}"><td>${FN[r.fam] || r.fam}</td><td class="n">${r.n}</td><td class="n">${pct(r.mean)}</td><td class="n">${pct(r.best)}</td><td class="n ${cls(r.jul_mean)}">${pct(r.jul_mean)}</td></tr>`).join("") + "</tbody>";
+})();
+function drawHeat() {
+  const G = D.grid_b, Ns = [...new Set(G.map(r => r.N))].sort((a, b) => a - b), Ms = [...new Set(G.map(r => r.M))].sort((a, b) => a - b);
+  const lo = Math.min(...G.map(r => r.net)), hi = Math.max(...G.map(r => r.net)), C = D.config;
+  const cell = (n, mm) => G.find(r => r.N === n && r.M === mm);
+  let h = `<div class="hd"></div>` + Ms.map(mm => `<div class="hd">連 ${mm} 天</div>`).join("");
+  Ns.forEach(n => { h += `<div class="hd rh">前 ${n} 名</div>`; Ms.forEach(mm => { const r = cell(n, mm); if (!r) { h += "<div></div>"; return; }
+    const share = Math.round(10 + (r.net - lo) / (hi - lo) * 85), dark = share > 55;
+    h += `<div class="cell ${n === C.exit_rank && mm === C.out_days ? "pick" : ""}" tabindex="0" data-n="${n}" data-m="${mm}" style="background:color-mix(in oklab, var(--accent) ${share}%, var(--surface));color:${dark ? "var(--surface)" : "var(--ink)"}">${Math.round(r.net)}<small>${pct(r.jul, 1)}</small></div>`; }); });
+  const el = $("heat"); el.innerHTML = h;
+  const tip = $("heatTip"), pan = el.parentElement;
+  const show = c => { const r = cell(+c.dataset.n, +c.dataset.m);
+    tip.innerHTML = `前 ${r.N} 名 · 連 ${r.M} 天才賣<br>全年扣成本 <b>${pct(r.net)}</b> · 最大回撤 ${pct(r.mdd)}<br>7/1 起 ${pct(r.jul)} · 下單 ${r.days} 天`; tip.style.display = "block";
+    const pr = pan.getBoundingClientRect(), cr = c.getBoundingClientRect(); let tx = cr.left - pr.left + cr.width / 2 - tip.offsetWidth / 2; tx = Math.max(4, Math.min(pr.width - tip.offsetWidth - 4, tx));
+    tip.style.left = tx + "px"; tip.style.top = (cr.bottom - pr.top + 6) + "px"; };
+  el.querySelectorAll(".cell").forEach(c => { c.onmouseenter = () => show(c); c.onfocus = () => show(c); c.onmouseleave = c.onblur = () => tip.style.display = "none"; });
+}
+$("rk-mdd").textContent = pct(B.net_max_dd_pct) + `(7/1 起那段 ${pct(J.best.net_max_dd_pct)})`;
+
+function redraw() { drawEq(); drawHeat(); }
+redraw();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+</script>

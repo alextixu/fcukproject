@@ -1,0 +1,15 @@
+# 2026-05-28　Grid Search 最佳參數搜尋 + 模型改進
+
+**做了什麼**(commit `dbe276e`)
+- 第一次網格搜尋 window / m_pips / N / g,存成 `best_params.json`。
+- 模型加 BatchNorm、Residual Attention、以 macro-F1 作為選模指標(這些是論文沒有的「改進版」,現為 `paper_exact=False` 模式)。
+
+**結果**
+- 當時最佳約 **51.5%**(隔日標籤,TW50):`best_params.json` 記 window=130 / m=80 / N=15 / g=5,test acc 0.5149、F1 macro 0.4887;回測策略 −5.82% vs 大盤 −3.87%(超額 −1.94%)。受記憶體限制只能 stride=3。
+- 這一版的完整程式保留在本機 `K/fcukproject/`(`needchange.md` 列 14 項與論文差異:已修 3 項、待做 5 項——消融、baseline 對照、stride=1 等即後來 07 月補齊的工作)。05-28 凌晨 00:23 → 06:46 一次通宵衝刺完成;06-01 改進度簡報後此資料夾停更,工作轉入 `chartgcn/`。
+
+**事後註記(07-04 / 07-24 審查)**
+- 這個 51.5% 含資料洩漏:測試集被用來選參(C-2)、z-score 用到全期統計(C-3)、測試樣本窗不回溯歷史(C-4)、標籤時點錯位(C-5);07-05 融合實驗以修正後協定重跑,列為「V0* 不可信」。
+
+**產出**
+- `best_params.json`(後已清理)、model.py 改進版分支。

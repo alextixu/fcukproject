@@ -1,0 +1,290 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChartGCN 系統流程圖</title>
+<style>
+:root{
+  --paper:#FAFAF8; --card:#FFFFFF; --ink:#1E2530; --muted:#5B6472;
+  --line:#D8DCE2; --faint:#EEF0F3;
+  --blue:#2563EB;  --blue-bg:#EFF4FE;  --blue-ln:#B9CDF6;
+  --green:#0E8A6A; --green-bg:#ECF7F2; --green-ln:#BBDFD2;
+  --amber:#C2690A; --amber-bg:#FBF3E8; --amber-ln:#EBD3B2;
+  --purple:#6D45C8;--purple-bg:#F3EFFB;--purple-ln:#D5C8F0;
+  --red:#C23B3B;   --red-bg:#FAEEEE;   --red-ln:#E8C4C4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#12151A; --card:#1A1E25; --ink:#E8EAEE; --muted:#9AA3B0;
+    --line:#333A45; --faint:#232830;
+    --blue:#7AA2F7;  --blue-bg:#1B2334;  --blue-ln:#33456B;
+    --green:#4FC49B; --green-bg:#16261F; --green-ln:#2C4A3C;
+    --amber:#E5A155; --amber-bg:#2A2015; --amber-ln:#55401F;
+    --purple:#AB8FE8;--purple-bg:#231D33;--purple-ln:#453461;
+    --red:#E07A7A;   --red-bg:#2C1A1A;   --red-ln:#573030;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12151A; --card:#1A1E25; --ink:#E8EAEE; --muted:#9AA3B0;
+  --line:#333A45; --faint:#232830;
+  --blue:#7AA2F7;  --blue-bg:#1B2334;  --blue-ln:#33456B;
+  --green:#4FC49B; --green-bg:#16261F; --green-ln:#2C4A3C;
+  --amber:#E5A155; --amber-bg:#2A2015; --amber-ln:#55401F;
+  --purple:#AB8FE8;--purple-bg:#231D33;--purple-ln:#453461;
+  --red:#E07A7A;   --red-bg:#2C1A1A;   --red-ln:#573030;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",system-ui,sans-serif;
+  font-size:14px; line-height:1.45;
+}
+.scroller{overflow-x:auto; padding:28px 20px 40px}
+.poster{min-width:1150px; max-width:1360px; margin:0 auto}
+
+header{text-align:center; margin-bottom:6px}
+header h1{font-size:25px; margin:0 0 4px; letter-spacing:.01em; text-wrap:balance}
+header p{margin:0; color:var(--muted); font-size:14.5px}
+header .proto{
+  display:inline-block; margin-top:8px; font-family:Consolas,Menlo,monospace;
+  font-size:12px; color:var(--muted); background:var(--faint);
+  border:1px solid var(--line); border-radius:4px; padding:3px 10px;
+}
+
+.row{display:flex; gap:14px; align-items:stretch; margin-top:16px}
+.panel{
+  border:1.6px solid var(--pc,var(--line)); border-radius:10px;
+  background:var(--card); padding:12px 14px 14px; min-width:0;
+}
+.panel>h2{
+  margin:-12px -14px 10px; padding:8px 14px 7px;
+  font-size:13.5px; letter-spacing:.02em; color:var(--pc,var(--ink));
+  background:var(--pb,transparent); border-bottom:1px solid var(--pl,var(--line));
+  border-radius:8px 8px 0 0;
+}
+.panel>h2 small{color:var(--muted); font-weight:400; margin-left:6px}
+.p-blue  {--pc:var(--blue);  --pb:var(--blue-bg);  --pl:var(--blue-ln)}
+.p-green {--pc:var(--green); --pb:var(--green-bg); --pl:var(--green-ln)}
+.p-amber {--pc:var(--amber); --pb:var(--amber-bg); --pl:var(--amber-ln)}
+.p-purple{--pc:var(--purple);--pb:var(--purple-bg);--pl:var(--purple-ln)}
+.p-red   {--pc:var(--red);   --pb:var(--red-bg);   --pl:var(--red-ln)}
+.dashed{border-style:dashed}
+
+.steps{display:flex; gap:0; align-items:stretch}
+.step{
+  flex:1 1 0; min-width:0; border:1px solid var(--pl,var(--line));
+  border-radius:8px; padding:9px 10px; background:var(--card);
+}
+.step h3{margin:0 0 5px; font-size:12.5px; color:var(--pc,var(--ink))}
+.step ul{margin:0; padding-left:15px; color:var(--muted); font-size:12px}
+.step li{margin:2.5px 0}
+.step .out{
+  margin-top:7px; padding-top:6px; border-top:1px dashed var(--pl,var(--line));
+  font-family:Consolas,Menlo,monospace; font-size:11.3px; color:var(--pc,var(--ink));
+}
+.arr{
+  align-self:center; flex:0 0 auto; padding:0 4px;
+  color:var(--pc,var(--muted)); font-size:17px; font-weight:600;
+}
+.varr{text-align:center; color:var(--muted); font-size:17px; line-height:1; margin:2px 0}
+
+kbd{
+  font-family:Consolas,Menlo,monospace; font-size:11.5px; background:var(--faint);
+  border:1px solid var(--line); border-radius:3px; padding:0 4px; color:var(--ink);
+}
+.note{color:var(--muted); font-size:12px}
+.tbl{width:100%; border-collapse:collapse; font-size:12px}
+.tbl td{padding:4px 6px; border-top:1px solid var(--faint); vertical-align:top}
+.tbl tr:first-child td{border-top:0}
+.tbl td:first-child{white-space:nowrap; color:var(--ink); font-weight:600}
+.tbl td:last-child{color:var(--muted)}
+
+.chain{display:flex; gap:0; align-items:stretch; margin-top:2px}
+.cnode{
+  flex:1 1 0; min-width:0; text-align:center; border:1px solid var(--red-ln);
+  background:var(--card); border-radius:8px; padding:8px 6px;
+}
+.cnode b{display:block; font-size:12.3px; color:var(--ink)}
+.cnode span{display:block; font-size:11px; color:var(--muted); margin-top:2px}
+.cnode .x{display:block; color:var(--red); font-weight:700; font-size:15px; margin-top:3px}
+.verdict{
+  flex:1.35 1 0; border:1.6px solid var(--red); background:var(--red-bg);
+  border-radius:8px; padding:9px 11px; text-align:left;
+}
+.verdict b{font-size:12.8px; color:var(--red)}
+.verdict p{margin:4px 0 0; font-size:11.8px; color:var(--ink)}
+
+footer{margin-top:16px; text-align:center; color:var(--muted); font-size:12px}
+</style>
+
+<div class="scroller"><div class="poster">
+
+<header>
+  <h1>Chart GCN 復現與否證管線 — 台股二元漲跌預測</h1>
+  <p>價格圖形資訊(PIP + Visibility Graph)・對齊 Li et al., <i>KBS</i> 2022・以七維否證鏈檢驗「圖形特徵是否含方向訊號」</p>
+  <div class="proto">乾淨協定:date 批次(同日互 attend)+ raw 特徵 + w140 / m80 / N10 / g4 + stride 1 + seeds 42–44</div>
+</header>
+
+<!-- ─── Row 1: 資料層 → 樣本建構 + 詮釋清單 ─── -->
+<div class="row">
+  <div class="panel p-green" style="flex:0 0 205px">
+    <h2>1) 資料層<small>永久快取,全離線</small></h2>
+    <table class="tbl">
+      <tr><td>來源</td><td>yfinance 台股日線 OHLCV(auto_adjust 還原價)</td></tr>
+      <tr><td>快取</td><td><kbd>cache/&lt;tk&gt;.parquet</kbd> 主檔 + <kbd>_manifest.json</kbd> 覆蓋區間/查無標記(832 檔,11 檔標記下市)</td></tr>
+      <tr><td>股票池</td><td>14 組:tw50→500・全電子 450・半導體・零組件・金融・流動性前/後 100、前 200・SSE50</td></tr>
+      <tr><td>切分</td><td>訓練 2016–2023 / 測試 2024;warmup 2×window,<kbd>min_date</kbd> 過濾邊界</td></tr>
+    </table>
+  </div>
+  <div class="arr" style="color:var(--muted)">→</div>
+
+  <div class="panel p-blue" style="flex:1 1 auto">
+    <h2>2) 樣本建構<small>ChartGCNDataset・每股每日一樣本</small></h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Step 1:滑動窗</h3>
+        <ul><li>140 日收盤序列</li><li>stride 1,決策日 = 窗末日 t</li></ul>
+        <div class="out">series(140)</div>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Step 2:PIP 擷取</h3>
+        <ul><li>重要轉折點 m=80</li><li>Eq.(1) 字面:天數+原始價格混算距離</li></ul>
+        <div class="out">pips + importance</div>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Step 3:Visibility Graph</h3>
+        <ul><li>節點 = PIP</li><li>可見性準則連邊 Eq.(3)</li></ul>
+        <div class="out">G(V,E)</div>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Step 4:BFS 子圖</h3>
+        <ul><li>前 N=10 重要 PIP 為錨點,各 BFS 取 g=4 節點</li><li>排序 depth→importance→degree(不足補 dummy)</li></ul>
+        <div class="out">subgraphs N×g = 10×4</div>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Step 5:節點特徵</h3>
+        <ul><li>9 技術指標(Table 1),n=window=140</li><li>raw 原始值,無 z-score</li></ul>
+        <div class="out">X: 10×4×9</div>
+      </div>
+    </div>
+    <div class="varr">↓</div>
+    <div class="steps">
+      <div class="step" style="flex:0 0 55%">
+        <h3>標籤 Eq.(11)</h3>
+        <ul><li><kbd>close[t+1] &gt; close[t]</kbd> → 1(漲),否則 0(跌)</li><li>平盤=跌,照論文字面實作</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel dashed" style="flex:0 0 195px">
+    <h2 style="color:var(--muted)">論文未明定・本專題詮釋<small>(誠實清單)</small></h2>
+    <ul class="note" style="margin:0; padding-left:15px">
+      <li>attention 的 S 樣本 → 同日全股票(修正跨日洩漏 P1)</li>
+      <li>特徵正規化未提 → raw(z-score 會塌縮)</li>
+      <li>圖表窗長 = 指標窗長 = window</li>
+      <li>k1/k2/k3 未給 → LeNet-5 對應 6/16/120</li>
+      <li>lr/epochs/optimizer → Adam・1e-3・30</li>
+      <li>測試邊界 → warmup 2×window,審查無洩漏</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ─── Row 2: 模型 → 訓練 → 評估 ─── -->
+<div class="row">
+  <div class="panel p-green" style="flex:1">
+    <h2>3) 模型 Chart GCN<small>paper_exact</small></h2>
+    <div class="steps">
+      <div class="step">
+        <h3>子圖卷積</h3>
+        <ul><li>N=10 子圖(各 g=4 節點)各自卷積</li><li>容量 6/16/120(LeNet-5 對應)</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>Self-Attention</h3>
+        <ul><li>batch 維度 B×B 互相 attend</li><li>date 批次:同日全股票同批(橫斷面語意)</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>分類頭</h3>
+        <ul><li>FC 84 → 32 → 2 類</li><li>無 BN/Dropout/殘差(照論文)</li></ul>
+        <div class="out">P(漲), P(跌)</div>
+      </div>
+    </div>
+  </div>
+  <div class="arr" style="color:var(--muted)">→</div>
+
+  <div class="panel p-purple" style="flex:0 0 255px">
+    <h2>4) 訓練協定</h2>
+    <table class="tbl">
+      <tr><td>最佳化</td><td>Adam lr 1e-3・wd 5e-5・CE(無類別權重)・30 epochs</td></tr>
+      <tr><td>val 切分</td><td>random 80/20(論文 4.3)或 time:前 80% 交易日 + h 日 embargo(h&gt;1 用)</td></tr>
+      <tr><td>選模</td><td>val F1 macro 最佳 epoch;test 只評最後一次</td></tr>
+      <tr><td>重複</td><td>seeds 42/43/44(塌縮形態對 seed 敏感)</td></tr>
+    </table>
+  </div>
+  <div class="arr" style="color:var(--muted)">→</div>
+
+  <div class="panel p-amber" style="flex:0 0 330px">
+    <h2>5) 評估與回測<small>test = 2024</small></h2>
+    <table class="tbl">
+      <tr><td>分類</td><td>Acc / Pre / F1 / F1 macro,對照論文 SZ-50(69.26%)與「全押單邊」類別先驗地板</td></tr>
+      <tr><td>訊號判準</td><td>Acc 高於先驗 <b>且</b> 預測均衡,兩者同時成立才算</td></tr>
+      <tr><td>回測 §6.3</td><td>預測漲→買入;預測跌或 MACD&lt;0→賣出;benchmark = 等權 buy-and-hold(尚無交易成本)</td></tr>
+      <tr><td>輸出</td><td><kbd>EXP-*.json</kbd>・<kbd>_model.pt</kbd>・<kbd>_backtest.png</kbd>・append 實驗記錄 .md</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ─── Row 3: 否證鏈 ─── -->
+<div class="row">
+  <div class="panel p-red" style="flex:1">
+    <h2>6) 實驗設計:七維否證鏈<small>同一乾淨協定下,逐一排除「沒訊號」的其他解釋</small></h2>
+    <div class="chain">
+      <div class="cnode"><b>① 換市場</b><span>SSE50 原資料<br>50.1±0.4%</span><span class="x">✗</span></div><div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>② 掃參數</b><span>論文網格 32 組<br>兩階段搜尋</span><span class="x">✗</span></div><div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>③ 加資料量</b><span>50→500 檔<br>樣本 ×10</span><span class="x">✗</span></div><div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>④ 分族群</b><span>電子/半導體/<br>零組件/金融</span><span class="x">✗</span></div><div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>⑤ 分流動性</b><span>前/後 100・前 200<br>(訓練期成交額)</span><span class="x">✗</span></div><div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>⑥ 模型對照</b><span>XGBoost 同條件<br>同水準</span><span class="x">✗</span></div><div class="arr" style="color:var(--red)">→</div>
+      <div class="cnode"><b>⑦ 拉長視野</b><span>1 日 → 5 日<br>2 池 × 3 seeds</span><span class="x">✗</span></div><div class="arr" style="color:var(--red)">→</div>
+      <div class="verdict">
+        <b>結論:資訊天花板在標籤,不在模型或資料</b>
+        <p>最佳結果:全電子 450 檔 F1m 51.2%(均衡・回測 +0.4%)仍 ≈ 亂猜上緣;二元 1/5 日標籤在日線價格資訊內無可學訊號。表示法診斷(第 7 區)佐證:模型表現與子圖時間結構完全獨立。</p>
+        <p style="color:var(--muted)">下一步:±1% 死區三分類 → 橫斷面相對標籤 → 非價格資訊源(籌碼)</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Row 4: 表示法診斷 ─── -->
+<div class="row">
+  <div class="panel p-amber" style="flex:1">
+    <h2>7) 表示法診斷<small>2026-08-11・子圖解剖與跨度分析(最佳模型 elec_all h=1)</small></h2>
+    <div class="steps">
+      <div class="step">
+        <h3>子圖解剖:2330 @ 2024-08-05</h3>
+        <ul><li>Eq.(1) 端點怪癖:窗首日+決策日<b>必為錨點</b>(強制最高分)</li>
+        <li>40 個槽位僅觸及 ~26 個唯一日期(140 天的 19%)</li>
+        <li>子圖無時間座標:<b>方向盲</b>(V 型=倒 V)+<b>跨度盲</b>(3 天=半年)</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>跨度統計:200 個真實子圖</h3>
+        <ul><li>雙峰分佈:52% ≤20 天(盤整型錨點)、29% &gt;60 天(極值型「山頂看得遠」)</li>
+        <li>中位 15 天、最大 139 天 = 整窗</li>
+        <li>論文同機制(window 100–140)、未報告也未限制跨度</li></ul>
+      </div><div class="arr">→</div>
+      <div class="step">
+        <h3>跨度 × 表現分層:105,215 樣本</h3>
+        <ul><li>四分位 Acc 全距僅 0.65pp、不單調,各層 ≈ 先驗</li>
+        <li>跨度 vs 對錯 <b>r = −0.0002</b> → 完全無關</li>
+        <li>推論重現記錄 Acc 51.29% 分毫不差</li></ul>
+        <div class="out">時間結構怎麼抓,輸出都貼先驗</div>
+      </div><div class="arr">→</div>
+      <div class="step" style="flex:.85">
+        <h3>模型對照:1D-CNN(暫停)</h3>
+        <ul><li>同樣本/同標籤/同協定,僅換輸入表示:140×9 完整序列(<b>保留時序方向</b>)</li>
+        <li>腳本與六輪批次就緒(elec_all h=1/h=5 × 3 seeds),經指示暫停</li></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>資料期間 2016-01-01 ~ 2024-12-31・詳細數據見 <b>實驗記錄_論文對齊.md</b>(第一~十二節)・chartgcn 專題</footer>
+
+</div></div>

@@ -1,0 +1,566 @@
+<title>tw50 三檔輪動系統</title>
+<meta name="description" content="2026 年回測表現最好的台股選股系統:XGBoost 排名、每日檢視、只抱 3 檔、掉出前 8 名連續 2 天才換,含模型版本、訓練參數、95 個特徵與全部交易明細。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#F2F4F7; --surface:#FFFFFF; --ink:#16202E; --ink-2:#4A5566; --ink-3:#7D8796; --line:#DCE1E8; --grid:#E8ECF1;
+  --accent:#2A63C4; --accent-soft:#E3EBF8;
+  --s-sys:#2A63C4; --s-0050:#B26B12; --s-ew:#00968A; --s-prev:#7D8796;
+  --up:#C23B2E; --down:#1E7F4F; --warn:#9A6A00;
+  --font-text:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-board:"Barlow Condensed","Noto Sans TC","Arial Narrow",sans-serif;
+  --font-fig:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --ground:#0F1318; --surface:#171C23; --ink:#E6EBF2; --ink-2:#AEB8C6; --ink-3:#7C8797; --line:#27303C; --grid:#1F2731;
+  --accent:#4A84E0; --accent-soft:#1B2B45;
+  --s-sys:#4A84E0; --s-0050:#C4832A; --s-ew:#23AA8F; --s-prev:#8E99A9;
+  --up:#FF7064; --down:#3ECF8E; --warn:#E0B24A;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0F1318; --surface:#171C23; --ink:#E6EBF2; --ink-2:#AEB8C6; --ink-3:#7C8797; --line:#27303C; --grid:#1F2731;
+  --accent:#4A84E0; --accent-soft:#1B2B45;
+  --s-sys:#4A84E0; --s-0050:#C4832A; --s-ew:#23AA8F; --s-prev:#8E99A9;
+  --up:#FF7064; --down:#3ECF8E; --warn:#E0B24A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--ground);color:var(--ink);font-family:var(--font-text);font-size:15px;line-height:1.7;padding-inline:20px;padding-block:36px 72px}
+main{max-width:1080px;margin:0 auto;display:grid;gap:56px}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:34px;font-weight:900;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:700}
+h3{font-size:15.5px;font-weight:700}
+p{margin:0}
+a{color:var(--accent)}
+.lede{color:var(--ink-2);max-width:68ch;font-size:16px}
+.eyebrow{font-family:var(--font-fig);font-size:12px;letter-spacing:.06em;color:var(--ink-3)}
+.fig{font-family:var(--font-fig);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+section{display:grid;gap:16px;scroll-margin-top:16px}
+.sec-head{display:grid;gap:6px}
+.sec-head p{color:var(--ink-2);max-width:72ch}
+.kicker{font-family:var(--font-fig);font-size:11.5px;letter-spacing:.08em;color:var(--accent)}
+nav.toc{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13.5px;border-block:1px solid var(--line);padding-block:10px}
+nav.toc a{color:var(--ink-2);text-decoration:none}
+nav.toc a:hover{color:var(--accent)}
+nav.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 規則單 */
+.verdict{display:grid;gap:18px}
+.verdict h1 .hl{color:var(--accent)}
+.ticket{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));overflow:hidden}
+.ticket dl{margin:0;display:grid;grid-template-columns:7.5em 1fr}
+.ticket dt,.ticket dd{margin:0;padding:11px 16px;border-bottom:1px solid var(--line)}
+.ticket dt{color:var(--ink-3);font-size:13px;letter-spacing:.04em}
+.ticket dd{font-weight:500}
+.ticket dd small{display:block;color:var(--ink-3);font-weight:400;font-size:12.5px}
+.ticket dl:first-child{border-right:1px solid var(--line)}
+.ticket .off{color:var(--ink-3)}
+.ticket .new{color:var(--accent)}
+
+/* 看板 */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-block:1px solid var(--line)}
+.board div{padding:14px 18px 12px;display:grid;gap:2px}
+.board div+div{border-left:1px solid var(--line)}
+.board .k{font-size:12.5px;color:var(--ink-3)}
+.board .v{font-family:var(--font-board);font-size:40px;font-weight:600;line-height:1.05;font-variant-numeric:tabular-nums}
+.board .s{font-size:12.5px;color:var(--ink-2)}
+@media (max-width:640px){.board div+div{border-left:0;border-top:1px solid var(--line)}}
+
+/* 面板、圖 */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 18px 12px;position:relative}
+.panel-top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.tabs button{font:inherit;font-size:13px;padding:5px 14px;border:0;background:transparent;color:var(--ink-2);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:500}
+button:focus-visible,.cell:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px}
+.legend button{font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:7px;border:0;background:none;color:var(--ink-2);cursor:pointer;padding:2px 0}
+.legend button[aria-pressed="false"]{opacity:.45}
+.legend i{width:18px;height:0;border-top:2px solid var(--c);display:inline-block}
+.legend i.dash{border-top-style:dashed}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{font-family:var(--font-fig);font-size:11px;fill:var(--ink-3)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-family:var(--font-fig);font-size:12px;line-height:1.55;box-shadow:0 4px 14px rgba(10,20,40,.12);display:none;white-space:nowrap;z-index:3;color:var(--ink)}
+.tip b{font-weight:500}
+.caption{font-size:12.5px;color:var(--ink-3)}
+
+/* 表 */
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}
+th{font-weight:500;font-size:12px;color:var(--ink-3);letter-spacing:.04em;background:var(--surface);position:sticky;top:0;z-index:1}
+td.n,th.n{text-align:right;font-family:var(--font-fig);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}
+tfoot td{border-top:1px solid var(--line);border-bottom:0}
+tr.pick td{background:var(--accent-soft)}
+tr.muted td{color:var(--ink-3)}
+td.wrap{white-space:normal;min-width:15em}
+.scroll{max-height:520px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px;align-items:start}
+.two>div{display:grid;gap:10px;align-content:start}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.pill.hold{border-color:var(--accent);color:var(--accent)}
+.pill.watch{border-color:var(--warn);color:var(--warn)}
+.fam{font-size:12px;color:var(--ink-3)}
+code,.mono{font-family:var(--font-fig);font-size:12.5px}
+
+/* 模型 */
+.spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.spec dl{margin:0;display:grid;grid-template-columns:8.5em 1fr}
+.spec dt,.spec dd{margin:0;padding:10px 16px;border-bottom:1px solid var(--line)}
+.spec dt{color:var(--ink-3);font-size:13px}
+.spec dd{font-size:14px}
+.spec dd small{display:block;color:var(--ink-3);font-size:12.5px}
+.spec dl:first-child{border-right:1px solid var(--line)}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.flow div{padding:14px 16px;display:grid;gap:2px}
+.flow div+div{border-left:1px solid var(--line)}
+.flow .n{font-family:var(--font-board);font-size:34px;font-weight:600;line-height:1}
+.flow .t{font-size:12.5px;color:var(--ink-2)}
+@media (max-width:640px){.flow div+div{border-left:0;border-top:1px solid var(--line)}}
+.bars{display:grid;gap:6px}
+.bars .row{display:grid;grid-template-columns:9em 1fr 4.5em;gap:10px;align-items:center;font-size:13px}
+.bars .track{height:10px;background:var(--grid);border-radius:0 4px 4px 0;position:relative}
+.bars .fill{height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.bars .v{font-family:var(--font-fig);text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{font-size:12.5px;padding:2px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);white-space:nowrap}
+.chips span b{font-family:var(--font-fig);font-weight:500;color:var(--ink-3);margin-right:4px}
+.filter{display:flex;flex-wrap:wrap;gap:6px}
+.filter button{font:inherit;font-size:12.5px;padding:3px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.filter button[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+
+/* 熱圖 */
+.heat{display:grid;grid-template-columns:auto repeat(3,minmax(64px,1fr));gap:3px;font-family:var(--font-fig);font-size:13px}
+.heat .hd{color:var(--ink-3);font-size:12px;display:flex;align-items:center;justify-content:center;padding:4px}
+.heat .rh{justify-content:flex-end;padding-right:8px;font-family:var(--font-text)}
+.heat .cell{padding:10px 4px;text-align:center;border-radius:4px;font-variant-numeric:tabular-nums;cursor:default;line-height:1.3}
+.heat .cell small{display:block;font-size:10.5px;opacity:.8}
+.heat .cell.pick{outline:2px solid var(--ink);outline-offset:1px}
+
+.risks{display:grid;gap:10px;max-width:76ch;padding:0;margin:0;list-style:none}
+.risks li{padding-left:16px;position:relative;color:var(--ink-2)}
+.risks li::before{content:"";position:absolute;left:0;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.risks b{color:var(--ink)}
+footer{font-size:12.5px;color:var(--ink-3);display:grid;gap:4px;max-width:84ch}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+</style>
+
+<main>
+  <header class="verdict">
+    <div class="eyebrow">2026-01-02 → 2026-09-11 · tw50 · 老師的 NCKU 回測框架 · 證交所官方日資料 · 本金 NT$1,000,000</div>
+    <h1>2026 年最好的一組:<span class="hl">每天看排名,只抱 3 檔,掉出前 8 名連續 2 天才換</span></h1>
+    <p class="lede" id="lede"></p>
+    <nav class="toc" aria-label="本頁目錄">
+      <a href="#rules">交易規則</a><a href="#perf">績效</a><a href="#years">前幾年回測</a><a href="#model">模型版本與參數</a><a href="#features">95 個特徵</a><a href="#now">目前持股與排名</a><a href="#ledger">交易明細</a><a href="#why">為什麼是這組</a><a href="#risk">風險</a>
+    </nav>
+  </header>
+
+  <section id="rules">
+    <div class="sec-head"><span class="kicker">交易規則</span><h2>每天收盤後照這張單子做</h2></div>
+    <div class="ticket">
+      <dl>
+        <dt>選股池</dt><dd>tw50,台灣市值前 50 大<small>另測過 tw100、tw200、tw500、電子股等 8 個池子,都比 tw50 差</small></dd>
+        <dt>排名來源</dt><dd>XGBoost 預測「未來 5 天報酬贏過 tw50 當天中位數」的機率<small>模型細節見下方「模型版本與參數」</small></dd>
+        <dt>檢視頻率</dt><dd>每個交易日收盤後重新排名</dd>
+        <dt>持股</dt><dd>3 檔,買進時各配置三分之一資金</dd>
+        <dt>流動性</dt><dd>5 日均量 ≥ 2,000 張才列入候選<small>tw50 裡幾乎不會擋到</small></dd>
+      </dl>
+      <dl>
+        <dt>賣出條件</dt><dd class="new">持股連續 2 個交易日排在前 8 名以外<small>只掉出 1 天、隔天回到前 8 名,就不賣</small></dd>
+        <dt>買進條件</dt><dd>有空位時,買排名最前面、手上沒有的股票</dd>
+        <dt>下單時點</dt><dd>今天收盤決定,明天開盤價成交</dd>
+        <dt>大盤濾網</dt><dd class="off">不使用<small>2026 多頭年開著只會少賺</small></dd>
+        <dt>停損停利</dt><dd class="off">不設<small>以最大報酬為目標</small></dd>
+      </dl>
+    </div>
+  </section>
+
+  <section id="perf">
+    <div class="sec-head"><span class="kicker">績效</span><h2>2026 年回測</h2></div>
+    <div class="board" id="board"></div>
+    <p class="caption">報酬一律扣除手續費 0.1425%(買賣各一次)與證交稅 0.3%(賣出)。表格沿用台股慣例 <span class="up">紅色 = 賺</span>、<span class="down">綠色 = 賠</span>,數字前另有正負號。</p>
+    <div class="panel chart" id="eqPanel">
+      <div class="panel-top">
+        <div class="tabs" role="group" aria-label="期間">
+          <button type="button" id="tab-full" aria-pressed="true">全年 1/2 起</button>
+          <button type="button" id="tab-jul" aria-pressed="false">7/1 起全新起跑</button>
+        </div>
+        <div class="legend" id="eqLegend"></div>
+      </div>
+      <svg id="eq" viewBox="0 0 960 380" role="img" aria-label="累積報酬折線圖"></svg>
+      <div class="tip" id="eqTip"></div>
+      <p class="caption" id="eqCap"></p>
+    </div>
+    <div class="two">
+      <div>
+        <h3>每月報酬</h3>
+        <div class="tbl"><table id="monthly"></table></div>
+      </div>
+      <div>
+        <h3>和上一版比</h3>
+        <div class="tbl"><table id="vsprev"></table></div>
+        <p class="caption">上一版的規則是「掉出前 3 名且抱滿 10 天才換」。因為排名每天跳動,到第 10 天股票幾乎總是剛好不在前 3 名,結果變成大多抱 10 天就換掉。新版只看「是否連續 2 天掉出前 8 名」,好股票可以一直抱。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="years">
+    <div class="sec-head">
+      <span class="kicker">前幾年回測</span>
+      <h2>同一套系統放回 2021–2025:一年都沒贏過 tw50 等權</h2>
+      <p>每一年都用「那年以前」的資料重新訓練模型(例如 2024 年用 2016–2022 訓練、2023 驗證挑特徵),交易規則完全沿用 2026 選出的這一套、不再調整。資料用 yfinance 還原價餵同一個框架(2026 用這個方法算出 +252.9%,和官方資料的 +237.4% 接近)。</p>
+    </div>
+    <div class="tbl"><table id="yearsTbl"></table></div>
+    <div class="two">
+      <div><h3>各年模型的選股能力(未扣成本)</h3><div class="tbl"><table id="yearsModel"></table></div>
+        <p class="caption">每 5 天取模型前 5 名與後 5 名,看後 5 天的實際報酬累積。後 5 名每年都輸等權,前 5 名 5 年裡有 4 年贏等權,代表排名本身有用,只是很弱。</p></div>
+      <div><h3>怎麼解讀</h3>
+        <ul class="risks" id="yearsNotes"></ul></div>
+    </div>
+  </section>
+
+  <section id="model">
+    <div class="sec-head">
+      <span class="kicker">模型版本與參數</span>
+      <h2>排名是怎麼算出來的</h2>
+      <p>老師的方法:大量技術指標丟進 XGBoost,用重要性剔除沒用的,再重新訓練。模型只負責「排名」,買賣時機全由上面的交易規則決定。</p>
+    </div>
+    <div class="spec" id="spec"></div>
+    <div class="two">
+      <div>
+        <h3>XGBoost 超參數</h3>
+        <div class="tbl"><table id="params"></table></div>
+      </div>
+      <div>
+        <h3>3 個 seed 的訓練結果</h3>
+        <div class="tbl"><table id="seeds"></table></div>
+        <p class="caption" id="seedCap"></p>
+      </div>
+    </div>
+    <div class="sec-head" style="margin-top:8px">
+      <h3>特徵怎麼從 242 個篩到 95 個</h3>
+      <p class="caption">重要性只用訓練與驗證資料計算,2026 測試期完全沒有參與篩選。</p>
+    </div>
+    <div class="flow" id="flow"></div>
+    <div class="two">
+      <div>
+        <h3>2026 測試期:模型分數分成 10 組的年化報酬</h3>
+        <p class="caption">每 5 天依機率把 tw50 分成 10 組,看各組後 5 天的實際報酬(收盤到收盤、未扣成本)。第 10 組是模型最看好的 5 檔。</p>
+        <div class="bars" id="decile"></div>
+      </div>
+      <div>
+        <h3>不同特徵集在 2026 的 AUC</h3>
+        <div class="tbl"><table id="altauc"></table></div>
+        <p class="caption">AUC 是「整體排序正確率」,0.5 等於亂猜。論文 9 個指標的 AUC 反而最高,但系統只買最前面 3 檔,真正重要的是「頭部選得準不準」;這方面 permpos 在交易回測中最好,所以採用它。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="sec-head">
+      <span class="kicker">95 個特徵</span>
+      <h2>模型實際使用的特徵明細</h2>
+      <p>依重要性排序。「增益」是該特徵在 3 棵樹模型中的平均分裂增益占比;「排列重要性」是在 2025 驗證集把這一欄打亂後 AUC 下降多少(×1000),大於 0 才會被留下。所有特徵只用當天收盤前已知的資料。</p>
+    </div>
+    <div class="chips" id="famChips"></div>
+    <div class="filter" role="group" aria-label="依族群篩選" id="famFilter"></div>
+    <div class="tbl scroll"><table id="feat"></table></div>
+  </section>
+
+  <section id="now">
+    <div class="sec-head"><span class="kicker">目前持股與排名</span><h2>9/11 收盤的狀態</h2></div>
+    <div class="two">
+      <div>
+        <h3>持股</h3>
+        <div class="tbl"><table id="held"></table></div>
+        <p class="caption" id="heldCap"></p>
+      </div>
+      <div>
+        <h3>最新排名(<span id="latestDate"></span> 收盤)</h3>
+        <div class="tbl"><table id="latest"></table></div>
+        <p class="caption">機率是模型認為「未來 5 天贏過 tw50 中位數」的可能性。前 8 名以內的持股都會續抱。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="ledger">
+    <div class="sec-head"><span class="kicker">交易明細</span><h2>全年每一筆交易</h2><p id="ledgerLede"></p></div>
+    <div class="tbl scroll"><table id="trades"></table></div>
+  </section>
+
+  <section id="why">
+    <div class="sec-head">
+      <span class="kicker">為什麼是這組</span>
+      <h2>一路比較過來的結果</h2>
+      <p>5 天檢視的版本會因為「從哪一天開始算」差很多,所以取 5 種起跑日平均;每天檢視的版本沒有這個問題。</p>
+    </div>
+    <div class="tbl"><table id="path"></table></div>
+    <div class="two">
+      <div>
+        <h3>穩健度:名次和天數往旁邊挪一格</h3>
+        <p class="caption">抱 3 檔、不看大盤、不設停損停利,全年扣成本報酬(%);小字是 7/1 起的報酬。</p>
+        <div class="panel" style="padding:14px">
+          <div class="heat" id="heat" role="img" aria-label="續抱名次與連續天數的報酬格點"></div>
+          <div class="tip" id="heatTip"></div>
+        </div>
+      </div>
+      <div>
+        <h3>「還在一定名次內就不換」的三種做法</h3>
+        <div class="tbl"><table id="fams"></table></div>
+        <p class="caption">只放寬名次的話,一天的雜訊就會把好股票賣掉,或讓轉弱的股票抱太久;用幾天平均分數排名帳面高,但 7/1 以後多半是虧的。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="risk">
+    <div class="sec-head"><span class="kicker">風險</span><h2>用之前要知道的事</h2></div>
+    <ul class="risks">
+      <li><b>只抱 3 檔、沒有停損。</b>每檔約三分之一資金,單一檔崩跌會直接反映在帳上。全年最大回撤 <span id="rk-mdd"></span>。</li>
+      <li><b>前幾年回測不成立。</b>交易規則是在 2026 挑出來的;放回 2021–2025 年,5 年都輸 tw50 等權、4 年輸 0050,2022 空頭年最大回撤 −46.5%。目前沒有證據顯示它在一般年份能賺贏大盤。</li>
+      <li><b>模型本身的排序能力不強。</b>2026 的 AUC 約 0.53,只比亂猜好一點。報酬主要來自「頭部幾檔選中強勢股」,而且 2026 是少數強勢股帶動的大多頭。</li>
+      <li><b>框架本身不扣成本、用未還原權息價。</b>本頁扣成本數字由框架委託紀錄逐筆估算;模型特徵則用 yfinance 還原價計算。</li>
+      <li><b>假設開盤價一定成交。</b>tw50 流動性足夠,但實盤會有滑價,開盤跳空漲停買不到的情況沒有模擬。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <div>程式:<code>xgb_ta_pipeline/src/run_pipeline.py</code>(模型)、<code>backtest_2026/predict_full_tw50.py</code>(補齊預測)、<code>backtest_2026/ncku/prep_final_v3.py</code>(本頁資料)。框架原生 Excel 在 <code>backtest_2026/ncku/out/final_best/v3_full.xlsx</code>。</div>
+    <div>完整研究過程在另一份「2026 台股回測對照」報告。</div>
+  </footer>
+</main>
+
+<script>
+const D = {"config":{"K":3,"exit_rank":8,"out_days":2,"min_hold":0,"mkt":"none"},"prev_config":{"K":3,"exit_rank":3,"out_days":1,"min_hold":10,"mkt":"none"},"end":"2026-09-11","init_cash":1000000,"full":{"best":{"total_return_pct":249.12,"net_return_pct":237.41,"net_max_dd_pct":-20.35,"net_sharpe":3.31,"fees_total":117080.0,"buy_turnover_x":9.8,"n_trade_days":30,"n_days":168,"max_dd_pct":-19.42,"daily_sharpe_ann":3.45,"avg_exposure_pct":98.0,"n_round_trips":29,"win_rate":0.655,"avg_trade_ret_pct":14.78,"n_liq_filtered":63,"n_mkt_blocked":0,"n_kept":469,"n_stop_exits":0,"n_tp_exits":0,"curve":{"2026-01-02":0.0,"2026-01-05":1.58,"2026-01-06":3.38,"2026-01-07":5.63,"2026-01-08":9.01,"2026-01-09":4.01,"2026-01-12":6.32,"2026-01-13":4.29,"2026-01-14":6.03,"2026-01-15":9.49,"2026-01-16":12.35,"2026-01-19":15.38,"2026-01-20":13.13,"2026-01-21":11.1,"2026-01-22":13.59,"2026-01-23":13.0,"2026-01-26":16.18,"2026-01-27":14.67,"2026-01-28":15.25,"2026-01-29":14.29,"2026-01-30":12.16,"2026-02-02":7.76,"2026-02-03":11.63,"2026-02-04":15.58,"2026-02-05":13.15,"2026-02-06":10.83,"2026-02-09":16.84,"2026-02-10":15.18,"2026-02-11":16.74,"2026-02-23":23.39,"2026-02-24":29.65,"2026-02-25":33.8,"2026-02-26":32.49,"2026-03-02":31.03,"2026-03-03":26.11,"2026-03-04":16.48,"2026-03-05":22.16,"2026-03-06":24.17,"2026-03-09":15.91,"2026-03-10":18.41,"2026-03-11":24.96,"2026-03-12":23.95,"2026-03-13":25.17,"2026-03-16":29.11,"2026-03-17":28.04,"2026-03-18":34.51,"2026-03-19":33.94,"2026-03-20":31.84,"2026-03-23":28.89,"2026-03-24":24.32,"2026-03-25":32.74,"2026-03-26":35.96,"2026-03-27":35.05,"2026-03-30":36.31,"2026-03-31":26.48,"2026-04-01":35.99,"2026-04-02":32.76,"2026-04-07":40.1,"2026-04-08":42.31,"2026-04-09":43.63,"2026-04-10":47.1,"2026-04-13":47.66,"2026-04-14":49.57,"2026-04-15":52.2,"2026-04-16":60.51,"2026-04-17":61.57,"2026-04-20":66.55,"2026-04-21":72.05,"2026-04-22":73.05,"2026-04-23":68.84,"2026-04-24":80.5,"2026-04-27":85.08,"2026-04-28":90.26,"2026-04-29":85.77,"2026-04-30":95.15,"2026-05-04":103.7,"2026-05-05":104.02,"2026-05-06":98.78,"2026-05-07":102.9,"2026-05-08":87.0,"2026-05-11":99.88,"2026-05-12":98.78,"2026-05-13":93.78,"2026-05-14":98.5,"2026-05-15":90.81,"2026-05-18":90.12,"2026-05-19":79.32,"2026-05-20":80.08,"2026-05-21":92.54,"2026-05-22":102.31,"2026-05-25":117.74,"2026-05-26":117.44,"2026-05-27":128.51,"2026-05-28":122.91,"2026-05-29":118.75,"2026-06-01":126.35,"2026-06-02":128.27,"2026-06-03":123.0,"2026-06-04":109.71,"2026-06-05":113.93,"2026-06-08":102.49,"2026-06-09":116.55,"2026-06-10":107.06,"2026-06-11":112.85,"2026-06-12":122.4,"2026-06-15":139.16,"2026-06-16":140.63,"2026-06-17":145.82,"2026-06-18":158.94,"2026-06-22":168.09,"2026-06-23":164.36,"2026-06-24":178.36,"2026-06-25":188.69,"2026-06-26":164.52,"2026-06-29":168.95,"2026-06-30":187.48,"2026-07-01":199.11,"2026-07-02":196.71,"2026-07-03":198.37,"2026-07-06":185.32,"2026-07-07":167.13,"2026-07-08":187.03,"2026-07-09":193.29,"2026-07-13":207.17,"2026-07-14":210.93,"2026-07-15":233.87,"2026-07-16":217.84,"2026-07-17":186.82,"2026-07-20":174.13,"2026-07-21":192.64,"2026-07-22":205.67,"2026-07-23":210.0,"2026-07-24":194.12,"2026-07-27":193.54,"2026-07-28":176.71,"2026-07-29":172.04,"2026-07-30":165.93,"2026-07-31":176.33,"2026-08-03":183.5,"2026-08-04":185.41,"2026-08-05":190.46,"2026-08-06":186.2,"2026-08-07":183.82,"2026-08-10":188.62,"2026-08-11":192.98,"2026-08-12":191.67,"2026-08-13":198.12,"2026-08-14":208.04,"2026-08-17":204.94,"2026-08-18":203.78,"2026-08-19":191.84,"2026-08-20":194.66,"2026-08-21":202.33,"2026-08-24":193.99,"2026-08-25":206.35,"2026-08-26":226.25,"2026-08-27":252.02,"2026-08-28":249.39,"2026-08-31":270.2,"2026-09-01":262.99,"2026-09-02":274.04,"2026-09-03":247.11,"2026-09-04":257.4,"2026-09-07":243.01,"2026-09-08":239.61,"2026-09-09":247.9,"2026-09-10":248.59,"2026-09-11":237.41},"monthly":{"2026-01":12.16,"2026-02":18.13,"2026-03":-4.54,"2026-04":54.29,"2026-05":12.09,"2026-06":31.42,"2026-07":-3.88,"2026-08":33.97,"2026-09":-8.86}},"prev":{"total_return_pct":222.1,"net_return_pct":205.04,"net_max_dd_pct":-17.32,"net_sharpe":3.23,"fees_total":170549.0,"buy_turnover_x":13.8,"n_trade_days":32,"n_days":168,"max_dd_pct":-16.29,"daily_sharpe_ann":3.45,"avg_exposure_pct":97.6,"n_round_trips":39,"win_rate":0.564,"avg_trade_ret_pct":11.79,"n_liq_filtered":63,"n_mkt_blocked":0,"n_kept":253,"n_stop_exits":0,"n_tp_exits":0,"curve":{"2026-01-02":0.0,"2026-01-05":1.58,"2026-01-06":3.38,"2026-01-07":5.63,"2026-01-08":6.79,"2026-01-09":6.4,"2026-01-12":6.07,"2026-01-13":4.79,"2026-01-14":5.05,"2026-01-15":6.36,"2026-01-16":8.99,"2026-01-19":10.75,"2026-01-20":8.68,"2026-01-21":7.26,"2026-01-22":12.79,"2026-01-23":11.62,"2026-01-26":12.75,"2026-01-27":12.01,"2026-01-28":13.25,"2026-01-29":10.38,"2026-01-30":9.13,"2026-02-02":5.8,"2026-02-03":9.11,"2026-02-04":10.86,"2026-02-05":9.08,"2026-02-06":7.86,"2026-02-09":12.46,"2026-02-10":13.13,"2026-02-11":14.71,"2026-02-23":19.0,"2026-02-24":26.79,"2026-02-25":33.38,"2026-02-26":33.35,"2026-03-02":31.62,"2026-03-03":27.72,"2026-03-04":17.23,"2026-03-05":22.07,"2026-03-06":24.0,"2026-03-09":15.45,"2026-03-10":18.18,"2026-03-11":24.14,"2026-03-12":23.77,"2026-03-13":24.97,"2026-03-16":28.95,"2026-03-17":27.59,"2026-03-18":30.49,"2026-03-19":27.6,"2026-03-20":24.86,"2026-03-23":21.71,"2026-03-24":17.57,"2026-03-25":23.11,"2026-03-26":25.63,"2026-03-27":24.67,"2026-03-30":25.87,"2026-03-31":19.49,"2026-04-01":28.31,"2026-04-02":25.19,"2026-04-07":31.63,"2026-04-08":35.34,"2026-04-09":38.75,"2026-04-10":41.28,"2026-04-13":39.6,"2026-04-14":42.06,"2026-04-15":45.41,"2026-04-16":52.91,"2026-04-17":53.78,"2026-04-20":60.82,"2026-04-21":66.76,"2026-04-22":68.91,"2026-04-23":65.55,"2026-04-24":73.02,"2026-04-27":72.31,"2026-04-28":77.35,"2026-04-29":75.75,"2026-04-30":81.42,"2026-05-04":90.58,"2026-05-05":90.47,"2026-05-06":87.08,"2026-05-07":91.44,"2026-05-08":85.68,"2026-05-11":98.28,"2026-05-12":93.02,"2026-05-13":88.78,"2026-05-14":84.94,"2026-05-15":81.16,"2026-05-18":85.2,"2026-05-19":75.46,"2026-05-20":80.31,"2026-05-21":97.14,"2026-05-22":116.45,"2026-05-25":138.44,"2026-05-26":134.25,"2026-05-27":145.55,"2026-05-28":145.29,"2026-05-29":146.1,"2026-06-01":158.43,"2026-06-02":159.31,"2026-06-03":152.95,"2026-06-04":137.63,"2026-06-05":142.06,"2026-06-08":132.32,"2026-06-09":152.77,"2026-06-10":147.78,"2026-06-11":149.01,"2026-06-12":155.67,"2026-06-15":171.32,"2026-06-16":172.23,"2026-06-17":181.47,"2026-06-18":195.01,"2026-06-22":197.43,"2026-06-23":187.32,"2026-06-24":200.37,"2026-06-25":203.84,"2026-06-26":180.38,"2026-06-29":185.01,"2026-06-30":204.45,"2026-07-01":217.89,"2026-07-02":217.01,"2026-07-03":219.04,"2026-07-06":204.79,"2026-07-07":182.42,"2026-07-08":198.38,"2026-07-09":209.81,"2026-07-13":221.05,"2026-07-14":220.46,"2026-07-15":234.86,"2026-07-16":223.58,"2026-07-17":196.0,"2026-07-20":191.49,"2026-07-21":209.58,"2026-07-22":215.3,"2026-07-23":219.34,"2026-07-24":206.54,"2026-07-27":209.0,"2026-07-28":188.17,"2026-07-29":182.31,"2026-07-30":176.87,"2026-07-31":193.77,"2026-08-03":197.9,"2026-08-04":208.01,"2026-08-05":206.01,"2026-08-06":202.61,"2026-08-07":202.52,"2026-08-10":210.62,"2026-08-11":213.22,"2026-08-12":210.63,"2026-08-13":212.25,"2026-08-14":208.99,"2026-08-17":209.5,"2026-08-18":205.78,"2026-08-19":198.53,"2026-08-20":201.77,"2026-08-21":205.24,"2026-08-24":191.4,"2026-08-25":198.79,"2026-08-26":215.7,"2026-08-27":226.44,"2026-08-28":238.63,"2026-08-31":245.73,"2026-09-01":244.31,"2026-09-02":245.78,"2026-09-03":224.01,"2026-09-04":232.02,"2026-09-07":218.01,"2026-09-08":204.17,"2026-09-09":215.8,"2026-09-10":213.85,"2026-09-11":205.04},"monthly":{"2026-01":9.13,"2026-02":22.19,"2026-03":-10.39,"2026-04":51.83,"2026-05":35.65,"2026-06":23.71,"2026-07":-3.51,"2026-08":17.69,"2026-09":-11.77}},"b0050":{"total_return_pct":58.15,"max_dd_pct":-15.88,"curve":{"2026-01-02":0.0,"2026-01-05":2.06,"2026-01-06":3.38,"2026-01-07":2.57,"2026-01-08":2.94,"2026-01-09":2.57,"2026-01-12":3.3,"2026-01-13":3.82,"2026-01-14":3.89,"2026-01-15":3.74,"2026-01-16":5.73,"2026-01-19":6.61,"2026-01-20":6.61,"2026-01-21":5.51,"2026-01-22":5.43,"2026-01-23":6.09,"2026-01-26":6.09,"2026-01-27":7.27,"2026-01-28":8.96,"2026-01-29":8.3,"2026-01-30":6.61,"2026-02-02":4.99,"2026-02-03":7.12,"2026-02-04":7.05,"2026-02-05":5.73,"2026-02-06":5.58,"2026-02-09":8.59,"2026-02-10":10.87,"2026-02-11":13.36,"2026-02-23":13.66,"2026-02-24":16.59,"2026-02-25":19.09,"2026-02-26":19.16,"2026-03-02":17.99,"2026-03-03":15.64,"2026-03-04":11.01,"2026-03-05":13.66,"2026-03-06":12.85,"2026-03-09":8.08,"2026-03-10":10.43,"2026-03-11":14.83,"2026-03-12":12.48,"2026-03-13":11.53,"2026-03-16":11.01,"2026-03-17":12.55,"2026-03-18":14.24,"2026-03-19":11.6,"2026-03-20":11.45,"2026-03-23":9.03,"2026-03-24":9.25,"2026-03-25":11.89,"2026-03-26":11.31,"2026-03-27":10.13,"2026-03-30":8.52,"2026-03-31":6.24,"2026-04-01":10.79,"2026-04-02":8.59,"2026-04-07":10.57,"2026-04-08":16.3,"2026-04-09":16.23,"2026-04-10":18.58,"2026-04-13":18.36,"2026-04-14":22.03,"2026-04-15":23.57,"2026-04-16":24.82,"2026-04-17":23.57,"2026-04-20":24.16,"2026-04-21":26.28,"2026-04-22":26.8,"2026-04-23":26.8,"2026-04-24":32.08,"2026-04-27":36.56,"2026-04-28":35.09,"2026-04-29":33.26,"2026-04-30":32.89,"2026-05-04":38.91,"2026-05-05":38.91,"2026-05-06":40.6,"2026-05-07":43.46,"2026-05-08":42.44,"2026-05-11":42.29,"2026-05-12":42.22,"2026-05-13":40.23,"2026-05-14":41.04,"2026-05-15":40.09,"2026-05-18":39.35,"2026-05-19":36.71,"2026-05-20":35.83,"2026-05-21":40.75,"2026-05-22":42.88,"2026-05-25":48.02,"2026-05-26":46.99,"2026-05-27":50.59,"2026-05-28":47.58,"2026-05-29":54.77,"2026-06-01":54.92,"2026-06-02":55.21,"2026-06-03":58.0,"2026-06-04":55.8,"2026-06-05":52.94,"2026-06-08":48.24,"2026-06-09":51.98,"2026-06-10":47.21,"2026-06-11":46.62,"2026-06-12":49.71,"2026-06-15":54.55,"2026-06-16":55.51,"2026-06-17":55.65,"2026-06-18":57.56,"2026-06-22":63.21,"2026-06-23":61.67,"2026-06-24":57.34,"2026-06-25":57.41,"2026-06-26":51.39,"2026-06-29":53.38,"2026-06-30":58.3,"2026-07-01":60.57,"2026-07-02":59.76,"2026-07-03":59.1,"2026-07-06":58.96,"2026-07-07":55.95,"2026-07-08":55.73,"2026-07-09":55.36,"2026-07-13":55.65,"2026-07-14":53.3,"2026-07-15":56.09,"2026-07-16":56.24,"2026-07-17":47.06,"2026-07-20":45.67,"2026-07-21":50.51,"2026-07-22":52.5,"2026-07-23":52.57,"2026-07-24":49.34,"2026-07-27":48.97,"2026-07-28":42.66,"2026-07-29":37.59,"2026-07-30":37.3,"2026-07-31":51.03,"2026-08-03":49.78,"2026-08-04":47.8,"2026-08-05":52.42,"2026-08-06":51.69,"2026-08-07":51.03,"2026-08-10":53.08,"2026-08-11":53.6,"2026-08-12":54.48,"2026-08-13":56.68,"2026-08-14":56.24,"2026-08-17":56.31,"2026-08-18":54.04,"2026-08-19":51.39,"2026-08-20":52.42,"2026-08-21":53.67,"2026-08-24":52.42,"2026-08-25":53.3,"2026-08-26":55.51,"2026-08-27":55.73,"2026-08-28":57.05,"2026-08-31":56.02,"2026-09-01":59.25,"2026-09-02":56.83,"2026-09-03":55.95,"2026-09-04":58.44,"2026-09-07":61.38,"2026-09-08":61.01,"2026-09-09":61.01,"2026-09-10":60.28,"2026-09-11":58.15},"monthly":{"2026-01":6.61,"2026-02":11.77,"2026-03":-10.84,"2026-04":25.08,"2026-05":16.46,"2026-06":2.28,"2026-07":-4.59,"2026-08":3.3,"2026-09":1.37}},"ew":{"total_return_pct":58.49,"max_dd_pct":-12.66,"curve":{"2026-01-02":0.0,"2026-01-05":-0.21,"2026-01-06":0.54,"2026-01-07":1.48,"2026-01-08":1.12,"2026-01-09":0.84,"2026-01-12":1.7,"2026-01-13":1.6,"2026-01-14":2.19,"2026-01-15":2.82,"2026-01-16":3.47,"2026-01-19":4.21,"2026-01-20":3.8,"2026-01-21":2.98,"2026-01-22":4.35,"2026-01-23":4.62,"2026-01-26":6.05,"2026-01-27":6.53,"2026-01-28":7.08,"2026-01-29":6.19,"2026-01-30":4.72,"2026-02-02":2.68,"2026-02-03":3.88,"2026-02-04":4.78,"2026-02-05":4.08,"2026-02-06":3.9,"2026-02-09":5.62,"2026-02-10":6.13,"2026-02-11":7.55,"2026-02-23":9.55,"2026-02-24":11.61,"2026-02-25":13.44,"2026-02-26":13.62,"2026-03-02":12.53,"2026-03-03":11.28,"2026-03-04":6.51,"2026-03-05":8.11,"2026-03-06":9.01,"2026-03-09":5.94,"2026-03-10":6.39,"2026-03-11":8.28,"2026-03-12":7.9,"2026-03-13":7.82,"2026-03-16":9.19,"2026-03-17":9.92,"2026-03-18":10.85,"2026-03-19":9.08,"2026-03-20":8.87,"2026-03-23":5.87,"2026-03-24":6.02,"2026-03-25":8.3,"2026-03-26":8.91,"2026-03-27":8.62,"2026-03-30":8.33,"2026-03-31":5.56,"2026-04-01":8.85,"2026-04-02":7.71,"2026-04-07":9.33,"2026-04-08":11.95,"2026-04-09":12.53,"2026-04-10":12.67,"2026-04-13":13.5,"2026-04-14":15.34,"2026-04-15":16.03,"2026-04-16":18.09,"2026-04-17":18.24,"2026-04-20":18.85,"2026-04-21":19.89,"2026-04-22":20.48,"2026-04-23":18.57,"2026-04-24":20.04,"2026-04-27":20.38,"2026-04-28":21.72,"2026-04-29":21.56,"2026-04-30":21.4,"2026-05-04":23.05,"2026-05-05":24.33,"2026-05-06":25.85,"2026-05-07":27.34,"2026-05-08":26.68,"2026-05-11":28.76,"2026-05-12":28.07,"2026-05-13":26.44,"2026-05-14":27.02,"2026-05-15":25.09,"2026-05-18":25.06,"2026-05-19":24.62,"2026-05-20":24.7,"2026-05-21":27.86,"2026-05-22":29.92,"2026-05-25":32.51,"2026-05-26":33.24,"2026-05-27":35.8,"2026-05-28":33.55,"2026-05-29":36.14,"2026-06-01":40.85,"2026-06-02":43.06,"2026-06-03":45.98,"2026-06-04":43.61,"2026-06-05":41.78,"2026-06-08":36.53,"2026-06-09":42.41,"2026-06-10":38.92,"2026-06-11":39.1,"2026-06-12":41.18,"2026-06-15":44.38,"2026-06-16":45.98,"2026-06-17":46.8,"2026-06-18":49.11,"2026-06-22":51.9,"2026-06-23":50.54,"2026-06-24":50.44,"2026-06-25":52.94,"2026-06-26":47.51,"2026-06-29":48.23,"2026-06-30":52.08,"2026-07-01":52.99,"2026-07-02":53.33,"2026-07-03":54.95,"2026-07-06":52.92,"2026-07-07":48.43,"2026-07-08":50.82,"2026-07-09":50.65,"2026-07-13":50.74,"2026-07-14":49.88,"2026-07-15":54.17,"2026-07-16":52.69,"2026-07-17":46.2,"2026-07-20":43.32,"2026-07-21":48.58,"2026-07-22":51.91,"2026-07-23":51.51,"2026-07-24":47.23,"2026-07-27":46.47,"2026-07-28":40.0,"2026-07-29":36.04,"2026-07-30":35.33,"2026-07-31":41.86,"2026-08-03":43.12,"2026-08-04":44.64,"2026-08-05":47.13,"2026-08-06":46.6,"2026-08-07":46.26,"2026-08-10":48.86,"2026-08-11":49.22,"2026-08-12":50.53,"2026-08-13":51.42,"2026-08-14":52.59,"2026-08-17":51.78,"2026-08-18":50.75,"2026-08-19":49.33,"2026-08-20":49.28,"2026-08-21":50.48,"2026-08-24":49.69,"2026-08-25":51.22,"2026-08-26":52.75,"2026-08-27":54.99,"2026-08-28":55.77,"2026-08-31":57.6,"2026-09-01":60.28,"2026-09-02":59.24,"2026-09-03":56.61,"2026-09-04":58.99,"2026-09-07":59.95,"2026-09-08":58.56,"2026-09-09":60.31,"2026-09-10":59.81,"2026-09-11":58.49},"monthly":{"2026-01":4.72,"2026-02":8.5,"2026-03":-7.09,"2026-04":15.01,"2026-05":12.14,"2026-06":11.71,"2026-07":-6.72,"2026-08":11.1,"2026-09":0.56}},"trades":[{"code":"2303","name":"聯電","buy_date":"2026-01-05","buy":48.5,"shares":6872,"sell_date":"2026-01-08","sell":57.0,"ret_pct":17.53,"pnl":58412,"days":3},{"code":"2345","name":"智邦","buy_date":"2026-01-05","buy":1145.0,"shares":291,"sell_date":"2026-01-09","sell":1250.0,"ret_pct":9.17,"pnl":30555,"days":4},{"code":"2301","name":"光寶科","buy_date":"2026-01-08","buy":163.5,"shares":2216,"sell_date":"2026-01-13","sell":166.0,"ret_pct":1.53,"pnl":5540,"days":3},{"code":"2317","name":"鴻海","buy_date":"2026-01-13","buy":230.0,"shares":1557,"sell_date":"2026-01-15","sell":234.0,"ret_pct":1.74,"pnl":6228,"days":2},{"code":"2881","name":"富邦金","buy_date":"2026-01-05","buy":95.6,"shares":3486,"sell_date":"2026-01-22","sell":93.7,"ret_pct":-1.99,"pnl":-6623,"days":13},{"code":"2890","name":"永豐金","buy_date":"2026-01-15","buy":28.75,"shares":12427,"sell_date":"2026-02-02","sell":28.45,"ret_pct":-1.04,"pnl":-3728,"days":12},{"code":"1303","name":"南亞","buy_date":"2026-01-09","buy":68.5,"shares":5295,"sell_date":"2026-02-09","sell":76.9,"ret_pct":12.26,"pnl":44478,"days":21},{"code":"6505","name":"台塑化","buy_date":"2026-02-09","buy":49.15,"shares":7893,"sell_date":"2026-02-24","sell":52.0,"ret_pct":5.8,"pnl":22495,"days":11},{"code":"2891","name":"中信金","buy_date":"2026-01-22","buy":50.6,"shares":7393,"sell_date":"2026-02-25","sell":53.7,"ret_pct":6.13,"pnl":22918,"days":24},{"code":"2303","name":"聯電","buy_date":"2026-02-24","buy":64.3,"shares":6600,"sell_date":"2026-03-12","sell":62.2,"ret_pct":-3.27,"pnl":-13860,"days":12},{"code":"6505","name":"台塑化","buy_date":"2026-03-12","buy":60.6,"shares":6782,"sell_date":"2026-04-15","sell":56.2,"ret_pct":-7.26,"pnl":-29841,"days":24},{"code":"2891","name":"中信金","buy_date":"2026-04-15","buy":53.3,"shares":7151,"sell_date":"2026-04-20","sell":53.1,"ret_pct":-0.38,"pnl":-1430,"days":3},{"code":"8046","name":"南電","buy_date":"2026-02-02","buy":381.0,"shares":928,"sell_date":"2026-05-14","sell":899.0,"ret_pct":135.96,"pnl":480704,"days":73},{"code":"3711","name":"日月光投控","buy_date":"2026-04-20","buy":457.0,"shares":830,"sell_date":"2026-05-22","sell":535.0,"ret_pct":17.07,"pnl":64740,"days":24},{"code":"2345","name":"智邦","buy_date":"2026-02-25","buy":1410.0,"shares":285,"sell_date":"2026-05-29","sell":2505.0,"ret_pct":77.66,"pnl":312075,"days":67},{"code":"2454","name":"聯發科","buy_date":"2026-05-14","buy":3585.0,"shares":190,"sell_date":"2026-06-01","sell":4440.0,"ret_pct":23.85,"pnl":162450,"days":12},{"code":"3711","name":"日月光投控","buy_date":"2026-05-29","buy":642.0,"shares":1112,"sell_date":"2026-06-10","sell":556.0,"ret_pct":-13.4,"pnl":-95632,"days":8},{"code":"1326","name":"台化","buy_date":"2026-06-10","buy":47.7,"shares":14798,"sell_date":"2026-06-26","sell":58.3,"ret_pct":22.22,"pnl":156859,"days":12},{"code":"2327","name":"國巨*","buy_date":"2026-05-22","buy":605.0,"shares":987,"sell_date":"2026-07-07","sell":1000.0,"ret_pct":65.29,"pnl":389865,"days":32},{"code":"2303","name":"聯電","buy_date":"2026-06-01","buy":143.0,"shares":5290,"sell_date":"2026-07-14","sell":150.5,"ret_pct":5.24,"pnl":39675,"days":31},{"code":"8046","name":"南電","buy_date":"2026-07-07","buy":1040.0,"shares":931,"sell_date":"2026-07-22","sell":1255.0,"ret_pct":20.67,"pnl":200165,"days":11},{"code":"1303","name":"南亞","buy_date":"2026-06-26","buy":154.0,"shares":5602,"sell_date":"2026-07-23","sell":210.5,"ret_pct":36.69,"pnl":316513,"days":19},{"code":"1326","name":"台化","buy_date":"2026-07-23","buy":71.7,"shares":14672,"sell_date":"2026-07-28","sell":61.8,"ret_pct":-13.81,"pnl":-145253,"days":3},{"code":"3008","name":"大立光","buy_date":"2026-07-22","buy":4050.0,"shares":257,"sell_date":"2026-07-31","sell":4000.0,"ret_pct":-1.23,"pnl":-12850,"days":7},{"code":"2308","name":"台達電","buy_date":"2026-07-14","buy":1900.0,"shares":428,"sell_date":"2026-08-03","sell":1610.0,"ret_pct":-15.26,"pnl":-124120,"days":14},{"code":"2327","name":"國巨*","buy_date":"2026-08-03","buy":534.0,"shares":1783,"sell_date":"2026-08-07","sell":560.0,"ret_pct":4.87,"pnl":46358,"days":4},{"code":"2454","name":"聯發科","buy_date":"2026-07-31","buy":3555.0,"shares":273,"sell_date":"2026-08-14","sell":4400.0,"ret_pct":23.77,"pnl":230685,"days":10},{"code":"2303","name":"聯電","buy_date":"2026-08-07","buy":121.5,"shares":8216,"sell_date":"2026-08-25","sell":123.5,"ret_pct":1.65,"pnl":16432,"days":12},{"code":"6505","name":"台塑化","buy_date":"2026-07-28","buy":74.0,"shares":12941,"sell_date":"2026-08-31","sell":71.9,"ret_pct":-2.84,"pnl":-27176,"days":24}],"held":[{"code":"1303","name":"南亞","buy_date":"2026-08-14","buy":194.0,"shares":5385,"last_date":"2026-09-11","last":234.5,"ret_pct":20.88,"pnl":218092,"rank_now":1,"out_streak":0,"held_days":20},{"code":"3008","name":"大立光","buy_date":"2026-08-25","buy":5350.0,"shares":188,"last_date":"2026-09-11","last":6660.0,"ret_pct":24.49,"pnl":246280,"rank_now":4,"out_streak":0,"held_days":13},{"code":"2301","name":"光寶科","buy_date":"2026-08-31","buy":311.0,"shares":3524,"last_date":"2026-09-11","last":277.0,"ret_pct":-10.93,"pnl":-119816,"rank_now":9,"out_streak":1,"held_days":9}]},"jul":{"best":{"total_return_pct":12.02,"net_return_pct":10.03,"net_max_dd_pct":-19.28,"net_sharpe":1.03,"fees_total":19900.0,"buy_turnover_x":4.1,"n_trade_days":11,"n_days":53,"max_dd_pct":-18.64,"daily_sharpe_ann":1.17,"avg_exposure_pct":95.7,"n_round_trips":10,"win_rate":0.5,"avg_trade_ret_pct":0.1,"n_liq_filtered":23,"n_mkt_blocked":0,"n_kept":143,"n_stop_exits":0,"n_tp_exits":0,"curve":{"2026-06-30":0.0,"2026-07-01":-1.46,"2026-07-02":-2.02,"2026-07-03":-1.19,"2026-07-06":-7.6,"2026-07-07":-13.96,"2026-07-08":-10.03,"2026-07-09":-4.96,"2026-07-13":-0.35,"2026-07-14":1.0,"2026-07-15":6.35,"2026-07-16":2.59,"2026-07-17":-6.52,"2026-07-20":-10.94,"2026-07-21":-6.23,"2026-07-22":-1.33,"2026-07-23":-0.34,"2026-07-24":-4.72,"2026-07-27":-5.46,"2026-07-28":-11.13,"2026-07-29":-12.74,"2026-07-30":-14.16,"2026-07-31":-10.21,"2026-08-03":-5.47,"2026-08-04":-5.86,"2026-08-05":-4.04,"2026-08-06":-4.55,"2026-08-07":-5.93,"2026-08-10":-6.97,"2026-08-11":-6.04,"2026-08-12":-5.29,"2026-08-13":-2.9,"2026-08-14":1.57,"2026-08-17":0.3,"2026-08-18":-0.72,"2026-08-19":-4.58,"2026-08-20":-3.7,"2026-08-21":-1.24,"2026-08-24":-3.79,"2026-08-25":0.15,"2026-08-26":6.51,"2026-08-27":14.74,"2026-08-28":13.9,"2026-08-31":20.54,"2026-09-01":18.23,"2026-09-02":21.78,"2026-09-03":13.15,"2026-09-04":16.45,"2026-09-07":11.85,"2026-09-08":10.75,"2026-09-09":13.4,"2026-09-10":13.62,"2026-09-11":10.03},"monthly":{"2026-06":0.0,"2026-07":-10.21,"2026-08":34.25,"2026-09":-8.72}},"prev":{"total_return_pct":13.27,"net_return_pct":10.72,"net_max_dd_pct":-23.9,"net_sharpe":1.1,"fees_total":25464.0,"buy_turnover_x":5.1,"n_trade_days":13,"n_days":53,"max_dd_pct":-23.37,"daily_sharpe_ann":1.28,"avg_exposure_pct":94.2,"n_round_trips":13,"win_rate":0.538,"avg_trade_ret_pct":3.61,"n_liq_filtered":23,"n_mkt_blocked":0,"n_kept":85,"n_stop_exits":0,"n_tp_exits":0,"curve":{"2026-06-30":0.0,"2026-07-01":-1.46,"2026-07-02":-2.02,"2026-07-03":-1.19,"2026-07-06":-7.6,"2026-07-07":-15.09,"2026-07-08":-10.49,"2026-07-09":-7.29,"2026-07-13":-4.71,"2026-07-14":-3.24,"2026-07-15":4.06,"2026-07-16":-0.63,"2026-07-17":-9.11,"2026-07-20":-13.68,"2026-07-21":-8.46,"2026-07-22":-5.37,"2026-07-23":-4.71,"2026-07-24":-9.32,"2026-07-27":-9.77,"2026-07-28":-16.67,"2026-07-29":-20.81,"2026-07-30":-20.46,"2026-07-31":-14.15,"2026-08-03":-10.21,"2026-08-04":-8.17,"2026-08-05":-6.44,"2026-08-06":-6.78,"2026-08-07":-5.3,"2026-08-10":-4.69,"2026-08-11":-0.49,"2026-08-12":-1.85,"2026-08-13":1.34,"2026-08-14":-1.5,"2026-08-17":-3.24,"2026-08-18":-2.4,"2026-08-19":-3.96,"2026-08-20":-3.77,"2026-08-21":-3.25,"2026-08-24":-0.29,"2026-08-25":3.23,"2026-08-26":7.68,"2026-08-27":10.79,"2026-08-28":13.11,"2026-08-31":15.98,"2026-09-01":15.15,"2026-09-02":17.58,"2026-09-03":12.6,"2026-09-04":14.76,"2026-09-07":11.13,"2026-09-08":8.71,"2026-09-09":12.83,"2026-09-10":13.95,"2026-09-11":10.72},"monthly":{"2026-06":0.0,"2026-07":-14.15,"2026-08":35.1,"2026-09":-4.54}},"b0050":{"total_return_pct":-1.91,"max_dd_pct":-14.84,"curve":{"2026-06-30":0.0,"2026-07-01":-0.41,"2026-07-02":-0.91,"2026-07-03":-1.32,"2026-07-06":-1.41,"2026-07-07":-3.28,"2026-07-08":-3.42,"2026-07-09":-3.64,"2026-07-13":-3.46,"2026-07-14":-4.92,"2026-07-15":-3.19,"2026-07-16":-3.1,"2026-07-17":-8.79,"2026-07-20":-9.65,"2026-07-21":-6.65,"2026-07-22":-5.42,"2026-07-23":-5.37,"2026-07-24":-7.38,"2026-07-27":-7.6,"2026-07-28":-11.52,"2026-07-29":-14.66,"2026-07-30":-14.84,"2026-07-31":-6.33,"2026-08-03":-7.1,"2026-08-04":-8.33,"2026-08-05":-5.46,"2026-08-06":-5.92,"2026-08-07":-6.33,"2026-08-10":-5.05,"2026-08-11":-4.74,"2026-08-12":-4.19,"2026-08-13":-2.82,"2026-08-14":-3.1,"2026-08-17":-3.05,"2026-08-18":-4.46,"2026-08-19":-6.1,"2026-08-20":-5.46,"2026-08-21":-4.69,"2026-08-24":-5.46,"2026-08-25":-4.92,"2026-08-26":-3.55,"2026-08-27":-3.42,"2026-08-28":-2.6,"2026-08-31":-3.23,"2026-09-01":-1.23,"2026-09-02":-2.73,"2026-09-03":-3.28,"2026-09-04":-1.73,"2026-09-07":0.09,"2026-09-08":-0.14,"2026-09-09":-0.14,"2026-09-10":-0.59,"2026-09-11":-1.91},"monthly":{"2026-06":0.0,"2026-07":-6.33,"2026-08":3.31,"2026-09":1.36}},"ew":{"total_return_pct":7.2,"max_dd_pct":-6.3,"curve":{"2026-06-30":0.0,"2026-07-01":-0.97,"2026-07-02":-0.49,"2026-07-03":0.75,"2026-07-06":0.39,"2026-07-07":-1.56,"2026-07-08":-0.39,"2026-07-09":-1.04,"2026-07-13":-0.97,"2026-07-14":-1.43,"2026-07-15":0.44,"2026-07-16":0.46,"2026-07-17":-2.17,"2026-07-20":-3.17,"2026-07-21":-0.44,"2026-07-22":0.75,"2026-07-23":0.97,"2026-07-24":-0.53,"2026-07-27":-0.75,"2026-07-28":-3.72,"2026-07-29":-5.06,"2026-07-30":-5.39,"2026-07-31":-2.13,"2026-08-03":-2.14,"2026-08-04":-1.65,"2026-08-05":-0.36,"2026-08-06":-0.81,"2026-08-07":-0.64,"2026-08-10":0.66,"2026-08-11":0.55,"2026-08-12":0.97,"2026-08-13":1.27,"2026-08-14":1.79,"2026-08-17":1.6,"2026-08-18":1.58,"2026-08-19":1.22,"2026-08-20":1.51,"2026-08-21":2.74,"2026-08-24":2.26,"2026-08-25":3.13,"2026-08-26":3.47,"2026-08-27":4.21,"2026-08-28":4.51,"2026-08-31":5.96,"2026-09-01":7.45,"2026-09-02":7.18,"2026-09-03":6.34,"2026-09-04":7.76,"2026-09-07":7.81,"2026-09-08":7.28,"2026-09-09":8.04,"2026-09-10":7.66,"2026-09-11":7.2},"monthly":{"2026-06":0.0,"2026-07":-2.13,"2026-08":8.27,"2026-09":1.17}},"trades":[{"code":"2327","name":"國巨*","buy_date":"2026-07-01","buy":1200.0,"shares":277,"sell_date":"2026-07-07","sell":1000.0,"ret_pct":-16.67,"pnl":-55400,"days":4},{"code":"3711","name":"日月光投控","buy_date":"2026-07-07","buy":684.0,"shares":407,"sell_date":"2026-07-15","sell":660.0,"ret_pct":-3.51,"pnl":-9768,"days":6},{"code":"8046","name":"南電","buy_date":"2026-07-01","buy":1200.0,"shares":277,"sell_date":"2026-07-22","sell":1255.0,"ret_pct":4.58,"pnl":15235,"days":15},{"code":"1303","name":"南亞","buy_date":"2026-07-01","buy":177.5,"shares":1877,"sell_date":"2026-07-23","sell":210.5,"ret_pct":18.59,"pnl":61941,"days":16},{"code":"1326","name":"台化","buy_date":"2026-07-22","buy":68.8,"shares":4740,"sell_date":"2026-07-28","sell":61.8,"ret_pct":-10.17,"pnl":-33180,"days":4},{"code":"3008","name":"大立光","buy_date":"2026-07-15","buy":4370.0,"shares":61,"sell_date":"2026-07-31","sell":4000.0,"ret_pct":-8.47,"pnl":-22570,"days":12},{"code":"2454","name":"聯發科","buy_date":"2026-07-23","buy":3950.0,"shares":84,"sell_date":"2026-08-14","sell":4400.0,"ret_pct":11.39,"pnl":37800,"days":16},{"code":"2345","name":"智邦","buy_date":"2026-07-31","buy":2125.0,"shares":144,"sell_date":"2026-08-18","sell":2280.0,"ret_pct":7.29,"pnl":22320,"days":12},{"code":"2303","name":"聯電","buy_date":"2026-08-18","buy":122.5,"shares":2761,"sell_date":"2026-08-25","sell":123.5,"ret_pct":0.82,"pnl":2761,"days":5},{"code":"6505","name":"台塑化","buy_date":"2026-07-28","buy":74.0,"shares":4089,"sell_date":"2026-08-31","sell":71.9,"ret_pct":-2.84,"pnl":-8587,"days":24}],"held":[{"code":"1303","name":"南亞","buy_date":"2026-08-14","buy":194.0,"shares":1724,"last_date":"2026-09-11","last":234.5,"ret_pct":20.88,"pnl":69822,"held_days":20},{"code":"3008","name":"大立光","buy_date":"2026-08-25","buy":5350.0,"shares":60,"last_date":"2026-09-11","last":6660.0,"ret_pct":24.49,"pnl":78600,"held_days":13},{"code":"2301","name":"光寶科","buy_date":"2026-08-31","buy":311.0,"shares":1141,"last_date":"2026-09-11","last":277.0,"ret_pct":-10.93,"pnl":-38794,"held_days":9}]},"latest":{"date":"2026-09-10","top":[{"rank":1,"code":"1303","name":"南亞","p":0.6598},{"rank":2,"code":"2454","name":"聯發科","p":0.6195},{"rank":3,"code":"1326","name":"台化","p":0.6123},{"rank":4,"code":"3008","name":"大立光","p":0.6009},{"rank":5,"code":"6505","name":"台塑化","p":0.5713},{"rank":6,"code":"2379","name":"瑞昱","p":0.563},{"rank":7,"code":"2303","name":"聯電","p":0.5599},{"rank":8,"code":"2615","name":"萬海","p":0.5593},{"rank":9,"code":"2301","name":"光寶科","p":0.5399},{"rank":10,"code":"2886","name":"兆豐金","p":0.519}]},"model":{"tag":"x26-tw50-h5-cs","featset":"full_permpos","trained":"2026-09-11T02:47:14","pool":"tw50","n_stocks":50,"data":"yfinance 還原權息日 K(開高低收量),2016-01-04 起","label":"y_cs_h5","horizon":5,"split":{"train":["2016-01-04","2024-12-31"],"val":["2025-01-01","2025-12-31"],"test":["2026-01-02","2026-09-10"]},"n":{"train":109150,"val":11850,"test":8150,"scored":8400},"params":{"n_estimators":3000,"learning_rate":0.03,"max_depth":5,"min_child_weight":50,"subsample":0.8,"colsample_bytree":0.5,"reg_lambda":5.0,"reg_alpha":0.0,"tree_method":"hist","eval_metric":"logloss","early_stopping_rounds":100,"n_jobs":4},"seeds":[42,43,44],"corr_thr":0.95,"max_nan":0.3,"per_seed":[{"seed":42,"iter":190,"val_auc":0.557,"val_acc":0.54,"test_auc":0.5253,"test_acc":0.5139},{"seed":43,"iter":218,"val_auc":0.56,"val_acc":0.544,"test_auc":0.5314,"test_acc":0.5231},{"seed":44,"iter":254,"val_auc":0.5625,"val_acc":0.5451,"test_auc":0.5315,"test_acc":0.516}],"ens_test":{"acc":0.5156,"auc":0.5298,"pre_1":0.5181,"rec_1":0.4326,"f1_1":0.4715,"pre_0":0.5138,"rec_0":0.5984,"f1_0":0.5529,"prob_mean":0.4888,"prob_std":0.0597,"pred_up_ratio":0.4171,"f1_macro":0.5122,"acc_cov5":0.5872,"acc_cov10":0.5632,"acc_cov20":0.5583,"acc_cov50":0.5418},"decile":[17.68,32.58,42.32,104.94,95.96,62.03,31.29,70.79,74.72,197.17],"funnel":[{"step":"全部技術指標","n":242},{"step":"缺值 ≤ 30%、非常數","n":242},{"step":"高度相關去重(|ρ| > 0.95)","n":190},{"step":"驗證集排列重要性 > 0(permpos)","n":95}],"alt_auc":{"classic4":0.5181,"paper9":0.5375,"full":0.5271,"full_top20":0.5281,"full_permpos":0.5298},"families":{"動量":20,"波動":19,"趨勢":18,"橫斷面":11,"量能":9,"事件":8,"K 棒":7,"統計分布":3},"features":[{"i":1,"name":"close_pos","fam":"K 棒","desc":"收盤在當日高低區間的位置(0 = 收在最低,1 = 收在最高)","gain":2.999,"perm":10.748},{"i":2,"name":"mkt_roc_60","fam":"橫斷面","desc":"tw50 等權大盤近 60 日報酬(全部股票同值)","gain":1.525,"perm":1.353},{"i":3,"name":"mkt_roc_20","fam":"橫斷面","desc":"tw50 等權大盤近 20 日報酬(全部股票同值)","gain":1.461,"perm":0.863},{"i":4,"name":"cs_excess_roc_120","fam":"橫斷面","desc":"個股近 120 日報酬減去等權大盤同期報酬","gain":2.104,"perm":0.812},{"i":5,"name":"upper_shadow","fam":"K 棒","desc":"上影線長度 ÷ 當日振幅","gain":1.168,"perm":1.428},{"i":6,"name":"adx_28","fam":"趨勢","desc":"ADX(28):趨勢強度,不分方向","gain":1.138,"perm":0.933},{"i":7,"name":"ret_std_120","fam":"波動","desc":"近 120 日日報酬標準差","gain":1.376,"perm":0.608},{"i":8,"name":"gk_vol_20","fam":"波動","desc":"Garman-Klass 波動率(20 日)","gain":0.852,"perm":1.226},{"i":9,"name":"mdd_60","fam":"波動","desc":"近 60 日最大回撤","gain":0.968,"perm":0.738},{"i":10,"name":"parkinson_10","fam":"波動","desc":"Parkinson 高低價波動率(10 日)","gain":0.992,"perm":0.822},{"i":11,"name":"ema_ratio_120","fam":"趨勢","desc":"收盤相對 120 日 EMA 的乖離","gain":0.816,"perm":1.02},{"i":12,"name":"cs_excess_roc_5","fam":"橫斷面","desc":"個股近 5 日報酬減去等權大盤同期報酬","gain":0.773,"perm":0.946},{"i":13,"name":"bb_bw_20","fam":"波動","desc":"布林帶寬(20 日,4σ ÷ 中線)","gain":0.777,"perm":0.805},{"i":14,"name":"mkt_roc_5","fam":"橫斷面","desc":"tw50 等權大盤近 5 日報酬(全部股票同值)","gain":0.875,"perm":0.374},{"i":15,"name":"dist_high_60","fam":"波動","desc":"收盤距 60 日最高價的幅度","gain":0.506,"perm":0.964},{"i":16,"name":"cs_idio_std_60","fam":"橫斷面","desc":"扣除 tw50 等權大盤後的個股殘差報酬,60 日標準差","gain":0.849,"perm":0.327},{"i":17,"name":"lower_shadow","fam":"K 棒","desc":"下影線長度 ÷ 當日振幅","gain":0.491,"perm":1.178},{"i":18,"name":"atr_ratio_28","fam":"波動","desc":"ATR(28)÷ 收盤","gain":0.713,"perm":0.469},{"i":19,"name":"cs_rank_ret_std_60","fam":"橫斷面","desc":"當日在 tw50 中「60 日報酬波動」的百分位排名","gain":0.537,"perm":0.529},{"i":20,"name":"cs_beta_60","fam":"橫斷面","desc":"相對 tw50 等權大盤的 60 日 beta","gain":1.71,"perm":0.102},{"i":21,"name":"ulcer_14","fam":"波動","desc":"潰瘍指數(14):近 14 日回撤的均方根","gain":0.581,"perm":0.371},{"i":22,"name":"ret_std_20","fam":"波動","desc":"近 20 日日報酬標準差","gain":0.676,"perm":0.24},{"i":23,"name":"kurt_60","fam":"統計分布","desc":"近 60 日報酬峰態","gain":1.195,"perm":0.193},{"i":24,"name":"adx_14","fam":"趨勢","desc":"ADX(14):趨勢強度,不分方向","gain":0.707,"perm":0.339},{"i":25,"name":"lower_shadow_ma5","fam":"K 棒","desc":"下影線長度 ÷ 當日振幅,5 日平均","gain":0.434,"perm":0.446},{"i":26,"name":"ev_vol_vs_max20","fam":"事件","desc":"今日量 ÷ 過去 20 日最大量(> 1 為量創 20 日新高)","gain":0.539,"perm":0.234},{"i":27,"name":"bb_bw_60","fam":"波動","desc":"布林帶寬(60 日,4σ ÷ 中線)","gain":0.854,"perm":0.451},{"i":28,"name":"sma_cross_20_120","fam":"趨勢","desc":"20 日均線相對 120 日均線的差距","gain":0.779,"perm":0.365},{"i":29,"name":"sma_cross_10_60","fam":"趨勢","desc":"10 日均線相對 60 日均線的差距","gain":0.477,"perm":0.338},{"i":30,"name":"mdd_20","fam":"波動","desc":"近 20 日最大回撤","gain":0.506,"perm":0.345},{"i":31,"name":"ev_days_since_limit_up","fam":"事件","desc":"距離上次收漲停的交易日數(上限 20)","gain":0.232,"perm":0.715},{"i":32,"name":"stoch_d_60_3","fam":"動量","desc":"隨機指標 D 值(60, 3)","gain":0.607,"perm":0.365},{"i":33,"name":"cumret_ex1_60","fam":"統計分布","desc":"60 日前到昨天的累積報酬(不含今日)","gain":0.495,"perm":0.28},{"i":34,"name":"linreg_slope_60","fam":"趨勢","desc":"近 60 日收盤線性回歸斜率 ÷ 收盤","gain":0.835,"perm":0.013},{"i":35,"name":"gk_vol_5","fam":"波動","desc":"Garman-Klass 波動率(5 日)","gain":0.337,"perm":0.265},{"i":36,"name":"mdi_28","fam":"趨勢","desc":"−DI(28):下跌方向強度","gain":0.32,"perm":0.192},{"i":37,"name":"cs_excess_roc_10","fam":"橫斷面","desc":"個股近 10 日報酬減去等權大盤同期報酬","gain":0.423,"perm":0.212},{"i":38,"name":"ret_std_5","fam":"波動","desc":"近 5 日日報酬標準差","gain":0.248,"perm":0.292},{"i":39,"name":"ad_roc_10","fam":"量能","desc":"累積 / 派發線 10 日變化 ÷ 同期成交量","gain":0.359,"perm":0.15},{"i":40,"name":"vortex_neg_14","fam":"趨勢","desc":"Vortex 負向指標(14),下跌動能","gain":0.351,"perm":0.176},{"i":41,"name":"willr_28","fam":"動量","desc":"威廉指標 %R(28)","gain":0.337,"perm":0.183},{"i":42,"name":"sma_ratio_60","fam":"趨勢","desc":"收盤相對 60 日均線的乖離","gain":0.24,"perm":0.197},{"i":43,"name":"macd_hist_12_26_9","fam":"趨勢","desc":"MACD 柱狀體(12, 26, 9)÷ 收盤","gain":0.307,"perm":0.174},{"i":44,"name":"ev_amt_pctile250","fam":"事件","desc":"今日成交金額在過去一年的分位","gain":0.317,"perm":0.056},{"i":45,"name":"stochrsi_14","fam":"動量","desc":"StochRSI(14):RSI 在近 14 日區間的位置","gain":0.301,"perm":0.188},{"i":46,"name":"autocorr_20","fam":"統計分布","desc":"近 20 日報酬一階自相關","gain":0.532,"perm":0.014},{"i":47,"name":"dist_high_20","fam":"波動","desc":"收盤距 20 日最高價的幅度","gain":0.232,"perm":0.142},{"i":48,"name":"roc_20","fam":"動量","desc":"近 20 日報酬","gain":0.316,"perm":0.035},{"i":49,"name":"vol_ratio_5_60","fam":"波動","desc":"5 日報酬波動 ÷ 60 日報酬波動","gain":0.416,"perm":0.013},{"i":50,"name":"uo_7_14_28","fam":"動量","desc":"終極震盪指標 UO(7, 14, 28)","gain":0.255,"perm":0.105},{"i":51,"name":"donchian_pos_60","fam":"波動","desc":"收盤在 60 日唐奇安通道中的位置","gain":0.284,"perm":0.16},{"i":52,"name":"body_range","fam":"K 棒","desc":"K 棒實體(收盤 − 開盤)÷ 當日振幅,正值為紅 K","gain":0.458,"perm":0.155},{"i":53,"name":"ad_roc_20","fam":"量能","desc":"累積 / 派發線 20 日變化 ÷ 同期成交量","gain":0.248,"perm":0.193},{"i":54,"name":"dist_low_60","fam":"波動","desc":"收盤距 60 日最低價的幅度","gain":0.349,"perm":0.034},{"i":55,"name":"vol_sma_ratio_60","fam":"量能","desc":"今日量 ÷ 60 日均量 − 1","gain":0.237,"perm":0.2},{"i":56,"name":"cci_14","fam":"動量","desc":"CCI(14)","gain":0.161,"perm":0.164},{"i":57,"name":"vwap_ratio_5","fam":"量能","desc":"收盤相對 5 日量加權均價","gain":0.285,"perm":0.048},{"i":58,"name":"cs_rank_rsi_14","fam":"橫斷面","desc":"當日在 tw50 中「RSI(14)」的百分位排名","gain":0.216,"perm":0.107},{"i":59,"name":"cci_20","fam":"動量","desc":"CCI(20)","gain":0.222,"perm":0.186},{"i":60,"name":"rsi_28","fam":"動量","desc":"RSI(28)","gain":0.164,"perm":0.123},{"i":61,"name":"ao_5_34","fam":"動量","desc":"Awesome Oscillator(5, 34)÷ 收盤","gain":0.267,"perm":0.07},{"i":62,"name":"pdi_14","fam":"趨勢","desc":"+DI(14):上漲方向強度","gain":0.237,"perm":0.075},{"i":63,"name":"up_ratio_20","fam":"動量","desc":"近 20 日上漲天數比例","gain":0.173,"perm":0.168},{"i":64,"name":"donchian_pos_5","fam":"波動","desc":"收盤在 5 日唐奇安通道中的位置","gain":0.221,"perm":0.08},{"i":65,"name":"vol_sma_ratio_20","fam":"量能","desc":"今日量 ÷ 20 日均量 − 1","gain":0.209,"perm":0.053},{"i":66,"name":"ret_lag_2","fam":"動量","desc":"1 個交易日前的單日報酬","gain":0.168,"perm":0.142},{"i":67,"name":"force_13","fam":"量能","desc":"勁道指數 Force(13),以均量與收盤正規化","gain":0.289,"perm":0.082},{"i":68,"name":"ev_new_high_20","fam":"事件","desc":"收盤創 20 日新高(是 = 1)","gain":0.074,"perm":0.2},{"i":69,"name":"psar_dist","fam":"趨勢","desc":"收盤相對拋物線 SAR 的距離(÷ 收盤)","gain":0.195,"perm":0.057},{"i":70,"name":"cci_60","fam":"動量","desc":"CCI(60)","gain":0.207,"perm":0.061},{"i":71,"name":"mdi_14","fam":"趨勢","desc":"−DI(14):下跌方向強度","gain":0.181,"perm":0.047},{"i":72,"name":"vol_sma_ratio_10","fam":"量能","desc":"今日量 ÷ 10 日均量 − 1","gain":0.22,"perm":0.012},{"i":73,"name":"vol_sma_ratio_120","fam":"量能","desc":"今日量 ÷ 120 日均量 − 1","gain":0.198,"perm":0.027},{"i":74,"name":"up_ratio_10","fam":"動量","desc":"近 10 日上漲天數比例","gain":0.076,"perm":0.028},{"i":75,"name":"aroon_up_25","fam":"趨勢","desc":"Aroon 上升(25):近 25 日最高點出現得多近","gain":0.19,"perm":0.002},{"i":76,"name":"linreg_slope_5","fam":"趨勢","desc":"近 5 日收盤線性回歸斜率 ÷ 收盤","gain":0.171,"perm":0.008},{"i":77,"name":"ema_ratio_20","fam":"趨勢","desc":"收盤相對 20 日 EMA 的乖離","gain":0.071,"perm":0.071},{"i":78,"name":"gap","fam":"K 棒","desc":"開盤相對前一日收盤的跳空幅度","gain":0.144,"perm":0.003},{"i":79,"name":"ret_lag_4","fam":"動量","desc":"3 個交易日前的單日報酬","gain":0.056,"perm":0.056},{"i":80,"name":"donchian_pos_10","fam":"波動","desc":"收盤在 10 日唐奇安通道中的位置","gain":0.073,"perm":0.034},{"i":81,"name":"vol_sma_ratio_5","fam":"量能","desc":"今日量 ÷ 5 日均量 − 1","gain":0.106,"perm":0.015},{"i":82,"name":"roc_5","fam":"動量","desc":"近 5 日報酬","gain":0.062,"perm":0.054},{"i":83,"name":"ev_new_high_250","fam":"事件","desc":"收盤創 250 日新高(是 = 1)","gain":0.031,"perm":0.026},{"i":84,"name":"macd_signal_5_35_5","fam":"趨勢","desc":"MACD 訊號線(5, 35, 5)÷ 收盤","gain":0.116,"perm":0.03},{"i":85,"name":"cmo_14","fam":"動量","desc":"錢德動量擺盪 CMO(14)","gain":0.105,"perm":0.037},{"i":86,"name":"ev_bigmove5_cnt20","fam":"事件","desc":"近 20 日單日漲跌超過 5% 的次數","gain":0.091,"perm":0.084},{"i":87,"name":"cs_rank_vol_z_20","fam":"橫斷面","desc":"當日在 tw50 中「20 日量能 z 分數」的百分位排名","gain":0.065,"perm":0.003},{"i":88,"name":"rsi_6","fam":"動量","desc":"RSI(6)","gain":0.131,"perm":0.007},{"i":89,"name":"ret_lag_10","fam":"動量","desc":"9 個交易日前的單日報酬","gain":0.061,"perm":0.019},{"i":90,"name":"sma_ratio_10","fam":"趨勢","desc":"收盤相對 10 日均線的乖離","gain":0.05,"perm":0.029},{"i":91,"name":"up_ratio_5","fam":"動量","desc":"近 5 日上漲天數比例","gain":0.03,"perm":0.007},{"i":92,"name":"range_ratio","fam":"K 棒","desc":"當日振幅 ÷ 收盤價","gain":0.055,"perm":0.017},{"i":93,"name":"ev_new_high_60","fam":"事件","desc":"收盤創 60 日新高(是 = 1)","gain":0.03,"perm":0.017},{"i":94,"name":"ev_new_low_250","fam":"事件","desc":"收盤創 250 日新低(是 = 1)","gain":0.017,"perm":0.024},{"i":95,"name":"ret_lag_3","fam":"動量","desc":"2 個交易日前的單日報酬","gain":0.022,"perm":0.001}],"stocks":[{"code":"2330","name":"台積電"},{"code":"2317","name":"鴻海"},{"code":"2454","name":"聯發科"},{"code":"2412","name":"中華電"},{"code":"2308","name":"台達電"},{"code":"2382","name":"廣達"},{"code":"2881","name":"富邦金"},{"code":"2882","name":"國泰金"},{"code":"2891","name":"中信金"},{"code":"2303","name":"聯電"},{"code":"1301","name":"台塑"},{"code":"1303","name":"南亞"},{"code":"2002","name":"中鋼"},{"code":"3711","name":"日月光投控"},{"code":"2207","name":"和泰車"},{"code":"2886","name":"兆豐金"},{"code":"2884","name":"玉山金"},{"code":"2892","name":"第一金"},{"code":"2880","name":"華南金"},{"code":"2885","name":"元大金"},{"code":"2887","name":"台新新光金"},{"code":"5880","name":"合庫金"},{"code":"2890","name":"永豐金"},{"code":"1326","name":"台化"},{"code":"1101","name":"台泥"},{"code":"1102","name":"亞泥"},{"code":"2912","name":"統一超"},{"code":"2301","name":"光寶科"},{"code":"2357","name":"華碩"},{"code":"2395","name":"研華"},{"code":"3008","name":"大立光"},{"code":"2327","name":"國巨*"},{"code":"3045","name":"台灣大"},{"code":"4904","name":"遠傳"},{"code":"2379","name":"瑞昱"},{"code":"3034","name":"聯詠"},{"code":"2345","name":"智邦"},{"code":"2603","name":"長榮"},{"code":"2609","name":"陽明"},{"code":"2615","name":"萬海"},{"code":"5871","name":"中租-KY"},{"code":"2105","name":"正新"},{"code":"1216","name":"統一"},{"code":"2633","name":"台灣高鐵"},{"code":"9910","name":"豐泰"},{"code":"6505","name":"台塑化"},{"code":"2474","name":"可成"},{"code":"4938","name":"和碩"},{"code":"2347","name":"聯強"},{"code":"8046","name":"南電"}]},"grid_b":[{"N":3,"M":2,"net":185.49,"mdd":-24.26,"days":94,"jul":4.62},{"N":3,"M":3,"net":209.58,"mdd":-21.21,"days":67,"jul":11.36},{"N":3,"M":5,"net":189.15,"mdd":-20.01,"days":51,"jul":10.77},{"N":5,"M":2,"net":162.12,"mdd":-20.1,"days":56,"jul":1.57},{"N":5,"M":3,"net":197.74,"mdd":-22.61,"days":45,"jul":3.59},{"N":5,"M":5,"net":122.72,"mdd":-32.44,"days":29,"jul":-13.75},{"N":8,"M":2,"net":237.41,"mdd":-20.35,"days":30,"jul":10.03},{"N":8,"M":3,"net":194.54,"mdd":-22.47,"days":23,"jul":-1.33},{"N":8,"M":5,"net":121.32,"mdd":-36.99,"days":14,"jul":-16.3},{"N":10,"M":2,"net":235.23,"mdd":-21.88,"days":25,"jul":8.4},{"N":10,"M":3,"net":162.52,"mdd":-29.37,"days":18,"jul":1.61},{"N":10,"M":5,"net":132.42,"mdd":-34.27,"days":11,"jul":-5.43}],"families_cmp":[{"fam":"A 放寬名次","n":6,"mean":161.8,"best":202.71,"jul_mean":0.9},{"fam":"B 連續掉出","n":12,"mean":179.2,"best":237.41,"jul_mean":1.3},{"fam":"C 平滑分數","n":15,"mean":175.6,"best":239.87,"jul_mean":-1.2}],"path":[{"stage":"KLINE K 線型態(系統 A)","setting":"1 日 7 特徵,訊號做多持有 5 日","net":null,"gross":26.15,"note":"框架未扣成本;平均只有四成資金在場"},{"stage":"Chart-GCN(系統 B)","setting":"gridbest h=5,前 10% 每 5 日換","net":null,"gross":47.89,"note":"框架未扣成本;模型輸出近乎常數,排序不可信"},{"stage":"XGB + 交易邏輯","setting":"5 日檢視、抱 5 檔、大盤濾網、前 10 名續抱、3×ATR 停損 + 30% 停利","net":113.3,"gross":null,"note":"5 種起跑日平均"},{"stage":"XGB 只有模型","setting":"5 日檢視、抱 5 檔、每次全換","net":160.4,"gross":null,"note":"5 種起跑日平均,範圍 +106% ~ +213%"},{"stage":"上一版","setting":"每日檢視、抱 3 檔、掉出前 3 名且抱滿 10 日才換","net":205.04,"gross":null,"note":"7/1 起 +10.7%"},{"stage":"最佳系統","setting":"每日檢視、抱 3 檔、掉出前 8 名連續 2 天才換","net":237.41,"gross":null,"note":"前 10 名 / 連 2 天也有 +235%;7/1 起 +10.0%"}],"years":{"2021":{"year":2021,"start":"20210104","end":"20211230","n_days":243,"0050":{"ret":20.01,"mdd":-10.44},"tw50等權":{"ret":40.34,"mdd":-14.15},"v3":{"ret":26.53,"gross":72.28,"mdd":-24.14,"sharpe":0.86,"trade_days":134,"trips":167,"win":0.635,"fees":457450.0,"exposure":98.5},"前10名連2天":{"ret":16.21,"gross":52.92,"mdd":-19.96,"sharpe":0.65,"trade_days":119,"trips":144,"win":0.597,"fees":367030.0,"exposure":98.6},"前8名連3天":{"ret":101.9,"gross":135.49,"mdd":-16.12,"sharpe":2.43,"trade_days":89,"trips":99,"win":0.667,"fees":335960.0,"exposure":98.2},"抱5檔":{"ret":39.53,"gross":99.45,"mdd":-22.3,"sharpe":1.26,"trade_days":197,"trips":338,"win":0.642,"fees":599242.0,"exposure":98.6},"上一版":{"ret":125.9,"gross":148.41,"mdd":-20.95,"sharpe":2.63,"trade_days":57,"trips":67,"win":0.687,"fees":225145.0,"exposure":98.6},"5日前5檔全換":{"ret":31.28,"gross":69.3,"mdd":-20.49,"sharpe":1.18,"trade_days":49,"trips":240,"win":0.633,"fees":380179.0,"exposure":99.6},"5日前5檔續抱前10":{"ret":47.37,"gross":72.01,"mdd":-19.98,"sharpe":1.72,"trade_days":49,"trips":150,"win":0.64,"fees":246427.0,"exposure":99.1},"model":{"tag":"x21-tw50-h5-cs","train_end":"2019-12-31","val_end":"2020-12-31","n_feat":87,"auc":0.5279,"iters":[206,230,197]}},"2022":{"year":2022,"start":"20220103","end":"20221230","n_days":246,"0050":{"ret":-22.39,"mdd":-33.83},"tw50等權":{"ret":-11.0,"mdd":-18.73},"v3":{"ret":-15.57,"gross":0.39,"mdd":-46.5,"sharpe":-0.18,"trade_days":59,"trips":72,"win":0.556,"fees":159538.0,"exposure":95.1},"前10名連2天":{"ret":-6.77,"gross":4.67,"mdd":-42.75,"sharpe":0.03,"trade_days":48,"trips":52,"win":0.615,"fees":114381.0,"exposure":94.6},"前8名連3天":{"ret":0.04,"gross":6.9,"mdd":-44.88,"sharpe":0.19,"trade_days":28,"trips":31,"win":0.645,"fees":68556.0,"exposure":94.3},"抱5檔":{"ret":-34.36,"gross":-16.34,"mdd":-50.74,"sharpe":-0.9,"trade_days":112,"trips":154,"win":0.539,"fees":180260.0,"exposure":94.3},"上一版":{"ret":-12.59,"gross":-0.25,"mdd":-41.17,"sharpe":-0.14,"trade_days":53,"trips":60,"win":0.55,"fees":123425.0,"exposure":98.0},"5日前5檔全換":{"ret":-37.01,"gross":-9.63,"mdd":-47.46,"sharpe":-0.93,"trade_days":49,"trips":239,"win":0.456,"fees":273767.0,"exposure":99.6},"5日前5檔續抱前10":{"ret":-13.07,"gross":-3.74,"mdd":-37.96,"sharpe":-0.24,"trade_days":36,"trips":77,"win":0.571,"fees":93294.0,"exposure":93.7},"model":{"tag":"x22-tw50-h5-cs","train_end":"2020-12-31","val_end":"2021-12-31","n_feat":98,"auc":0.5267,"iters":[149,152,187]}},"2023":{"year":2023,"start":"20230103","end":"20231229","n_days":239,"0050":{"ret":27.4,"mdd":-7.06},"tw50等權":{"ret":30.18,"mdd":-5.86},"v3":{"ret":3.65,"gross":25.88,"mdd":-20.51,"sharpe":0.27,"trade_days":85,"trips":101,"win":0.634,"fees":222335.0,"exposure":99.0},"前10名連2天":{"ret":3.55,"gross":21.86,"mdd":-22.17,"sharpe":0.27,"trade_days":75,"trips":84,"win":0.56,"fees":183074.0,"exposure":98.4},"前8名連3天":{"ret":-10.26,"gross":-0.95,"mdd":-26.07,"sharpe":-0.3,"trade_days":45,"trips":47,"win":0.511,"fees":93081.0,"exposure":99.2},"抱5檔":{"ret":-2.34,"gross":30.5,"mdd":-18.73,"sharpe":-0.02,"trade_days":165,"trips":242,"win":0.599,"fees":328475.0,"exposure":98.1},"上一版":{"ret":-11.84,"gross":0.64,"mdd":-23.31,"sharpe":-0.69,"trade_days":53,"trips":63,"win":0.556,"fees":124805.0,"exposure":99.2},"5日前5檔全換":{"ret":-12.94,"gross":16.07,"mdd":-22.39,"sharpe":-0.62,"trade_days":48,"trips":235,"win":0.545,"fees":290099.0,"exposure":99.6},"5日前5檔續抱前10":{"ret":7.91,"gross":21.04,"mdd":-17.06,"sharpe":0.51,"trade_days":46,"trips":107,"win":0.561,"fees":131350.0,"exposure":98.9},"model":{"tag":"x23-tw50-h5-cs","train_end":"2021-12-31","val_end":"2022-12-31","n_feat":71,"auc":0.5391,"iters":[6,15,14]}},"2024":{"year":2024,"start":"20240102","end":"20241231","n_days":242,"0050":{"ret":50.59,"mdd":-21.3},"tw50等權":{"ret":11.68,"mdd":-11.06},"v3":{"ret":-18.79,"gross":5.22,"mdd":-27.0,"sharpe":-0.58,"trade_days":102,"trips":116,"win":0.664,"fees":240079.0,"exposure":98.1},"前10名連2天":{"ret":-18.96,"gross":-1.63,"mdd":-27.85,"sharpe":-0.65,"trade_days":79,"trips":87,"win":0.655,"fees":173235.0,"exposure":98.3},"前8名連3天":{"ret":-26.0,"gross":-16.36,"mdd":-35.08,"sharpe":-1.11,"trade_days":49,"trips":52,"win":0.442,"fees":96434.0,"exposure":98.9},"抱5檔":{"ret":-10.78,"gross":24.6,"mdd":-24.5,"sharpe":-0.31,"trade_days":170,"trips":263,"win":0.65,"fees":353777.0,"exposure":98.2},"上一版":{"ret":-6.7,"gross":6.62,"mdd":-18.5,"sharpe":-0.14,"trade_days":52,"trips":65,"win":0.569,"fees":133152.0,"exposure":99.0},"5日前5檔全換":{"ret":-3.31,"gross":29.68,"mdd":-20.85,"sharpe":-0.01,"trade_days":49,"trips":240,"win":0.571,"fees":329968.0,"exposure":99.6},"5日前5檔續抱前10":{"ret":5.65,"gross":20.63,"mdd":-13.01,"sharpe":0.38,"trade_days":45,"trips":110,"win":0.582,"fees":149879.0,"exposure":98.8},"model":{"tag":"x24-tw50-h5-cs","train_end":"2022-12-31","val_end":"2023-12-31","n_feat":72,"auc":0.5421,"iters":[14,17,37]}},"2025":{"year":2025,"start":"20250102","end":"20251231","n_days":242,"0050":{"ret":36.68,"mdd":-27.48},"tw50等權":{"ret":16.15,"mdd":-20.51},"v3":{"ret":8.17,"gross":39.84,"mdd":-32.89,"sharpe":0.41,"trade_days":119,"trips":135,"win":0.6,"fees":316632.0,"exposure":97.9},"前10名連2天":{"ret":-19.12,"gross":2.77,"mdd":-36.48,"sharpe":-0.45,"trade_days":89,"trips":103,"win":0.544,"fees":218932.0,"exposure":98.0},"前8名連3天":{"ret":6.66,"gross":26.36,"mdd":-32.84,"sharpe":0.36,"trade_days":81,"trips":90,"win":0.622,"fees":196966.0,"exposure":97.9},"抱5檔":{"ret":-5.3,"gross":30.33,"mdd":-31.73,"sharpe":-0.03,"trade_days":178,"trips":263,"win":0.57,"fees":356271.0,"exposure":97.6},"上一版":{"ret":8.14,"gross":22.94,"mdd":-28.44,"sharpe":0.41,"trade_days":59,"trips":67,"win":0.597,"fees":147987.0,"exposure":98.1},"5日前5檔全換":{"ret":4.63,"gross":36.43,"mdd":-26.8,"sharpe":0.3,"trade_days":49,"trips":235,"win":0.523,"fees":318017.0,"exposure":97.5},"5日前5檔續抱前10":{"ret":31.12,"gross":47.86,"mdd":-26.71,"sharpe":1.09,"trade_days":47,"trips":117,"win":0.59,"fees":167425.0,"exposure":97.0},"model":{"tag":"x25-tw50-h5-cs","train_end":"2023-12-31","val_end":"2024-12-31","n_feat":90,"auc":0.5287,"iters":[241,272,265]}},"2026":{"year":2026,"start":"20260102","end":"20260910","n_days":168,"0050":{"ret":64.28,"mdd":-15.37},"tw50等權":{"ret":64.47,"mdd":-11.44},"v3":{"ret":252.88,"gross":264.67,"mdd":-20.36,"sharpe":3.44,"trade_days":30,"trips":29,"win":0.655,"fees":117917.0,"exposure":98.0},"前10名連2天":{"ret":228.54,"gross":237.47,"mdd":-24.84,"sharpe":3.26,"trade_days":26,"trips":25,"win":0.64,"fees":89255.0,"exposure":97.4},"前8名連3天":{"ret":207.53,"gross":216.03,"mdd":-26.42,"sharpe":3.11,"trade_days":23,"trips":22,"win":0.636,"fees":85056.0,"exposure":98.2},"抱5檔":{"ret":178.65,"gross":192.04,"mdd":-23.16,"sharpe":3.22,"trade_days":62,"trips":68,"win":0.603,"fees":133878.0,"exposure":97.5},"上一版":{"ret":214.8,"gross":231.87,"mdd":-17.3,"sharpe":3.33,"trade_days":32,"trips":39,"win":0.564,"fees":170720.0,"exposure":97.4},"5日前5檔全換":{"ret":209.11,"gross":248.63,"mdd":-22.21,"sharpe":3.6,"trade_days":34,"trips":165,"win":0.594,"fees":395149.0,"exposure":99.3},"5日前5檔續抱前10":{"ret":171.57,"gross":181.61,"mdd":-30.26,"sharpe":3.18,"trade_days":26,"trips":50,"win":0.6,"fees":100367.0,"exposure":98.0},"model":{"tag":"x26-tw50-h5-cs","train_end":"2024-12-31","val_end":"2025-12-31"}}},"years_model":[{"year":2021,"auc":0.5433,"top5":55.6,"bot5":37.1,"ew":37.3},{"year":2022,"auc":0.5074,"top5":2.1,"bot5":-17.5,"ew":-6.9},{"year":2023,"auc":0.524,"top5":14.7,"bot5":1.7,"ew":25.9},{"year":2024,"auc":0.5582,"top5":33.8,"bot5":-8.9,"ew":9.9},{"year":2025,"auc":0.5375,"top5":37.3,"bot5":-10.3,"ew":19.2},{"year":2026,"auc":0.5298,"top5":238.8,"bot5":11.7,"ew":60.8}]};
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const pct = (v, d = 1) => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d) + "%";
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+const num = v => v.toLocaleString("zh-TW", {maximumFractionDigits: 2});
+const md = s => s.slice(5).replace("-", "/");
+const $ = id => document.getElementById(id);
+const F = D.full, J = D.jul, B = F.best, M = D.model;
+const YRS = ["2021", "2022", "2023", "2024", "2025"].filter(y => D.years[y]);
+const geo = k => (Math.pow(YRS.reduce((a, y) => a * (1 + D.years[y][k].ret / 100), 1), 1 / YRS.length) - 1) * 100;
+const YR = {v3: geo("v3"), ew: geo("tw50等權"), b0050: geo("0050"), prev: geo("上一版"), alt: geo("5日前5檔續抱前10")};
+
+$("lede").innerHTML = `全年扣成本 <b class="up">${pct(B.net_return_pct)}</b>,同期 0050 ${pct(F.b0050.total_return_pct)}、tw50 等權 ${pct(F.ew.total_return_pct)}。` +
+  `一年 ${B.n_days} 個交易日只有 ${B.n_trade_days} 天需要下單。<b>但把同一套系統放回 2021–2025 年,5 年都輸給 tw50 等權,年化約 ${pct(YR.v3)} 對 ${pct(YR.ew)};2026 的成績很可能是這一年特有的。</b>`;
+
+$("board").innerHTML = [
+  ["全年報酬(扣成本)", pct(B.net_return_pct), `0050 ${pct(F.b0050.total_return_pct)}`, "up"],
+  ["最大回撤", pct(B.net_max_dd_pct), `0050 ${pct(F.b0050.max_dd_pct)}`, "down"],
+  ["Sharpe(扣成本)", B.net_sharpe.toFixed(2), "年化,日報酬計", ""],
+  ["下單天數", `${B.n_trade_days}<small style="font-size:22px;color:var(--ink-3)"> / ${B.n_days}</small>`, `${B.n_round_trips} 筆已結清,勝率 ${(B.win_rate * 100).toFixed(0)}%`, ""],
+  ["7/1 起全新起跑", pct(J.best.net_return_pct), `tw50 等權 ${pct(J.ew.total_return_pct)}`, "up"],
+].map(([k, v, s, c]) => `<div><span class="k">${k}</span><span class="v ${c}">${v}</span><span class="s">${s}</span></div>`).join("");
+
+/* ── 資產走勢 ── */
+const SERIES = [
+  {key: "best", label: "最佳系統(扣成本)", color: "--s-sys", w: 2.5},
+  {key: "prev", label: "上一版(扣成本)", color: "--s-prev", w: 1.6, dash: true},
+  {key: "b0050", label: "0050 買進持有", color: "--s-0050", w: 2},
+  {key: "ew", label: "tw50 等權買進持有", color: "--s-ew", w: 2},
+];
+let win = "full";
+const vis = new Set(["best", "prev", "b0050", "ew"]);
+function drawEq() {
+  const W = 960, H = 380, m = {t: 16, r: 124, b: 30, l: 52}, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const src = D[win], dates = Object.keys(src.best.curve).sort(), on = SERIES.filter(s => vis.has(s.key));
+  const data = Object.fromEntries(SERIES.map(s => { let last = 0; return [s.key, dates.map(d => { const v = src[s.key].curve[d]; if (v != null) last = v; return last; })]; }));
+  let lo = 0, hi = 0; on.forEach(s => data[s.key].forEach(v => { lo = Math.min(lo, v); hi = Math.max(hi, v); }));
+  const span = hi - lo || 1; lo -= span * .05; hi += span * .06;
+  const raw = span / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= raw);
+  const x = i => m.l + i / Math.max(1, dates.length - 1) * iw, y = v => m.t + (hi - v) / (hi - lo) * ih;
+  let g = "";
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    g += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y(v)}" y2="${y(v)}" stroke="${css(Math.abs(v) < 1e-9 ? "--ink-3" : "--grid")}" ${Math.abs(v) < 1e-9 ? 'stroke-dasharray="3 3"' : ""}/>`;
+    g += `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v > 0 ? "+" : ""}${+v.toFixed(1)}%</text>`;
+  }
+  const seen = new Set();
+  dates.forEach((d, i) => { const k = d.slice(0, 7); if (!seen.has(k)) { seen.add(k); g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${+d.slice(5, 7)}月</text>`; } });
+  let p = "", labs = [];
+  on.forEach(s => {
+    const col = css(s.color), arr = data[s.key];
+    p += `<path d="${arr.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join("")}" fill="none" stroke="${col}" stroke-width="${s.w}" ${s.dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lv = arr[arr.length - 1];
+    p += `<circle cx="${x(arr.length - 1)}" cy="${y(lv)}" r="4" fill="${col}" stroke="${css("--surface")}" stroke-width="2"/>`;
+    labs.push({s, lv, yy: y(lv)});
+  });
+  labs.sort((a, b) => a.yy - b.yy);
+  for (let i = 1; i < labs.length; i++) if (labs[i].yy - labs[i - 1].yy < 30) labs[i].yy = labs[i - 1].yy + 30;
+  labs.forEach(l => { p += `<text x="${m.l + iw + 10}" y="${l.yy + 1}" style="font-size:13px;font-weight:500;fill:${css("--ink")}">${pct(l.lv)}</text><text x="${m.l + iw + 10}" y="${l.yy + 15}" style="font-size:10.5px;font-family:var(--font-text)">${l.s.label.replace("(扣成本)", "")}</text>`; });
+  const svg = $("eq");
+  svg.innerHTML = g + p + `<line id="xh" y1="${m.t}" y2="${m.t + ih}" stroke="${css("--ink-3")}" style="display:none"/><rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+  const tip = $("eqTip"), xh = $("xh"), panel = $("eqPanel");
+  svg.onmousemove = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(dates.length - 1, Math.round((px - m.l) / iw * (dates.length - 1))));
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.style.display = "";
+    tip.innerHTML = `<b>${dates[i].replaceAll("-", "/")}</b><br>` + on.map(s => `<span style="color:${css(s.color)}">━</span> ${s.label} <b>${pct(data[s.key][i])}</b>`).join("<br>");
+    tip.style.display = "block";
+    const pr = panel.getBoundingClientRect(); let tx = e.clientX - pr.left + 14; if (tx + tip.offsetWidth > pr.width - 8) tx = e.clientX - pr.left - tip.offsetWidth - 14;
+    tip.style.left = tx + "px"; tip.style.top = (e.clientY - pr.top + 12) + "px";
+  };
+  svg.onmouseleave = () => { tip.style.display = "none"; xh.style.display = "none"; };
+  $("eqLegend").innerHTML = SERIES.map(s => `<button type="button" id="lg-${s.key}" aria-pressed="${vis.has(s.key)}"><i class="${s.dash ? "dash" : ""}" style="--c:${css(s.color)}"></i>${s.label}</button>`).join("");
+  SERIES.forEach(s => $("lg-" + s.key).onclick = () => { if (vis.has(s.key)) { if (vis.size > 1) vis.delete(s.key); } else vis.add(s.key); drawEq(); });
+  $("eqCap").textContent = win === "full"
+    ? `4 月單月 ${pct(B.monthly["2026-04"])} 是全年最大貢獻;3 月、7 月、9 月跟著大盤回檔。`
+    : `7/1 開盤滿倉買進。這段最大回撤 ${pct(J.best.net_max_dd_pct)},0050 同期 ${pct(J.b0050.max_dd_pct)}。`;
+}
+function setWin(w) { win = w; $("tab-full").setAttribute("aria-pressed", w === "full"); $("tab-jul").setAttribute("aria-pressed", w === "jul"); drawEq(); }
+$("tab-full").onclick = () => setWin("full"); $("tab-jul").onclick = () => setWin("jul");
+
+/* ── 每月、比上一版 ── */
+(function () {
+  const ms = Object.keys(B.monthly);
+  $("monthly").innerHTML = `<thead><tr><th>月份</th><th class="n">最佳系統</th><th class="n">上一版</th><th class="n">0050</th><th class="n">tw50 等權</th></tr></thead><tbody>` +
+    ms.map(m => `<tr><td>${+m.slice(5)} 月</td>` + [B.monthly[m], F.prev.monthly[m], F.b0050.monthly[m], F.ew.monthly[m]].map(v => `<td class="n ${cls(v)}">${pct(v)}</td>`).join("") + "</tr>").join("") + "</tbody>" +
+    `<tfoot><tr><td><b>合計</b></td>` + [B.net_return_pct, F.prev.net_return_pct, F.b0050.total_return_pct, F.ew.total_return_pct].map((v, i) => `<td class="n ${cls(v)}">${i ? pct(v) : `<b>${pct(v)}</b>`}</td>`).join("") + "</tr></tfoot>";
+  const P = F.prev, rows = [
+    ["賣出規則", "連續 2 天在前 8 名外", "掉出前 3 名且抱滿 10 天"],
+    ["全年報酬(扣成本)", pct(B.net_return_pct), pct(P.net_return_pct)],
+    ["最大回撤", pct(B.net_max_dd_pct), pct(P.net_max_dd_pct)],
+    ["Sharpe", B.net_sharpe.toFixed(2), P.net_sharpe.toFixed(2)],
+    ["下單天數", B.n_trade_days + " 天", P.n_trade_days + " 天"],
+    ["已結清交易 / 勝率", `${B.n_round_trips} 筆 / ${(B.win_rate * 100).toFixed(0)}%`, `${P.n_round_trips} 筆 / ${(P.win_rate * 100).toFixed(0)}%`],
+    ["一年手續費 + 稅", `${Math.round(B.fees_total).toLocaleString()} 元`, `${Math.round(P.fees_total).toLocaleString()} 元`],
+    ["7/1 起全新起跑", pct(J.best.net_return_pct), pct(J.prev.net_return_pct)],
+  ];
+  $("vsprev").innerHTML = `<thead><tr><th></th><th class="n">最佳系統</th><th class="n">上一版</th></tr></thead><tbody>` + rows.map(r => `<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td class="n" style="color:var(--ink-2)">${r[2]}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 前幾年 ── */
+(function () {
+  const ys = Object.keys(D.years).sort(), V = [["v3", "最佳系統 v3"], ["上一版", "上一版"], ["5日前5檔續抱前10", "5 日換、抱 5 檔、前 10 名續抱"], ["0050", "0050"], ["tw50等權", "tw50 等權"]];
+  const cell = (y, k) => { const r = D.years[y][k]; return `<td class="n ${cls(r.ret)}">${pct(r.ret)}</td>`; };
+  $("yearsTbl").innerHTML = `<thead><tr><th>年份</th>${V.map(v => `<th class="n">${v[1]}</th>`).join("")}<th class="n">v3 最大回撤</th><th class="n">v3 下單天數</th><th>模型訓練 / 驗證</th></tr></thead><tbody>` +
+    ys.map(y => { const r = D.years[y], m = r.model; return `<tr class="${y === "2026" ? "pick" : ""}"><td>${y}${y === "2026" ? "(選規則的年份)" : ""}</td>${V.map(v => cell(y, v[0])).join("")}<td class="n">${pct(r.v3.mdd)}</td><td class="n">${r.v3.trade_days} 天</td><td class="fig" style="color:var(--ink-3)">≤${m.train_end.slice(0, 4)} / ${m.val_end.slice(0, 4)}</td></tr>`; }).join("") +
+    `</tbody><tfoot><tr><td><b>2021–2025 年化</b></td>${[YR.v3, YR.prev, YR.alt, YR.b0050, YR.ew].map(v => `<td class="n ${cls(v)}"><b>${pct(v)}</b></td>`).join("")}<td></td><td></td><td></td></tr></tfoot>`;
+  const MD = D.years_model || [];
+  $("yearsModel").innerHTML = `<thead><tr><th>年份</th><th class="n">AUC</th><th class="n">前 5 名</th><th class="n">後 5 名</th><th class="n">等權</th></tr></thead><tbody>` +
+    MD.map(r => `<tr class="${r.year === 2026 ? "pick" : ""}"><td>${r.year}</td><td class="n">${r.auc.toFixed(3)}</td><td class="n ${cls(r.top5)}">${pct(r.top5)}</td><td class="n ${cls(r.bot5)}">${pct(r.bot5)}</td><td class="n ${cls(r.ew)}">${pct(r.ew)}</td></tr>`).join("") + "</tbody>";
+  $("yearsNotes").innerHTML = [
+    `<li><b>模型有一點選股能力,但很弱。</b>各年 AUC 0.51–0.56,前 5 名多數年份贏等權,後 5 名每年都輸。</li>`,
+    `<li><b>交易規則是在 2026 挑出來的。</b>只抱 3 檔、不設停損,在 2026 這種少數強勢股帶動的大多頭最吃香;其他年份扣掉成本就追不上等權。</li>`,
+    `<li><b>2023、2024 的模型很弱。</b>驗證年(2022、2023)幾乎沒有訊號,模型只訓練了 6–37 棵樹就停止,排名接近隨機。</li>`,
+    `<li><b>跨年最穩的是「5 日換、抱 5 檔、前 10 名續抱」</b>,2021–2025 年化 ${pct(YR.alt)},仍輸 tw50 等權 ${pct(YR.ew)} 與 0050 ${pct(YR.b0050)}。</li>`,
+  ].join("");
+})();
+
+/* ── 模型 ── */
+(function () {
+  const S = M.split, P = M.params;
+  $("spec").innerHTML = `<dl>
+    <dt>模型版本</dt><dd><span class="mono">${M.tag}</span> / <span class="mono">${M.featset}</span><small>訓練完成 ${M.trained.replace("T", " ")}</small></dd>
+    <dt>演算法</dt><dd>XGBoost 二元分類(XGBClassifier)<small>3 個隨機種子各訓練一個,預測機率取平均</small></dd>
+    <dt>預測目標</dt><dd>未來 ${M.horizon} 個交易日的報酬,是否高於同一天 tw50 的中位數<small>標籤 <span class="mono">${M.label}</span>;是 = 1、否 = 0,所以每天約一半股票是 1</small></dd>
+    <dt>資料</dt><dd>${M.data}<small>tw50 共 ${M.n_stocks} 檔,日資料截至 2026-09-10</small></dd>
+  </dl><dl>
+    <dt>訓練期</dt><dd>${S.train[0]} ~ ${S.train[1]}<small>${M.n.train.toLocaleString()} 筆(股票 × 交易日),尾端扣掉 ${M.horizon} 天避免標籤跨進驗證期</small></dd>
+    <dt>驗證期</dt><dd>${S.val[0]} ~ ${S.val[1]}<small>${M.n.val.toLocaleString()} 筆;用來提早停止訓練與計算特徵重要性</small></dd>
+    <dt>測試期</dt><dd>${S.test[0]} ~ ${S.test[1]}<small>${M.n.test.toLocaleString()} 筆有 5 日答案可評分;回測用的是全部 ${M.n.scored.toLocaleString()} 筆</small></dd>
+    <dt>篩選設定</dt><dd>缺值上限 ${M.max_nan * 100}%、相關去重門檻 |ρ| > ${M.corr_thr}<small>保留規則 permpos:驗證集排列重要性 > 0</small></dd>
+  </dl>`;
+  const PD = {n_estimators: ["樹的數量上限", "搭配提早停止,實際只用到約 200 棵"], learning_rate: ["學習率", "每棵樹的修正幅度"], max_depth: ["最大深度", "每棵樹最多分幾層"],
+    min_child_weight: ["葉節點最小權重", "避免用太少樣本做判斷"], subsample: ["列抽樣比例", "每棵樹隨機用 80% 的資料"], colsample_bytree: ["欄抽樣比例", "每棵樹隨機用 50% 的特徵"],
+    reg_lambda: ["L2 正則化", "壓抑過大的葉節點權重"], reg_alpha: ["L1 正則化", "未使用"], tree_method: ["建樹方法", "直方圖近似,速度快"], eval_metric: ["驗證指標", "驗證集的 log loss"],
+    early_stopping_rounds: ["提早停止", "驗證 log loss 連續 100 棵沒改善就停"], n_jobs: ["平行執行緒", "受本機分頁檔限制設為 4"]};
+  $("params").innerHTML = `<thead><tr><th>參數</th><th class="n">值</th><th>意思</th></tr></thead><tbody>` +
+    Object.entries(PD).map(([k, [zh, ex]]) => `<tr><td>${zh}<br><span class="mono" style="color:var(--ink-3)">${k}</span></td><td class="n">${P[k]}</td><td class="wrap" style="color:var(--ink-2)">${ex}</td></tr>`).join("") + "</tbody>";
+  $("seeds").innerHTML = `<thead><tr><th>seed</th><th class="n">實際樹數</th><th class="n">驗證 AUC</th><th class="n">驗證準確率</th><th class="n">測試 AUC</th><th class="n">測試準確率</th></tr></thead><tbody>` +
+    M.per_seed.map(s => `<tr><td class="fig">${s.seed}</td><td class="n">${s.iter}</td><td class="n">${s.val_auc.toFixed(4)}</td><td class="n">${(s.val_acc * 100).toFixed(1)}%</td><td class="n">${s.test_auc.toFixed(4)}</td><td class="n">${(s.test_acc * 100).toFixed(1)}%</td></tr>`).join("") +
+    `</tbody><tfoot><tr><td><b>3 seed 平均機率</b></td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n"><b>${M.ens_test.auc.toFixed(4)}</b></td><td class="n"><b>${(M.ens_test.acc * 100).toFixed(1)}%</b></td></tr></tfoot>`;
+  const E = M.ens_test;
+  $("seedCap").textContent = `只看模型最有把握的 5%、10%、20% 樣本時,測試準確率分別是 ${(E.acc_cov5 * 100).toFixed(1)}%、${(E.acc_cov10 * 100).toFixed(1)}%、${(E.acc_cov20 * 100).toFixed(1)}%。整體 AUC 不高,但頭部比較準,這正是只買前幾名的系統需要的。`;
+  $("flow").innerHTML = M.funnel.map(f => `<div><span class="n">${f.n}</span><span class="t">${f.step}</span></div>`).join("");
+  const dmax = Math.max(...M.decile.map(Math.abs));
+  $("decile").innerHTML = M.decile.map((v, i) => `<div class="row"><span>第 ${i + 1} 組${i === 9 ? "(最看好)" : i === 0 ? "(最不看好)" : ""}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(0, v) / dmax * 100}%;opacity:${i === 9 ? 1 : .55}"></span></span><span class="v ${cls(v)}">${pct(v, 0)}</span></div>`).join("");
+  const AN = {classic4: "四種經典指標(MA、MACD、KD、RSI)", paper9: "論文 9 個指標", full: "全部 242 個", full_top20: "重要性前 20 個", full_permpos: "permpos 95 個(採用)"};
+  $("altauc").innerHTML = `<thead><tr><th>特徵集</th><th class="n">測試 AUC</th></tr></thead><tbody>` +
+    Object.entries(M.alt_auc).map(([k, v]) => `<tr class="${k === M.featset ? "pick" : ""}"><td>${AN[k] || k}</td><td class="n">${v.toFixed(4)}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 特徵清單 ── */
+let famSel = "全部";
+function drawFeat() {
+  const rows = M.features.filter(f => famSel === "全部" || f.fam === famSel);
+  $("feat").innerHTML = `<thead><tr><th class="n">#</th><th>特徵</th><th>族群</th><th>說明</th><th class="n">增益 %</th><th class="n">排列重要性</th></tr></thead><tbody>` +
+    rows.map(f => `<tr><td class="n">${f.i}</td><td class="mono">${f.name}</td><td class="fam">${f.fam}</td><td class="wrap">${f.desc}</td><td class="n">${f.gain.toFixed(2)}</td><td class="n">${f.perm.toFixed(2)}</td></tr>`).join("") + "</tbody>";
+  document.querySelectorAll("#famFilter button").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === famSel));
+}
+(function () {
+  $("famChips").innerHTML = Object.entries(M.families).map(([k, v]) => `<span><b>${v}</b>${k}</span>`).join("");
+  $("famFilter").innerHTML = ["全部", ...Object.keys(M.families)].map((k, i) => `<button type="button" id="ff-${i}" data-f="${k}" aria-pressed="${k === famSel}">${k}</button>`).join("");
+  document.querySelectorAll("#famFilter button").forEach(b => b.onclick = () => { famSel = b.dataset.f; drawFeat(); });
+  drawFeat();
+})();
+
+/* ── 持股、最新排名 ── */
+(function () {
+  const C = D.config, H = F.held;
+  $("held").innerHTML = `<thead><tr><th>股票</th><th>買進日</th><th class="n">買進價</th><th class="n">9/11 收盤</th><th class="n">未實現</th><th class="n">最新名次</th><th>狀態</th></tr></thead><tbody>` +
+    H.map(h => {
+      const st = h.rank_now <= C.exit_rank ? `<span class="pill hold">前 ${C.exit_rank} 名內,續抱</span>` : `<span class="pill watch">已連 ${h.out_streak} 天在前 ${C.exit_rank} 名外</span>`;
+      return `<tr><td>${h.code} ${h.name}</td><td class="fig">${md(h.buy_date)}</td><td class="n">${num(h.buy)}</td><td class="n">${num(h.last)}</td><td class="n ${cls(h.ret_pct)}">${pct(h.ret_pct, 2)}</td><td class="n">第 ${h.rank_now} 名</td><td>${st}</td></tr>`;
+    }).join("") + "</tbody>";
+  const w = H.filter(h => h.rank_now > C.exit_rank);
+  $("heldCap").textContent = w.length
+    ? `${w.map(h => h.name).join("、")}在 ${md(D.latest.date)} 收盤排第 ${w.map(h => h.rank_now).join("、")} 名,已連 ${w[0].out_streak} 天在前 ${C.exit_rank} 名外。如果 9/11 收盤仍在前 ${C.exit_rank} 名外,就在下一個交易日開盤賣出,換成排名最前面、手上沒有的股票。`
+    : `三檔都在前 ${C.exit_rank} 名內,繼續持有。`;
+  $("latestDate").textContent = md(D.latest.date);
+  const held = new Set(H.map(h => h.code));
+  $("latest").innerHTML = `<thead><tr><th class="n">名次</th><th>股票</th><th class="n">機率</th><th></th></tr></thead><tbody>` +
+    D.latest.top.map(t => `<tr class="${held.has(t.code) ? "pick" : ""}"><td class="n">${t.rank}</td><td>${t.code} ${t.name}</td><td class="n">${(t.p * 100).toFixed(1)}%</td><td>${held.has(t.code) ? '<span class="pill hold">持有中</span>' : ""}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 交易明細 ── */
+(function () {
+  const T = F.trades, wins = T.filter(t => t.ret_pct > 0).length;
+  const top = [...T].sort((a, b) => b.ret_pct - a.ret_pct)[0], worst = [...T].sort((a, b) => a.ret_pct - b.ret_pct)[0];
+  const avgd = T.reduce((s, t) => s + t.days, 0) / T.length, longest = [...T].sort((a, b) => b.days - a.days)[0];
+  $("ledgerLede").textContent = `${T.length} 筆已結清,${wins} 筆賺錢,平均持有 ${avgd.toFixed(1)} 個交易日。最好的一筆是 ${top.name} ${pct(top.ret_pct)}(抱 ${top.days} 天),抱最久的是 ${longest.name} ${longest.days} 天,最差的是 ${worst.name} ${pct(worst.ret_pct)}。報酬為成交價差,未扣成本;另有 3 檔 9/11 仍持有,列在上方。`;
+  $("trades").innerHTML = `<thead><tr><th>股票</th><th>買進</th><th class="n">買價</th><th>賣出</th><th class="n">賣價</th><th class="n">持有</th><th class="n">股數</th><th class="n">報酬</th><th class="n">損益(元)</th></tr></thead><tbody>` +
+    T.map(t => `<tr><td>${t.code} ${t.name}</td><td class="fig">${md(t.buy_date)}</td><td class="n">${num(t.buy)}</td><td class="fig">${md(t.sell_date)}</td><td class="n">${num(t.sell)}</td><td class="n">${t.days} 天</td><td class="n">${t.shares.toLocaleString()}</td><td class="n ${cls(t.ret_pct)}">${pct(t.ret_pct, 2)}</td><td class="n ${cls(t.pnl)}">${(t.pnl > 0 ? "+" : t.pnl < 0 ? "−" : "") + Math.abs(t.pnl).toLocaleString()}</td></tr>`).join("") + "</tbody>";
+})();
+
+/* ── 為什麼 ── */
+(function () {
+  $("path").innerHTML = `<thead><tr><th>階段</th><th>設定</th><th class="n">全年報酬</th><th>說明</th></tr></thead><tbody>` +
+    D.path.map(r => { const v = r.net != null ? r.net : r.gross, tag = r.net != null ? "扣成本" : "未扣成本";
+      return `<tr class="${r.stage === "最佳系統" ? "pick" : ""}"><td>${r.stage}</td><td class="wrap">${r.setting}</td><td class="n ${cls(v)}">${pct(v)}<br><span style="font-size:11px;color:var(--ink-3)">${tag}</span></td><td class="wrap" style="color:var(--ink-2)">${r.note}</td></tr>`; }).join("") +
+    `<tr class="muted"><td>基準</td><td class="wrap">0050 / tw50 等權,期初買進持有</td><td class="n">${pct(F.b0050.total_return_pct)} / ${pct(F.ew.total_return_pct)}</td><td class="wrap">不調整</td></tr></tbody>`;
+  const FN = {"A 放寬名次": "只看還在前 N 名", "B 連續掉出": "連續 M 天在前 N 名外才賣(採用)", "C 平滑分數": "用幾天平均分數排名"};
+  $("fams").innerHTML = `<thead><tr><th>做法</th><th class="n">組數</th><th class="n">平均</th><th class="n">最好</th><th class="n">7/1 起平均</th></tr></thead><tbody>` +
+    D.families_cmp.map(r => `<tr class="${r.fam.startsWith("B") ? "pick" : ""}"><td>${FN[r.fam] || r.fam}</td><td class="n">${r.n}</td><td class="n">${pct(r.mean)}</td><td class="n">${pct(r.best)}</td><td class="n ${cls(r.jul_mean)}">${pct(r.jul_mean)}</td></tr>`).join("") + "</tbody>";
+})();
+function drawHeat() {
+  const G = D.grid_b, Ns = [...new Set(G.map(r => r.N))].sort((a, b) => a - b), Ms = [...new Set(G.map(r => r.M))].sort((a, b) => a - b);
+  const lo = Math.min(...G.map(r => r.net)), hi = Math.max(...G.map(r => r.net)), C = D.config;
+  const cell = (n, mm) => G.find(r => r.N === n && r.M === mm);
+  let h = `<div class="hd"></div>` + Ms.map(mm => `<div class="hd">連 ${mm} 天</div>`).join("");
+  Ns.forEach(n => { h += `<div class="hd rh">前 ${n} 名</div>`; Ms.forEach(mm => { const r = cell(n, mm); if (!r) { h += "<div></div>"; return; }
+    const share = Math.round(10 + (r.net - lo) / (hi - lo) * 85), dark = share > 55;
+    h += `<div class="cell ${n === C.exit_rank && mm === C.out_days ? "pick" : ""}" tabindex="0" data-n="${n}" data-m="${mm}" style="background:color-mix(in oklab, var(--accent) ${share}%, var(--surface));color:${dark ? "var(--surface)" : "var(--ink)"}">${Math.round(r.net)}<small>${pct(r.jul, 1)}</small></div>`; }); });
+  const el = $("heat"); el.innerHTML = h;
+  const tip = $("heatTip"), pan = el.parentElement;
+  const show = c => { const r = cell(+c.dataset.n, +c.dataset.m);
+    tip.innerHTML = `前 ${r.N} 名 · 連 ${r.M} 天才賣<br>全年扣成本 <b>${pct(r.net)}</b> · 最大回撤 ${pct(r.mdd)}<br>7/1 起 ${pct(r.jul)} · 下單 ${r.days} 天`; tip.style.display = "block";
+    const pr = pan.getBoundingClientRect(), cr = c.getBoundingClientRect(); let tx = cr.left - pr.left + cr.width / 2 - tip.offsetWidth / 2; tx = Math.max(4, Math.min(pr.width - tip.offsetWidth - 4, tx));
+    tip.style.left = tx + "px"; tip.style.top = (cr.bottom - pr.top + 6) + "px"; };
+  el.querySelectorAll(".cell").forEach(c => { c.onmouseenter = () => show(c); c.onfocus = () => show(c); c.onmouseleave = c.onblur = () => tip.style.display = "none"; });
+}
+$("rk-mdd").textContent = pct(B.net_max_dd_pct) + `(7/1 起那段 ${pct(J.best.net_max_dd_pct)})`;
+
+function redraw() { drawEq(); drawHeat(); }
+redraw();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+</script>

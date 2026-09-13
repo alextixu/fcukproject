@@ -1,0 +1,60 @@
+{
+  "exp_id": "EXP-20260911-030550_c26-gridbest-date-h5-s42",
+  "datetime": "2026-09-11T03:11:50",
+  "params": {
+    "tickers": "tw50",
+    "n_stocks": 0,
+    "start": "2016-01-01",
+    "train_end": "2025-12-31",
+    "end": "2026-09-11",
+    "window": 140,
+    "m_pips": 80,
+    "N": 10,
+    "g": 4,
+    "epochs": 30,
+    "lr": 0.001,
+    "stride": 1,
+    "horizon": 5,
+    "val_split": "random",
+    "batch_mode": "date",
+    "seed": 42,
+    "workers": 4,
+    "no_backtest": false,
+    "raw_features": true,
+    "no_attention": false,
+    "out_dir": "experiments_2026",
+    "md_file": "實驗記錄_2026.md",
+    "tag": "c26-gridbest-date-h5-s42"
+  },
+  "n_stocks": 50,
+  "n_train_samples": 114250,
+  "n_test_samples": 8100,
+  "train_pos_pct": 51.68,
+  "test_pos_pct": 55.17,
+  "metrics": {
+    "acc": 0.4728,
+    "pre_1": 0.546,
+    "pre_0": 0.4462,
+    "rec_1": 0.2645,
+    "rec_0": 0.7293,
+    "f1_1": 0.3563,
+    "f1_0": 0.5536,
+    "val_f1_macro": 0.4512
+  },
+  "f1_macro": 0.455,
+  "paper_ref_sz50": {
+    "acc": 69.26,
+    "pre_1": 65.76,
+    "pre_0": 72.26,
+    "f1_1": 66.4,
+    "f1_0": 71.67
+  },
+  "acc_gap_vs_paper": -21.98,
+  "backtest": {
+    "strategy_nv": 1.224484219099712,
+    "benchmark_nv": 1.6573683412147304,
+    "excess_pct": -43.288412211501836
+  },
+  "build_time_s": 6.9,
+  "train_time_s": 351.8
+}

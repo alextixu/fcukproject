@@ -1,0 +1,29 @@
+# ── 不進 git:資料快取的大檔與可重算的中間產物(搬機用 scripts/pack_for_migration.ps1 或重算)
+common/cache/*
+!common/cache/yf_2026/
+!common/cache/official/
+!common/cache/yf_hist/
+!common/cache/yf_fw/
+!common/cache/kline_raw/
+!common/cache/finmind_2026/
+# yf(2024 舊快取 162 MB)、finmind(tw500 籌碼 140 MB)、features、bigmove:排除,需要時重抓 / 重算
+method_xgb/experiments/*_lowmem*
+method_xgb/experiments/features_*
+method_xgb/experiments/diag*
+method_chartgcn/experiments_paper/
+method_chartgcn/experiments_fusion/
+method_chartgcn/experiments_2026/*.pt
+method_chartgcn/logs/
+method_chartgcn/analysis/cache_repr/
+method_chartgcn/analysis/output/
+method_chartgcn/cache/
+method_chartgcn/cache_2026/
+method_tomt/Qmodel/
+method_tomt/port/cache/
+backtest/ncku/out/**/*.xlsx
+backtest/ncku/tmp/
+_archive/
+__pycache__/
+*.pyc
+.claude/
+*.log
