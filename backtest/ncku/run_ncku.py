@@ -36,6 +36,7 @@ START, END = "20260102", "20260910"
 INIT_CASH = 1_000_000.0
 OUT = os.path.join(HERE, "out")
 os.makedirs(OUT, exist_ok=True)
+os.makedirs(os.path.join(HERE, "tmp"), exist_ok=True)   # tmp/ 不進 git,新機第一次跑要自己建
 RES = os.path.join(HERE, "..", "results")
 XGB_EXP = P.XGB_EXP
 # 資料來源:official = 框架 fetchers 抓的證交所/櫃買官方日資料(正式口徑);yf = cache_2026 還原價(大池篩選用)
