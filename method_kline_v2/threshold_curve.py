@@ -52,7 +52,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pool", default="all")
     ap.add_argument("--z", type=int, default=16)
+    ap.add_argument("--extra", default="", help="額外門檻,如 6s,8s,0.30f(s = k×σ20×√5,f = 固定報酬)")
     a = ap.parse_args()
+    thrs = list(THRS)
+    for tok in filter(None, a.extra.split(",")):
+        v, kind = float(tok[:-1]), tok[-1]
+        thrs.append((f"{v:g}σ√5", "sigma", v) if kind == "s" else (f"固定+{v*100:g}%", "fixed", v))
     meta = json.load(open(os.path.join(DATA, f"samples_{a.pool}_meta.json"), encoding="utf-8"))
     cols = meta["cols"]["C"]
     df = read_low_mem(os.path.join(DATA, f"samples_{a.pool}.parquet"), cols + ["r_h5", "sigma20", "y"])   # 分批讀、float32,省 commit
@@ -73,14 +78,14 @@ def main():
     fp_out = os.path.join(RES, f"bigmove_threshold_curve_{a.pool}.json")
     out = json.load(open(fp_out, encoding="utf-8")) if os.path.exists(fp_out) else {}
     print(f"===== {a.pool}({meta['n_tickers']} 檔,C {len(cols)} 欄)train {len(X['tr']):,} / val {len(X['va']):,} / test {len(X['te']):,} =====", flush=True)
-    for name, kind, v in THRS:
+    for name, kind, v in thrs:
         if name in out and "xgb_auc" in out[name]:
             print(f"  {name:8s} 已有結果,跳過"); continue
         t0 = time.time()
         y = {k: ((R[k] > (v * S[k] * np.sqrt(5))) if kind == "sigma" else (R[k] > v)).astype(int) for k in R}
         pos = {k: y[k] == 1 for k in y}
         rec = {"n_pos": {k: int(pos[k].sum()) for k in pos}, "base": {k: float(pos[k].mean()) for k in pos}}
-        if pos["tr"].sum() < 300:
+        if pos["tr"].sum() < 150:
             print(f"  {name:8s} 正例太少({pos['tr'].sum()}),跳過"); continue
         ytr_s = y["tr"][idx_tr]
         pv = np.where(pos["va"])[0]; pv = rng.choice(pv, min(len(pv), 3000), replace=False)

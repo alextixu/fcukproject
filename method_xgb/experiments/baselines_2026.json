@@ -1,0 +1,65 @@
+{
+ "logistic": {
+  "acc": 52.29,
+  "f1m": 52.29,
+  "auc": 0.5296,
+  "top3_hit": 57.5,
+  "daily_t": 2.56
+ },
+ "rf": {
+  "acc": 51.44,
+  "f1m": 51.44,
+  "auc": 0.5228,
+  "top3_hit": 59.7,
+  "daily_t": 1.43
+ },
+ "mom_cs_excess_roc_20": {
+  "acc": 49.15,
+  "f1m": 49.15,
+  "auc": 0.4943,
+  "top3_hit": 59.1,
+  "daily_t": -0.91
+ },
+ "rev_cs_excess_roc_20": {
+  "acc": 50.86,
+  "f1m": 50.86,
+  "auc": 0.5057,
+  "top3_hit": 47.6,
+  "daily_t": 0.92
+ },
+ "mom_roc_20": {
+  "acc": 49.15,
+  "f1m": 49.15,
+  "auc": 0.4943,
+  "top3_hit": 59.1,
+  "daily_t": -0.91
+ },
+ "rev_roc_20": {
+  "acc": 50.86,
+  "f1m": 50.86,
+  "auc": 0.5057,
+  "top3_hit": 47.6,
+  "daily_t": 0.92
+ },
+ "mom_cs_excess_roc_5": {
+  "acc": 48.66,
+  "f1m": 48.66,
+  "auc": 0.4878,
+  "top3_hit": 53.2,
+  "daily_t": -1.4
+ },
+ "mom_rsi_14": {
+  "acc": 49.5,
+  "f1m": 49.5,
+  "auc": 0.4961,
+  "top3_hit": 50.5,
+  "daily_t": -0.61
+ },
+ "mom_cs_excess_roc_60": {
+  "acc": 51.75,
+  "f1m": 51.75,
+  "auc": 0.5184,
+  "top3_hit": 56.2,
+  "daily_t": 1.67
+ }
+}

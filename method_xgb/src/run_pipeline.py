@@ -31,7 +31,7 @@ from train_xgb import fit_xgb, predict_p                      # noqa: E402
 from importance import (gain_importance, permutation_importance, shap_importance,
                         composite_rank, dedupe_correlated)    # noqa: E402
 from prune import apply_rule, RULES                           # noqa: E402
-from evaluate import clf_metrics, decile_eval                 # noqa: E402
+from evaluate import clf_metrics, clf_metrics_csmed, decile_eval                 # noqa: E402
 import plots                                                  # noqa: E402
 
 EXP = os.path.join(ROOT, "experiments")
@@ -132,6 +132,7 @@ def run_set(name, feats, tr, va, te, ycol, cfg, seeds, null_reps, want_importanc
         p_va, p_te = predict_p(m, Xva), predict_p(m, Xte)
         r = {"seed": seed, "best_iter": int(m.best_iteration),
              "val": clf_metrics(yva, p_va), "test": clf_metrics(yte, p_te),
+             "test_csmed": clf_metrics_csmed(yte, p_te, te.index.get_level_values("date")) if ycol.startswith("y_cs") else None,
              "decile": decile_eval(te, p_te, HORIZONS, null_reps=0)}
         per_seed.append(r)
         probs_te.append(p_te)
@@ -144,14 +145,17 @@ def run_set(name, feats, tr, va, te, ycol, cfg, seeds, null_reps, want_importanc
             if sh is not None:
                 imp_tables["shap"].append(sh)
         dh = r['decile'].get(f"h{cfg['horizon']}") or {}
+        csm = (f"| 日中位 acc={r['test_csmed']['acc']*100:.2f}% f1m={r['test_csmed']['f1_macro']*100:.2f}% "
+               if r.get('test_csmed') else "")
         print(f"  [{name} s{seed}] iters={m.best_iteration} "
-              f"test acc={r['test']['acc']*100:.2f}% f1m={r['test']['f1_macro']*100:.2f}% "
+              f"test acc={r['test']['acc']*100:.2f}% f1m={r['test']['f1_macro']*100:.2f}% {csm}"
               f"auc={r['test']['auc']:.4f} | h{cfg['horizon']} H-L "
               f"{dh.get('hl_ann_ret_pct', float('nan')):+.1f}% "
               f"ρ={dh.get('monotonic_spearman', float('nan')):+.2f} "
               f"({time.time() - t0:.0f}s)")
     p_ens = np.mean(probs_te, axis=0)
     ens = {"test": clf_metrics(yte, p_ens),
+           "test_csmed": clf_metrics_csmed(yte, p_ens, te.index.get_level_values("date")) if ycol.startswith("y_cs") else None,
            "decile": decile_eval(te, p_ens, HORIZONS, null_reps=null_reps, null_h=cfg["horizon"])}
     out = {"features": feats, "n_feat": len(feats), "per_seed": per_seed, "ensemble": ens,
            "summary": summarize(per_seed, cfg["horizon"]),
