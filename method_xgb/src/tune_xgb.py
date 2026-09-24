@@ -14,10 +14,10 @@ from sklearn.metrics import roc_auc_score, accuracy_score
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import run_pipeline as rp                      # noqa: E402
-from split import time_split, filter_features, apply_deadzone  # noqa: E402
-from labels import label_col                  # noqa: E402
-from train_xgb import fit_xgb                 # noqa: E402
+import run_pipeline as rp
+from split import time_split, filter_features, apply_deadzone
+from labels import label_col
+from train_xgb import fit_xgb
 
 GRID = {
     "max_depth": [3, 5, 8],

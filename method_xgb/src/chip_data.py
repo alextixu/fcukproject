@@ -18,8 +18,8 @@ import requests
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.dirname(ROOT))
-from common import paths as P  # noqa: E402
-DATA_DIR = os.environ.get("FINMIND_DIR") or P.FINMIND   # 2026 回測改指 finmind_2026
+from common import paths as P
+DATA_DIR = os.environ.get("FINMIND_DIR") or P.FINMIND
 BASE_URL = "https://api.finmindtrade.com/api/v4/data"
 
 DATASETS = {

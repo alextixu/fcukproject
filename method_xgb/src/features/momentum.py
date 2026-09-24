@@ -55,7 +55,7 @@ def momentum_features(df: pd.DataFrame) -> dict:
     mp = (h + l) / 2
     f["ao_5_34"] = (mp.rolling(5).mean() - mp.rolling(34).mean()) / c
     for k in range(1, 11):
-        f[f"ret_lag_{k}"] = r.shift(k - 1)          # ret_lag_1 = 今日報酬
+        f[f"ret_lag_{k}"] = r.shift(k - 1)
     for w in W:
         f[f"up_ratio_{w}"] = (r > 0).astype(float).rolling(w).mean()
     f["mom_accel_5_20"] = f["roc_5"] - f["roc_20"]

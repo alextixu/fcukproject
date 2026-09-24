@@ -1,0 +1,33 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>台股選股專題</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+:root{--ground:#F2F5F7;--surface:#fff;--ink:#15202B;--muted:#566573;--line:#D5DDE4;--front:#1B5FA8;--bad:#A62B1F;--bad-soft:#FBE3DF;
+--serif:"Noto Serif TC",serif;--sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+@media(prefers-color-scheme:dark){:root{--ground:#0F151B;--surface:#172029;--ink:#E4EAF0;--muted:#97A5B2;--line:#2B3844;--front:#7FB2F0;--bad:#FF9484;--bad-soft:#44201B}}
+*{box-sizing:border-box}body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7;padding:32px 16px 64px}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-family:var(--serif);font-size:clamp(26px,5vw,34px);margin:0}
+.eyebrow{font-size:13px;letter-spacing:.08em;color:var(--muted);font-weight:500;margin:0}
+header{border-bottom:2px solid var(--ink);padding-bottom:20px;display:flex;flex-direction:column;gap:8px}
+.lede{color:var(--muted);margin:0;max-width:44em}
+.warn{background:var(--bad-soft);border:1px solid var(--bad);border-radius:6px;padding:14px 18px;font-size:14.5px}
+.warn b{color:var(--bad)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+a.card{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--front);border-radius:8px;padding:18px 20px;text-decoration:none;color:inherit}
+a.card:hover{border-color:var(--front)}
+a.card b{font-size:17px;font-family:var(--serif)}
+a.card span{color:var(--muted);font-size:14px}
+a.card .date{font-size:12.5px;color:var(--muted);margin-top:4px}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="wrap">
+<header><p class="eyebrow">內網 · 192.168.1.52</p><h1>台股選股專題</h1>
+<p class="lede">三個系統頁面。每一頁都是資料驅動的:改 <code>docs/_*_state.json</code> → 重新產生 → 重新整理即可更新。</p></header>
+<div class="warn"><b>所有數字都是暫行的。</b>目前股票池用「2026-08-31 的市值排名前 100 大」回推十年,有存活者偏差;v1.x 的更舊結果用的是一份不是官方成分股的台灣 50 名單與做不到的收盤價標籤,一律不可引用。</div>
+<div class="cards">
+  <a class="card" href="aexgb.html"><b>選股系統流程圖</b><span>特徵篩選 + XGBoost。242 欄篩到 38 欄、自編碼器檢驗後不採用、各站的檢查結果與版本記錄。</span><span class="date">v2.0 · 2026-09-22</span></a>
+  <a class="card" href="chartgcn.html"><b>Chart-GCN 架構圖</b><span>圖卷積網路那條線的每一站、前段資料處理的檢查、v1.0 ~ v1.7 的版本記錄。</span><span class="date">v1.7 · 2026-09-21</span></a>
+  <a class="card" href="daily.html"><b>每日選股推薦頁</b><span>舊系統(台灣 50、舊標籤)的每日排名與回測淨值。數字不可引用,保留供對照。</span><span class="date">2026-09-21</span></a>
+</div>
+<footer>資料與程式在 ~/tw-stock/fcukproject。此站只在區域網路內提供。</footer>
+</div></body></html>

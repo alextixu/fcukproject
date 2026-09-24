@@ -26,9 +26,9 @@ def _build_one_sample(args):
     建構單一樣本 (設計為 top-level function 供 multiprocessing 呼叫).
     Returns: (X, label, meta_key) or None
     """
-    series, feat_window, label, m_pips, N, g, meta_key = args
+    series, feat_window, label, m_pips, N, g, meta_key, pip_mode = args
     try:
-        pips, scores = extract_pips(series, m=m_pips)
+        pips, scores = extract_pips(series, m=m_pips, mode=pip_mode)
         G = build_visibility_graph(series, pips)
         X = build_3d_feature(series, pips, scores, feat_window, G, N=N, g=g)
         return (X, label, meta_key)
@@ -52,6 +52,7 @@ class ChartGCNDataset(Dataset):
         min_date=None,              # 只保留決策日 > min_date 的樣本;
                                     # 搭配 warm-up 資料使用 (C-4)
         horizon: int = 1,           # 標籤視野: close[t+horizon] vs close[t]
+        pip_mode: str = "raw",      # PIP 距離算法: raw(論文) / minmax / vd, 見 pip_algorithm
                                     # (交易日); 1 = 論文 Eq.(11) 隔日標籤
         verbose: bool = True,
     ):
@@ -114,7 +115,7 @@ class ChartGCNDataset(Dataset):
             for ticker, start, end, label, ddate in desc_chunk:
                 yield (close_by_tk[ticker][start:end],
                        feats_by_tk[ticker][start:end],
-                       label, m_pips, N, g, (ticker, ddate))
+                       label, m_pips, N, g, (ticker, ddate), pip_mode)
 
         if n_workers > 1 and total > 50:
             # 分塊送進 pool.map (保序), 記憶體以塊為上限

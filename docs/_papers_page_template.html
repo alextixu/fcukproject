@@ -1,0 +1,264 @@
+<title>台股選股文獻對照</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+:root{
+  --ground:#F2F5F7; --surface:#FFFFFF; --sunken:#E8EDF1; --ink:#15202B; --muted:#566573; --line:#D5DDE4;
+  --accent:#1B5FA8; --accent-ink:#FFFFFF;
+  --hi:#0B6E66; --hi-soft:#D7EFEC; --mid:#8A5A0B; --mid-soft:#F6E7C8; --low:#5F6B77; --low-soft:#E3E8EC;
+  --warn:#A62B1F; --warn-soft:#FBE3DF;
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F151B; --surface:#172029; --sunken:#1E2933; --ink:#E4EAF0; --muted:#97A5B2; --line:#2B3844;
+    --accent:#7FB2F0; --accent-ink:#0F151B;
+    --hi:#5FD3C6; --hi-soft:#123B38; --mid:#EDB55C; --mid-soft:#3D2F12; --low:#9AA6B1; --low-soft:#26313B;
+    --warn:#FF9484; --warn-soft:#44201B;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F151B; --surface:#172029; --sunken:#1E2933; --ink:#E4EAF0; --muted:#97A5B2; --line:#2B3844;
+  --accent:#7FB2F0; --accent-ink:#0F151B;
+  --hi:#5FD3C6; --hi-soft:#123B38; --mid:#EDB55C; --mid-soft:#3D2F12; --low:#9AA6B1; --low-soft:#26313B;
+  --warn:#FF9484; --warn-soft:#44201B;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.75;padding-inline:16px;padding-block:32px 64px}
+.wrap{max-width:980px;margin-inline:auto;display:flex;flex-direction:column;gap:48px}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;margin:0;line-height:1.35}
+h1{font-size:clamp(28px,5vw,40px);font-weight:700}
+h2{font-size:24px;font-weight:700}
+h3{font-size:18px;font-weight:600}
+p{margin:0}
+.eyebrow{font-size:13px;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.lede{max-width:40em;color:var(--muted)}
+
+header.top{display:flex;flex-direction:column;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:24px}
+.tally{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:14px;color:var(--muted)}
+.tally b{font-family:var(--mono);font-weight:500;color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums}
+
+section{display:flex;flex-direction:column;gap:16px}
+.baseline{background:var(--sunken);border-radius:6px;padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 32px}
+.baseline div{display:flex;flex-direction:column;gap:2px}
+.baseline dt,.k{font-size:13px;color:var(--muted);letter-spacing:.04em}
+.baseline dd{margin:0;font-size:15px;line-height:1.6}
+dl{margin:0}
+
+.findings{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 40px}
+.finding{border-top:1px solid var(--line);padding-block:16px;display:flex;flex-direction:column;gap:6px}
+.finding p{font-size:15px;line-height:1.7}
+.finding .who{font-weight:700}
+
+.controls{display:flex;flex-direction:column;gap:12px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--ground);padding-block:12px;z-index:2;border-bottom:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row .k{min-width:3.5em}
+.chip{font:inherit;font-size:14px;line-height:1.4;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.search{font:inherit;font-size:15px;padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);flex:1 1 220px;min-width:0}
+.count{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.linkbtn{font:inherit;font-size:14px;background:none;border:none;color:var(--accent);cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+
+.list{display:flex;flex-direction:column}
+.paper{display:grid;grid-template-columns:92px 1fr;gap:4px 20px;padding-block:22px;border-bottom:1px solid var(--line)}
+.lvl{grid-row:1 / span 2;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.pill{font-size:14px;font-weight:700;padding:3px 12px;border-radius:4px;white-space:nowrap}
+.pill.l5{background:var(--hi);color:var(--surface)}
+.pill.l4{background:var(--hi-soft);color:var(--hi)}
+.pill.l3{background:var(--mid-soft);color:var(--mid)}
+.pill.l2{background:transparent;color:var(--mid);box-shadow:inset 0 0 0 1px var(--mid)}
+.pill.l1{background:var(--low-soft);color:var(--low)}
+.note{font-size:12px;color:var(--muted);line-height:1.4}
+.main{display:flex;flex-direction:column;gap:6px;min-width:0}
+.main .en{font-size:14px;color:var(--muted);line-height:1.5}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--muted)}
+.meta .abs{color:var(--warn);background:var(--warn-soft);padding:0 8px;border-radius:4px;font-weight:500}
+.one{font-size:15.5px;line-height:1.7;max-width:44em}
+.links{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
+.links .doi{font-family:var(--mono);font-size:13px;overflow-wrap:anywhere}
+details{grid-column:2;min-width:0}
+summary{cursor:pointer;font-size:14px;color:var(--accent);padding-block:4px;width:fit-content}
+.body{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 20px;margin-top:8px;font-size:15px;line-height:1.75;overflow-wrap:anywhere}
+.body ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px}
+.body ul ul,.body ol{margin-top:6px;gap:4px}
+.body ol{padding-left:1.4em;display:flex;flex-direction:column}
+.body p{margin:0}
+.tbl{overflow-x:auto;margin-block:8px}
+table{border-collapse:collapse;font-size:14px;line-height:1.55;min-width:520px}
+th,td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{font-weight:700;color:var(--muted);font-size:13px}
+.empty{padding-block:32px;color:var(--muted)}
+
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:32px 48px}
+.cols ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px;font-size:15px}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:560px){
+  .paper{grid-template-columns:1fr}
+  .lvl{grid-row:auto;flex-direction:row;align-items:center}
+  details{grid-column:1}
+  .controls{position:static}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">台股選股專題 · 文獻回顧</p>
+    <h1>哪一篇論文和我們做的事最像?</h1>
+    <p class="lede">把清單上 24 篇論文逐篇讀過,整理出資料、標籤、特徵、模型、結果與疑點,再和本專題對照。每篇都附 DOI 與找得到的免費全文。</p>
+    <div class="tally">
+      <span><b>24</b> 篇</span>
+      <span><b>23</b> 篇期刊論文、<b>1</b> 篇會議論文</span>
+      <span><b>20</b> 篇讀了全文、<b>4</b> 篇只讀到摘要</span>
+      <span>查核日 2026-09-20</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>拿來對照的基準:本專題</h2>
+    <dl class="baseline">
+      <div><dt>資料</dt><dd>台灣 50 成分股日線</dd></div>
+      <div><dt>標籤</dt><dd>未來 5 日報酬是否高於當日所有股票的中位數(橫斷面中位數)</dd></div>
+      <div><dt>特徵</dt><dd>242 個技術指標,去重複、依重要性篩到 95 欄</dd></div>
+      <div><dt>自編碼器</dt><dd>一種神經網路:把 242 欄壓成 16 個數字再還原,壓縮後的數字和還原誤差也當特徵</dd></div>
+      <div><dt>模型與用法</dt><dd>XGBoost 輸出機率,每天排名、抱前 3 檔輪動</dd></div>
+      <div><dt>成績</dt><dd>準確率 52~54%(隨機 50%);自編碼器沒有可量測的增益;邏輯迴歸不輸 XGBoost;+258% 回測為樣本內</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>結論</h2>
+    <div class="findings">
+      <div class="finding"><span class="k">題目設定最像</span><p><span class="who">Fischer &amp; Krauss 2018、Krauss/Do/Huck 2017。</span>同一組作者、同一框架:標籤同為「是否高於橫斷面中位數」,同樣每天依機率排名買前 k 檔。後者直接比了梯度提升樹,樹模型贏 DNN。</p></div>
+      <div class="finding"><span class="k">流程最像</span><p><span class="who">Nobre &amp; Neves 2019、Gunduz 2021。</span>前者是指標 → PCA → XGBoost → 含成本回測;後者是指標 → VAE → RFE → 樹模型。</p></div>
+      <div class="finding"><span class="k">同樣用到自編碼器的 6 篇</span><p><span class="who">先降維再餵預測模型(和我們同用法):</span>Gunduz 2021(VAE → RFE → 樹模型)、Chong/Han/Park 2017(AE 對 PCA 對 RBM)、Bao/Yue/Rao 2017(堆疊 AE → LSTM)。<span class="who">用法不同:</span>Heaton 2017(還原誤差挑股)、Gu/Kelly/Xiu 2021(AE 當定價模型)、Hinton 2006(方法出處)。清單上方選「自編碼器」可只看這 6 篇。</p></div>
+      <div class="finding"><span class="k">「自編碼器沒有增益」的外部佐證</span><p><span class="who">Chong/Han/Park 2017、Gunduz 2021。</span>前者三種降維都沒贏過原始特徵;後者降維後準確率只是相當。</p></div>
+      <div class="finding"><span class="k">「準確率 52~54% 是常態」的佐證</span><p>Fischer &amp; Krauss 52.4~54.3%、Jiang/Kelly/Xiu 52.5~53.6%、Nobre &amp; Neves 51~53%、CNNpred 的 macro-F1 低於 0.5。</p></div>
+      <div class="finding"><span class="k">「近年獲利消失」的佐證</span><p>Fischer &amp; Krauss 在 2010 年後扣成本只能持平;Krauss/Do/Huck 在 2010~2015 扣成本後年化 −14%~−25%。</p></div>
+      <div class="finding"><span class="k">「+258% 為樣本內、不可外推」的依據</span><p>Harvey/Liu/Zhu 2016(試得越多門檻越高)與 Bailey 等 2017(回測過擬合機率 PBO)。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>24 篇論文</h2>
+    <div class="controls">
+      <div class="row"><span class="k">分類</span><span id="catChips" class="row"></span></div>
+      <div class="row"><span class="k">相近</span><span id="lvlChips" class="row"></span>
+        <button class="chip" id="fullOnly" type="button" aria-pressed="false">只看讀過全文的</button></div>
+      <div class="row">
+        <input class="search" id="q" type="search" placeholder="搜尋作者、期刊或關鍵字(例如 XGBoost、洩漏、RFE)" aria-label="搜尋論文">
+        <span class="count" id="count"></span>
+        <button class="linkbtn" id="toggleAll" type="button">全部展開</button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section>
+    <h2>引用前要知道的事</h2>
+    <div class="cols">
+      <div>
+        <h3>數字不可信的論文</h3>
+        <ul>
+          <li><b>Patel 2015</b>(準確率 90%):切分是各年隨機抽樣,不是按時間。</li>
+          <li><b>Basak 2019</b>:前身論文的 85~95% 用袋外誤差評估,標籤高度重疊;期刊版只讀到摘要。</li>
+          <li><b>Bao 2017</b>:年報酬 45~64% 沒有天真基準,也沒交代小波去雜訊是否偷看未來。</li>
+          <li><b>Gunduz 2021</b>:小時線準確率 66~68% 偏高,文中沒交代特徵是否落後一期。</li>
+          <li>這幾篇適合當反面教材:解釋為什麼我們按時間切分後只有 52~54%。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>只讀到摘要的 4 篇</h3>
+        <ul>
+          <li>Gu/Kelly/Xiu 2021、Yun/Yoon/Won 2021、Sezer &amp; Ozbayoglu 2018、Basak 2019(期刊版)。</li>
+          <li>期刊版都在付費牆後,用學校網路應可下載。</li>
+          <li>讀到全文前,報告裡不要寫這 4 篇的具體數字。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>讀完後發現報告還缺的</h3>
+        <ul>
+          <li>沒揭露總共試了幾組策略設定。</li>
+          <li>200 次隨機排名的零分佈,沒有對「從多組設定裡挑最大」做校正。</li>
+          <li>可以低成本補算 PBO:只需要既有的每日報酬,不必重跑模型。</li>
+          <li>交易成本有沒有計入,要寫清楚。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>引用規則</h3>
+        <ul>
+          <li>一律引期刊正式版,不要引工作論文或 arXiv 版。</li>
+          <li>讀的若不是正式版,頁面上有標明;數字以所讀版本為準。</li>
+          <li>24 篇只有 XGBoost 是會議論文(KDD,資料探勘頂級會議)。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>類型與卷期頁取自 Crossref,引用數取自 OpenAlex。完整文字版在專案的 docs/2026-09-20_文獻摘要與對照_24篇.md。</footer>
+</div>
+
+<script>
+const DATA = /*DATA*/;
+const CATS = /*CATS*/;
+const LEVELS = /*LEVELS*/;
+const state = {cat: "all", lvl: "all", fullOnly: false, q: ""};
+const LVL_GROUPS = {all: "全部", hi: "高", mid: "中", low: "低"};
+const inGroup = (p, g) => g === "all" || (g === "hi" && p.lvl >= 5) || (g === "mid" && p.lvl >= 2 && p.lvl <= 4) || (g === "low" && p.lvl === 1);
+const esc = s => s.replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+function chips(host, options, key) {
+  host.innerHTML = "";
+  for (const [val, label] of Object.entries(options)) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = label;
+    b.setAttribute("aria-pressed", String(state[key] === val));
+    b.addEventListener("click", () => { state[key] = val; chips(host, options, key); render(); });
+    host.appendChild(b);
+  }
+}
+
+function card(p) {
+  const links = [`<a class="doi" target="_blank" rel="noopener" href="https://doi.org/${esc(p.doi)}">doi:${esc(p.doi)}</a>`]
+    .concat(p.free.map(([label, url]) => `<a target="_blank" rel="noopener" href="${esc(url)}">${esc(label)}</a>`));
+  if (!p.free.length) links.push('<span style="color:var(--muted)">沒有免費全文,需學校網路</span>');
+  return `<article class="paper">
+    <div class="lvl"><span class="pill l${p.lvl}">${LEVELS[p.lvl]}</span>${p.note ? `<span class="note">${esc(p.note)}</span>` : ""}</div>
+    <div class="main">
+      <h3>${esc(p.short)}</h3>
+      <p class="en">${esc(p.title)}</p>
+      <div class="meta"><span>${esc(p.journal)}</span><span>${esc(CATS[p.cat])}</span><span class="${p.abstractOnly ? "abs" : ""}">${esc(p.read)}</span></div>
+      <p class="one">${esc(p.one)}</p>
+      <div class="links">${links.join("")}</div>
+    </div>
+    <details><summary>完整摘要與對照</summary><div class="body">${p.body}</div></details>
+  </article>`;
+}
+
+function render() {
+  const q = state.q.trim().toLowerCase();
+  const rows = DATA.filter(p =>
+    (state.cat === "all" || p.cat === state.cat) && inGroup(p, state.lvl) &&
+    (!state.fullOnly || !p.abstractOnly) &&
+    (!q || (p.short + p.title + p.journal + p.one + p.note + p.body).toLowerCase().includes(q)));
+  document.getElementById("list").innerHTML = rows.length ? rows.map(card).join("") : '<p class="empty">沒有符合條件的論文,放寬篩選試試。</p>';
+  document.getElementById("count").textContent = `顯示 ${rows.length} / ${DATA.length} 篇`;
+  document.getElementById("toggleAll").textContent = "全部展開";
+}
+
+chips(document.getElementById("catChips"), Object.assign({all: "全部"}, CATS), "cat");
+chips(document.getElementById("lvlChips"), LVL_GROUPS, "lvl");
+document.getElementById("fullOnly").addEventListener("click", e => {
+  state.fullOnly = !state.fullOnly; e.currentTarget.setAttribute("aria-pressed", String(state.fullOnly)); render();
+});
+document.getElementById("q").addEventListener("input", e => { state.q = e.target.value; render(); });
+document.getElementById("toggleAll").addEventListener("click", e => {
+  const all = [...document.querySelectorAll("#list details")];
+  const open = all.some(d => !d.open);
+  all.forEach(d => { d.open = open; });
+  e.currentTarget.textContent = open ? "全部收合" : "全部展開";
+});
+render();
+</script>

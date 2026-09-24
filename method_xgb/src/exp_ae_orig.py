@@ -26,7 +26,7 @@ print(f'[{MODE}] AE 輸入 {len(cols)} 欄,訓練列(全部樣本 ≤2023){int(f
 torch.manual_seed(42)
 if MODE=='kline':
     from kline.autoencoder import train_ae
-    m=train_ae(X[fit_m], len(cols), lambda s: None)          # 原始規則:全部樣本、60 epoch、無早停
+    m=train_ae(X[fit_m], len(cols), lambda s: None)
 else:
     sys.path.insert(0,R+'/method_kline_v2'); from train_ae_ocsvm import train_ae as train_ae2
     dtr=np.asarray(d<='2022-12-31'); dva=np.asarray((d>'2022-12-31')&(d<='2023-12-31'))

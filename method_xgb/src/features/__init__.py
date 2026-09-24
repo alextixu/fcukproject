@@ -11,6 +11,7 @@ from .stats import stats_features
 from .event import event_features
 from .cross_section import cross_section_features
 from .chip import chip_features, CHIP_COLUMNS
+from .lookback import apply_lookback_mask, required_rows
 
 FAMILY_FUNCS = [
     ("trend", trend_features),
@@ -22,7 +23,6 @@ FAMILY_FUNCS = [
     ("event", event_features),
 ]
 
-# 經典四指標(台股常用參數)
 CLASSIC_SETS = {
     "ma": ["sma_ratio_5", "sma_ratio_20", "sma_ratio_60", "sma_ratio_120",
            "sma_cross_5_20", "sma_cross_10_60", "sma_cross_20_120"],
@@ -45,7 +45,7 @@ def single_stock_features(df: pd.DataFrame):
 
 
 def build_panel(stock_data: dict, paper9_n: int = 140, verbose: bool = True,
-                chip_data: dict = None):
+                chip_data: dict = None, lookback_mask: bool = False):
     """所有股票 → panel (MultiIndex date, ticker),含 OHLCV、單股特徵、橫斷面特徵、paper9。
 
     記憶體:全部以 float32 numpy 區塊組裝,只在最後建一次 DataFrame(本機 commit 上限很低)。
@@ -54,10 +54,11 @@ def build_panel(stock_data: dict, paper9_n: int = 140, verbose: bool = True,
     blocks, idxs, cols, fam = [], [], None, {}
     for i, (tk, df) in enumerate(stock_data.items()):
         feats, fam = single_stock_features(df)
+        if lookback_mask:
+            feats = apply_lookback_mask(feats)
         p9 = paper9_indicators(df, n=paper9_n, stats=(0.0, 1.0)).astype(np.float32)
         arrs = [df.values.astype(np.float32), feats.values.astype(np.float32), p9]
         if chip_data is not None:
-            # 籌碼公布在收盤後 → 整族 shift(1),決策日 t 只用 t-1 的籌碼
             ch = chip_features(df, chip_data.get(tk, {})).shift(1)
             arrs.append(ch.values.astype(np.float32))
         if cols is None:

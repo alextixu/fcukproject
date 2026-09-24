@@ -29,3 +29,6 @@ __pycache__/
 *.log
 .venv/
 venv/
+
+# 下載的論文 PDF(版權屬出版者,不進 git)
+docs/papers/

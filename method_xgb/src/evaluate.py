@@ -6,7 +6,6 @@ from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, roc_auc_score)
 
 TDAYS = 246
-# 台股一趟成本:手續費 0.1425% × 2(不打折)+ 證交稅 0.3% = 0.585%(多空兩腿各自計)
 COST_RT = 0.00585
 
 
@@ -25,7 +24,6 @@ def clf_metrics(y, p):
         "pred_up_ratio": float(yhat.mean()),
     }
     m["f1_macro"] = (m["f1_1"] + m["f1_0"]) / 2
-    # 只對最有把握的樣本下注時的準確率(|p-0.5| 最大的前 cov 比例)
     conf = np.abs(np.asarray(p) - 0.5)
     order = np.argsort(-conf)
     for cov in (0.05, 0.1, 0.2, 0.5):

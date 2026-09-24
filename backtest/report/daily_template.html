@@ -1,0 +1,222 @@
+<title>每日選股推薦系統</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --ground:#ffffff; --band:#f4f2ee; --tile:#f4f2ee; --rule:#e2dfd8; --rule-soft:#ece9e3;
+  --ink:#1d1c1a; --ink-2:#55524c; --ink-3:#8b877f;
+  --up:#c4122f; --down:#15884f;               /* 台股慣例:紅漲綠跌 */
+  --pick:#e6eef8; --pick-rule:#cfdcee; --bar:#2f7fd6; --bar-idle:#bdb9af; --track:#ebe8e2;
+  --buy:#1b62b8; --hold-bg:#e2f1e7; --hold-ink:#12753f; --sell-bg:#fbe3e3; --sell-ink:#b3172c;
+  --s-line:#c4122f; --b-line:#8a857b; --e-line:#b4afa4; --grid:#e4e1da; --focus:#1b62b8;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#171614; --band:#1f1e1b; --tile:#22211e; --rule:#34322e; --rule-soft:#2a2926;
+  --ink:#efece6; --ink-2:#b9b5ac; --ink-3:#85817a;
+  --up:#f2627a; --down:#4cc38a;
+  --pick:#1c2a3c; --pick-rule:#2b3e57; --bar:#5aa2ee; --bar-idle:#6a675f; --track:#2e2c29;
+  --buy:#7db6f5; --hold-bg:#183626; --hold-ink:#6fd6a0; --sell-bg:#44202a; --sell-ink:#f58a9b;
+  --s-line:#f2627a; --b-line:#a8a39a; --e-line:#6f6b64; --grid:#2e2c29; --focus:#7db6f5;
+}}
+:root[data-theme="dark"]{
+  --ground:#171614; --band:#1f1e1b; --tile:#22211e; --rule:#34322e; --rule-soft:#2a2926;
+  --ink:#efece6; --ink-2:#b9b5ac; --ink-3:#85817a;
+  --up:#f2627a; --down:#4cc38a;
+  --pick:#1c2a3c; --pick-rule:#2b3e57; --bar:#5aa2ee; --bar-idle:#6a675f; --track:#2e2c29;
+  --buy:#7db6f5; --hold-bg:#183626; --hold-ink:#6fd6a0; --sell-bg:#44202a; --sell-ink:#f58a9b;
+  --s-line:#f2627a; --b-line:#a8a39a; --e-line:#6f6b64; --grid:#2e2c29; --focus:#7db6f5;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.top{background:var(--band);border-bottom:1px solid var(--rule)}
+.top-in,.main,.foot{max-width:1240px;margin:0 auto;padding-inline:clamp(16px,3vw,40px)}
+.top-in{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding-block:18px}
+h1{font-size:21px;font-weight:700;margin:0;letter-spacing:.02em}
+.sub{color:var(--ink-2);font-size:14px;margin:2px 0 0}
+.datebox{display:flex;align-items:center;gap:6px}
+.datebox button{width:36px;height:40px;border:1px solid var(--rule);background:var(--ground);border-radius:8px;cursor:pointer;color:var(--ink-2);font-size:16px}
+.datebox button:disabled{opacity:.35;cursor:default}
+.datebox button:not(:disabled):hover{color:var(--ink);border-color:var(--ink-3)}
+.datefield{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--rule);background:var(--ground);border-radius:8px}
+.datefield input{border:0;background:transparent;width:9.2em;color-scheme:light dark}
+.datefield span{color:var(--ink-2);font-size:14px;white-space:nowrap}
+
+.main{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:0 clamp(28px,4vw,64px);padding-block:28px 12px}
+.left{min-width:0}.right{min-width:0;border-left:1px solid var(--rule);padding-left:clamp(28px,4vw,64px)}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr);gap:36px}.right{border-left:0;padding-left:0;border-top:1px solid var(--rule);padding-top:28px}}
+
+.sec-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 24px;margin-bottom:12px}
+h2{font-size:16px;font-weight:500;margin:0;color:var(--ink-2);letter-spacing:.04em}
+.sec-note{color:var(--ink-3);font-size:13.5px}
+.sec-head .sec-note.end{margin-left:auto}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:440px}
+th{background:var(--band);color:var(--ink-2);font-weight:500;font-size:13.5px;text-align:left;padding:10px 12px;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:middle}
+th:first-child,td:first-child{padding-left:22px;width:64px}
+th:last-child,td:last-child{text-align:center;width:88px}
+tr.pick td{background:var(--pick);border-bottom-color:var(--pick-rule)}
+tr.cut td{border-bottom:1px dashed var(--ink-3)}
+.rk{font-size:16px}
+.code{font-size:16px;line-height:1.25}
+.nm{color:var(--ink-3);font-size:13px;line-height:1.3}
+.nm b{font-weight:500;color:var(--ink-2)}
+.meter{height:5px;border-radius:3px;background:var(--track);min-width:90px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:3px;background:var(--bar-idle)}
+tr.pick .meter i{background:var(--bar)}
+.pt{white-space:nowrap;font-weight:500}.pt.pos{color:var(--up)}.pt.neg{color:var(--down)}
+.act{display:inline-block;min-width:3.4em;padding:3px 9px;border-radius:6px;font-size:13.5px;font-weight:500;white-space:nowrap}
+.act.hold{background:var(--hold-bg);color:var(--hold-ink)}
+.act.buy{color:var(--buy)}
+.act.sell{background:var(--sell-bg);color:var(--sell-ink)}
+.act.watch{color:var(--ink-3);font-weight:400}
+.cutnote{color:var(--ink-3);font-size:12.5px;padding:5px 12px 0 22px}
+
+.orders{background:var(--band);border-radius:10px;padding:16px 22px;margin-top:20px}
+.orders h3{font-size:13.5px;font-weight:500;color:var(--ink-2);margin:0 0 4px}
+.orders p{margin:0;font-size:15.5px;font-weight:500}
+.orders p.after{margin-top:8px;font-size:13.5px;font-weight:400;color:var(--ink-2)}
+.orders .why{font-weight:400;color:var(--ink-2)}
+
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.kpi{background:var(--tile);border-radius:10px;padding:16px 22px 18px}
+.kpi .lab{color:var(--ink-2);font-size:13.5px}
+.kpi .val{font-size:clamp(26px,3.2vw,32px);font-weight:500;line-height:1.25;letter-spacing:-.01em}
+.kpi .val.pos{color:var(--up)}.kpi .val.neg{color:var(--down)}
+.kpi .aux{color:var(--ink-3);font-size:12.5px;margin-top:2px}
+.chart-head{margin-top:30px}
+.chart{position:relative}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:inherit;font-size:16px;fill:var(--ink-3)}
+svg text.endlab{font-size:16.5px;font-weight:500;fill:var(--ink)}
+.tip{position:absolute;pointer-events:none;background:var(--ground);border:1px solid var(--rule);border-radius:8px;padding:8px 12px;font-size:13px;box-shadow:0 4px 14px rgb(0 0 0/.12);white-space:nowrap;z-index:2}
+.tip .td{color:var(--ink-2);margin-bottom:3px}
+.tip div.r{display:flex;align-items:center;gap:8px}.tip .r span{margin-left:auto;padding-left:14px;font-weight:500}
+.sw{display:inline-block;width:18px;height:0;border-top:3px solid var(--s-line);border-radius:2px}
+.sw.b{border-color:var(--b-line)}.sw.e{border-top:2px dashed var(--e-line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 28px;margin-top:10px;color:var(--ink-2);font-size:13.5px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.hint{color:var(--ink-3);font-size:12.5px;margin-top:6px}
+
+.foot{padding-block:20px 40px}
+.foot-in{border-top:1px solid var(--rule);padding-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px 40px;color:var(--ink-2);font-size:13.5px;line-height:1.75}
+.foot h4{margin:0 0 4px;font-size:13.5px;font-weight:700;color:var(--ink)}
+.foot p{margin:0;max-width:62ch}
+.poolwarn{max-width:1180px;margin:12px auto 0;padding:12px 16px;background:var(--sell-bg);border:1px solid var(--sell-ink);color:var(--ink);font-size:14px;line-height:1.7;box-sizing:border-box}
+.poolwarn b{color:var(--sell-ink)}
+</style>
+
+<header class="top"><div class="top-in">
+  <div><h1>每日選股推薦系統</h1><p class="sub">Autoencoder 特徵壓縮 + XGBoost 排名 · tw50</p></div>
+  <div class="datebox">
+    <button id="prev" type="button" aria-label="前一個交易日">‹</button>
+    <label class="datefield"><input id="date" type="date" aria-label="選擇日期"><span>收盤後</span></label>
+    <button id="next" type="button" aria-label="後一個交易日">›</button>
+  </div>
+</div></header>
+
+<div style="padding-inline:16px"><div class="poolwarn" role="note"><b>2026-09-21 警告:這一頁的「台灣 50」股票池不是臺灣 50 指數的成分股。</b>它是一份 2026-05-28 手動補齊、沒有日期與出處的 50 檔大型股名單,和任何一天的官方成分股差 7 ~ 18 檔。頁面上的數字暫不可引用;「等權」對照組用的也是同一份名單。股票池修正中,記錄在專案的 <code>docs/2026-09-21_repo的TW50名單不是官方成分股_出處與受影響的結果.md</code>。</div></div>
+
+<main class="main">
+  <section class="left" aria-labelledby="h-rank">
+    <div class="sec-head"><h2 id="h-rank">當日排名</h2><span class="sec-note" id="rank-note"></span></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>排名</th><th>股票</th><th>相對強度</th><th>高於中位數</th><th>動作</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div class="cutnote" id="cutnote"></div>
+    <div class="orders"><h3 id="ord-h">隔日開盤執行</h3><p id="ord"></p><p class="after" id="ord-after" hidden></p></div>
+  </section>
+
+  <section class="right" aria-labelledby="h-curve">
+    <div class="kpis">
+      <div class="kpi"><div class="lab">策略年初至今</div><div class="val" id="k-eq"></div><div class="aux" id="k-eq-aux"></div></div>
+      <div class="kpi"><div class="lab">0050 同期</div><div class="val" id="k-b50"></div><div class="aux">同日開盤買進持有,未含息</div></div>
+      <div class="kpi"><div class="lab">最大回撤</div><div class="val neg" id="k-mdd"></div><div class="aux">年初至所選日,已扣交易成本</div></div>
+      <div class="kpi"><div class="lab">累計交易數</div><div class="val" id="k-tr"></div><div class="aux">已完成的買進→賣出來回</div></div>
+    </div>
+    <div class="sec-head chart-head"><h2 id="h-curve">淨值曲線</h2><span class="sec-note end">2026 年初至今</span></div>
+    <div class="chart" id="chart"><svg id="svg" viewBox="0 0 640 350" role="img" aria-label="策略、0050 與 tw50 等權的累積報酬曲線"></svg><div class="tip" id="tip" hidden></div></div>
+    <div class="legend"><span><i class="sw"></i>本策略</span><span><i class="sw b"></i>0050</span><span><i class="sw e"></i>tw50 等權</span></div>
+    <div class="hint">在曲線上點一下可跳到那一天;鍵盤 ← → 換日。</div>
+  </section>
+</main>
+
+<footer class="foot"><div class="foot-in">
+  <div><h4>排名怎麼來</h4><p>每天收盤後,對台灣 50 成分股各算 95 個技術指標,再加上 17 個 Autoencoder 特徵,交給 XGBoost(梯度提升樹)估「未來 5 天報酬贏過當日同池中位數」的機率,由高到低排名。Autoencoder(自編碼器)是一種把輸入壓小再還原的神經網路:它不看漲跌標籤,只負責把 242 個指標壓成 16 個數字,外加一個「還原誤差」。模型只用 2024 年底以前的資料訓練。</p></div>
+  <div><h4>交易規則</h4><p>同時抱 3 檔。持股還在前 8 名就續抱,連續 2 天掉出前 8 名才賣;空出的名額買前 15 名內最前面、還沒持有、且 5 日均量 ≥ 2,000 張的股票。隔日開盤成交。每檔另設進場價 − 3×ATR 停損與 +30% 停利,盤中觸價出場。績效已扣手續費 0.1425% 與證交稅 0.3%。</p></div>
+  <div><h4>讀數字前要知道</h4><p>交易規則是在 2026 年這段資料上挑出來的,所以 2026 的報酬屬樣本內結果。同一套做法逐年檢驗,2021–2025 五年都輸給 tw50 等權;隨機排名對照顯示 2026 的排名確實不是運氣,但報酬數字不能當成對未來的預期。「高於中位數」= 該股機率 − 當日中位數,單位為百分點。</p></div>
+</div></footer>
+
+<script>
+const DATA=/*__DATA__*/null;
+(function(){
+  const $=id=>document.getElementById(id), days=DATA.days, curve=DATA.curve, R=DATA.rule;
+  const idx=new Map(days.map((x,i)=>[x.d,i]));
+  const sgn=(v,dp=1)=>(v<0?'−':'+')+Math.abs(v).toFixed(dp);
+  const ACT={hold:'續抱',buy:'買進',sell:'賣出',watch:'觀察'};
+  let cur=days.length-1;
+  const inp=$('date'); inp.min=days[0].d; inp.max=days[days.length-1].d;
+
+  // ── 曲線(一個比例尺管線、格線、標籤)
+  const W=640,H=350,m={l:66,r:78,t:14,b:36}, svg=$('svg');
+  const vals=curve.flatMap(c=>[c.s,c.b,c.e]), yMax=Math.ceil(Math.max(...vals)/100)*100, yMin=Math.floor(Math.min(0,...vals)/50)*50;
+  const X=i=>m.l+(W-m.l-m.r)*i/(curve.length-1), Y=v=>m.t+(H-m.t-m.b)*(1-(v-yMin)/(yMax-yMin));
+  const cidx=new Map(curve.map((c,i)=>[c.d,i]));
+  function drawChart(){
+    let s='';
+    for(let v=Math.ceil(yMin/100)*100;v<=yMax;v+=100){
+      s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/><text x="${m.l-10}" y="${Y(v)+4}" text-anchor="end">${v===0?'0':sgn(v,0)+'%'}</text>`; }
+    let last='';
+    curve.forEach((c,i)=>{const mo=c.d.slice(5,7); if(mo!==last){last=mo; if((+mo)%2===1) s+=`<text x="${X(i)}" y="${H-8}" text-anchor="${i===0?'start':'middle'}">${+mo}月</text>`;}});
+    const path=k=>curve.map((c,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(c[k]).toFixed(1)).join('');
+    s+=`<path d="${path('e')}" fill="none" stroke="var(--e-line)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    s+=`<path d="${path('b')}" fill="none" stroke="var(--b-line)" stroke-width="2" stroke-linejoin="round"/>`;
+    s+=`<path d="${path('s')}" fill="none" stroke="var(--s-line)" stroke-width="2.25" stroke-linejoin="round"/>`;
+    const e=curve[curve.length-1], xe=X(curve.length-1);
+    s+=`<circle cx="${xe}" cy="${Y(e.s)}" r="3.5" fill="var(--s-line)" stroke="var(--ground)" stroke-width="2"/><text class="endlab" x="${xe+8}" y="${Y(e.s)+4}">${sgn(e.s,0)}%</text>`;
+    s+=`<text class="endlab" x="${xe+8}" y="${Y(e.b)+4}">${sgn(e.b,0)}%</text>`;
+    s+=`<g id="sel"></g><g id="hov"></g><rect id="hit" x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="transparent" style="cursor:pointer"/>`;
+    svg.innerHTML=s;
+    const hit=svg.querySelector('#hit'), tip=$('tip'), hov=svg.querySelector('#hov');
+    const at=ev=>{const b=svg.getBoundingClientRect(), x=(ev.clientX-b.left)/b.width*W; return Math.max(0,Math.min(curve.length-1,Math.round((x-m.l)/(W-m.l-m.r)*(curve.length-1))));};
+    hit.addEventListener('pointermove',ev=>{const i=at(ev),c=curve[i],b=svg.getBoundingClientRect();
+      hov.innerHTML=`<line x1="${X(i)}" x2="${X(i)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink-3)" stroke-width="1"/>`+['e','b','s'].map(k=>`<circle cx="${X(i)}" cy="${Y(c[k])}" r="4" fill="var(--${k}-line)" stroke="var(--ground)" stroke-width="2"/>`).join('');
+      tip.innerHTML=`<div class="td">${c.d}</div><div class="r"><i class="sw"></i>本策略<span>${sgn(c.s)}%</span></div><div class="r"><i class="sw b"></i>0050<span>${sgn(c.b)}%</span></div><div class="r"><i class="sw e"></i>tw50 等權<span>${sgn(c.e)}%</span></div>`;
+      tip.hidden=false; const px=X(i)/W*b.width, tw=tip.offsetWidth; tip.style.left=(px+14+tw>b.width?px-14-tw:px+14)+'px'; tip.style.top='8px';});
+    hit.addEventListener('pointerleave',()=>{hov.innerHTML='';tip.hidden=true;});
+    hit.addEventListener('click',ev=>{const d=curve[at(ev)].d; let j=days.findIndex(x=>x.d>=d); if(j<0) j=days.length-1; go(j);});
+  }
+  function markSel(d){const i=cidx.get(d.d); svg.querySelector('#sel').innerHTML=`<line x1="${X(i)}" x2="${X(i)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink-2)" stroke-width="1" stroke-dasharray="2 3"/><circle cx="${X(i)}" cy="${Y(d.eq)}" r="5" fill="var(--s-line)" stroke="var(--ground)" stroke-width="2"/>`;}
+
+  // ── 當日畫面
+  function render(){
+    const d=days[cur]; inp.value=d.d; $('prev').disabled=cur===0; $('next').disabled=cur===days.length-1;
+    $('rank-note').textContent=`機率中位數 ${d.med.toFixed(4)} · 抱 ${R.K} 檔,前 ${R.exit_rank} 名內續抱`;
+    const scale=20, lastTop=Math.max(...d.rows.filter(r=>r.r<=R.exit_rank).map(r=>r.r));
+    $('rows').innerHTML=d.rows.map(r=>{
+      const notes=[]; if(r.ret!==null) notes.push(`<b>持有中 ${sgn(r.ret)}%</b>`); if(r.out) notes.push(`掉出前 ${R.exit_rank} 名第 ${r.out} 天`); if(!r.liq&&r.a==='watch') notes.push('量不足,不列入買進');
+      return `<tr class="${r.a==='hold'||r.a==='buy'?'pick':''}${r.r===lastTop?' cut':''}"><td class="rk">${r.r}</td><td><div class="code">${r.c}</div><div class="nm">${r.nm}${notes.length?' · '+notes.join(' · '):''}</div></td><td><div class="meter"><i style="width:${Math.max(0,Math.min(100,r.pt/scale*100)).toFixed(1)}%"></i></div></td><td class="pt ${r.pt<0?'neg':'pos'}">${sgn(r.pt)} pt</td><td><span class="act ${r.a}">${ACT[r.a]}</span></td></tr>`;}).join('');
+    $('cutnote').textContent=`虛線以上為前 ${R.exit_rank} 名(持股續抱線);列出前 10 名與所有持股,當日共 ${d.npool} 檔參與排名。`;
+    $('ord-h').textContent=`隔日開盤執行(${d.n})`;
+    const parts=[...d.sell.map(s=>`賣出 ${s.c} ${s.nm}<span class="why">(連續 ${R.out_days} 天掉出前 ${R.exit_rank} 名)</span>`),...d.buy.map(b=>`買進 ${b.c} ${b.nm}<span class="why">(第 ${b.r} 名)</span>`)];
+    const nHold=d.rows.filter(r=>r.a==='hold').length;
+    $('ord').innerHTML=parts.length?parts.join(' · '):(nHold?`不換股,續抱 ${nHold} 檔`:'尚無持股');
+    const af=$('ord-after'); af.hidden=!d.intraday.length;
+    af.innerHTML=d.intraday.map(x=>`事後紀錄:${x.c} ${x.nm} 於 ${d.n} 盤中觸及${x.kind==='tp'?'停利':'停損'},以 ${x.px} 出場(${sgn(x.ret)}%),名額次日補上。`).join('<br>');
+    const kv=(id,v)=>{const el=$(id); el.textContent=sgn(v)+'%'; el.className='val '+(v<0?'neg':'pos');};
+    kv('k-eq',d.eq); kv('k-b50',d.b50);
+    $('k-eq-aux').textContent=cur===days.length-1?`至 ${d.d.slice(5)} 收盤;回測期末 ${DATA.final.d.slice(5)} 為 ${sgn(DATA.final.eq)}%`:`至 ${d.d.slice(5)} 收盤,已扣交易成本`;
+    $('k-mdd').textContent=d.mdd===0?'0.0%':sgn(d.mdd)+'%'; $('k-tr').textContent=d.trades;
+    markSel(d);
+  }
+  function go(i){cur=Math.max(0,Math.min(days.length-1,i)); render();}
+  $('prev').onclick=()=>go(cur-1); $('next').onclick=()=>go(cur+1);
+  inp.addEventListener('change',()=>{const v=inp.value; if(!v){render();return;} if(idx.has(v)) return go(idx.get(v)); let j=-1; days.forEach((x,i)=>{if(x.d<=v) j=i;}); go(j<0?0:j);});
+  document.addEventListener('keydown',ev=>{if(ev.target===inp) return; if(ev.key==='ArrowLeft') go(cur-1); if(ev.key==='ArrowRight') go(cur+1);});
+  drawChart(); render();
+})();
+</script>

@@ -6,15 +6,15 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(ROOT))
-from common import paths as P  # noqa: E402
+from common import paths as P
 CHARTGCN = P.METHOD_CHARTGCN
 CHARTGCN_CORE = os.path.join(CHARTGCN, "core")
-CACHE_DIR = os.environ.get("TW_CACHE_DIR") or P.YF_CACHE   # 2026 回測改指 cache_2026
+CACHE_DIR = os.environ.get("TW_CACHE_DIR") or P.YF_CACHE
 if CHARTGCN_CORE not in sys.path:
     sys.path.insert(0, CHARTGCN_CORE)
 
-from data_loader import fetch_yfinance, TICKER_SETS  # noqa: E402
-from indicators import compute_indicators as paper9_indicators  # noqa: E402
+from data_loader import fetch_yfinance, TICKER_SETS
+from indicators import compute_indicators as paper9_indicators
 
 PAPER9_NAMES = ["p9_sma", "p9_wma", "p9_mom", "p9_macd", "p9_willr",
                 "p9_cci", "p9_stoch_k", "p9_stoch_d", "p9_rsi"]

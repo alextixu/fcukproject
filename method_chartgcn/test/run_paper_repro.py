@@ -70,6 +70,22 @@ def load_ds_cache(path):
     return ArrayDataset(z["X"], z["y"], meta)
 
 
+def time_split_indices(ds, horizon=1, frac=0.8):
+    """
+    時間序 train/val 切分 (修正 P4: 重疊滑窗 + 隨機切分的驗證集污染)。
+    以「決策日」為單位: 前 frac 的交易日訓練、其餘驗證, 同一天的股票整批在同一邊;
+    訓練尾端丟 horizon 個決策日當 embargo, 訓練標籤才不會用到 val 期的價格。
+    回傳 (tr_idx, val_idx, n_tr_dates, n_val_dates)。
+    """
+    dates = sorted(ds.date_to_indices)
+    cut = int(len(dates) * frac)
+    tr_dates = dates[:max(0, cut - horizon)]
+    val_dates = dates[cut:]
+    tr_idx = [i for d in tr_dates for i in ds.date_to_indices[d]]
+    val_idx = [i for d in val_dates for i in ds.date_to_indices[d]]
+    return tr_idx, val_idx, len(tr_dates), len(val_dates)
+
+
 def derive_horizon_ds(src, price_data, horizon):
     """
     從 horizon=1 快取衍生 horizon>1 資料集: X 特徵不變 (輸入窗相同),
@@ -100,6 +116,40 @@ def derive_horizon_ds(src, price_data, horizon):
     return ArrayDataset(src.X[keep], np.asarray(y_new, dtype=src.y.dtype),
                         meta_new)
 
+def relabel_cs_median(src, price_data, horizon=1, min_stocks=10):
+    """
+    標籤改成橫斷面相對強弱 (v1.6, 疑慮 S2): 同一個決策日裡,
+    這檔股票未來 horizon 日的報酬是否「高於當天所有股票的中位數」。
+    X 特徵不變, 只重算標籤; 當天股票數不到 min_stocks 的日子整天丟掉。
+    大盤當天漲或跌會被中位數扣掉, 類別天生接近 50/50, 模型沒辦法靠全猜一邊拿分數。
+    price_data 的要求同 derive_horizon_ds (train 用截斷版, 標籤不越過 train/test 邊界)。
+    """
+    pos_maps, closes = {}, {}
+    rows = []                      # (原索引, 日期字串, 未來報酬)
+    for i, (tk, ddate) in enumerate(src.meta):
+        df = price_data.get(tk)
+        if df is None:
+            continue
+        if tk not in pos_maps:
+            pos_maps[tk] = {d: p for p, d in enumerate(df.index)}
+            closes[tk] = df['close'].values
+        pos = pos_maps[tk].get(ddate)
+        if pos is None or pos + horizon >= len(closes[tk]):
+            continue
+        c = closes[tk]
+        rows.append((i, str(ddate)[:10], c[pos + horizon] / c[pos] - 1.0))
+    by_date = {}
+    for i, d, r in rows:
+        by_date.setdefault(d, []).append(r)
+    med = {d: float(np.median(v)) for d, v in by_date.items()
+           if len(v) >= min_stocks}
+    keep = [(i, 1 if r > med[d] else 0) for i, d, r in rows if d in med]
+    idx = [k[0] for k in keep]
+    return ArrayDataset(src.X[idx],
+                        np.asarray([k[1] for k in keep], dtype=src.y.dtype),
+                        [src.meta[i] for i in idx])
+
+
 # 論文 Table 3 結果 (供對照)
 PAPER = {
     "SZ-50":   {"acc": 69.26, "pre_1": 65.76, "pre_0": 72.26, "f1_1": 66.40, "f1_0": 71.67},
@@ -126,9 +176,17 @@ def main():
     ap.add_argument("--stride", type=int, default=1)
     ap.add_argument("--horizon", type=int, default=1,
                     help="標籤視野 (交易日): close[t+h] vs close[t]; 1=論文 Eq.(11)")
-    ap.add_argument("--val-split", default="random", choices=["random", "time"],
-                    help="train/val 切分: random=論文 4.3 隨機 80/20; "
-                         "time=前 80%% 交易日訓練+embargo+後 20%% 驗證 (h>1 建議)")
+    ap.add_argument("--indicator-n", type=int, default=None,
+                    help="9 個技術指標的週期 (天)。不給 = 跟著 --window (論文設定); "
+                         "v1.3 起可單獨設, 例如 5 = 一週")
+    ap.add_argument("--label", default="abs", choices=["abs", "cs"],
+                    help="標籤: abs=單檔未來漲跌 (論文); cs=未來報酬是否高於當天所有股票的中位數 (v1.6)")
+    ap.add_argument("--pip-mode", default="minmax", choices=["raw", "minmax", "vd"],
+                    help="關鍵點距離算法: minmax=視窗內價格先縮放到和時間軸同長度 (v1.5 起預設); "
+                         "raw=論文原式(原始股價, 挑點受股價高低影響, 僅供對照); vd=垂直距離")
+    ap.add_argument("--val-split", default="time", choices=["random", "time"],
+                    help="train/val 切分: time=前 80%% 交易日訓練+embargo+後 20%% 驗證 "
+                         "(v1.1 起預設); random=論文 4.3 隨機 80/20 (驗證集會被污染, 僅供對照)")
     ap.add_argument("--batch-mode", default="paper", choices=["paper", "date"])
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--workers", type=int, default=1)
@@ -173,7 +231,9 @@ def main():
     _os.makedirs(cache_dir, exist_ok=True)
     base_key = (f"{args.tickers}{args.n_stocks}_{args.start}_{args.train_end}_"
                 f"{args.end}_w{args.window}m{args.m_pips}N{args.N}g{args.g}"
-                f"s{args.stride}{'_raw' if args.raw_features else ''}")
+                f"s{args.stride}{'_raw' if args.raw_features else ''}"
+                f"{f'_in{args.indicator_n}' if args.indicator_n else ''}"
+                f"{f'_pip{args.pip_mode}' if args.pip_mode != 'raw' else ''}")
     # horizon=1 沿用舊 key (相容既有快取); h>1 加後綴
     key = base_key + (f"_h{args.horizon}" if args.horizon != 1 else "")
     tr_cache = _os.path.join(cache_dir, f"{key}_train.npz")
@@ -203,6 +263,7 @@ def main():
             train_data, window=args.window, m_pips=args.m_pips,
             N=args.N, g=args.g, stride=args.stride, n_workers=args.workers,
             norm_stats=raw_stats, horizon=args.horizon,
+            indicator_n=args.indicator_n, pip_mode=args.pip_mode,
         )
         print("[BUILD] test dataset (沿用訓練期 norm_stats) ...")
         test_ds = ChartGCNDataset(
@@ -211,27 +272,29 @@ def main():
             norm_stats=(raw_stats if args.raw_features
                         else train_full.norm_stats),
             min_date=args.train_end, horizon=args.horizon,
+            indicator_n=args.indicator_n, pip_mode=args.pip_mode,
         )
         save_ds_cache(tr_cache, train_full)
         save_ds_cache(te_cache, test_ds)
+    if args.label == "cs":
+        # 特徵和快取共用, 只在這裡換標籤
+        n0, m0 = len(train_full), len(test_ds)
+        train_full = relabel_cs_median(train_full, train_data, args.horizon)
+        test_ds = relabel_cs_median(test_ds, test_data, args.horizon)
+        print(f"[LABEL] 橫斷面中位數標籤: train {n0} → {len(train_full)} "
+              f"(正例 {train_full.y.mean()*100:.1f}%), test {m0} → {len(test_ds)} "
+              f"(正例 {test_ds.y.mean()*100:.1f}%)")
     build_time = time.time() - t0
 
     n_total = len(train_full)
     if args.val_split == "time":
-        # 時間切分: 前 80% 交易日訓練, 後 20% 驗證;
-        # 訓練尾端丟 horizon 日 embargo, 避免訓練標籤覆蓋 val 期價格
-        dates = sorted(train_full.date_to_indices)
-        cut = int(len(dates) * 0.8)
-        tr_dates = dates[:max(0, cut - args.horizon)]
-        val_dates = dates[cut:]
-        tr_idx = [i for d in tr_dates
-                  for i in train_full.date_to_indices[d]]
-        val_idx = [i for d in val_dates
-                   for i in train_full.date_to_indices[d]]
+        # 時間切分: 前 80% 交易日訓練 + embargo + 後 20% 驗證 (見 time_split_indices)
+        tr_idx, val_idx, n_tr_d, n_val_d = time_split_indices(
+            train_full, horizon=args.horizon)
         train_ds = Subset(train_full, tr_idx)
         val_ds = Subset(train_full, val_idx)
-        print(f"[SPLIT] time: train {len(tr_dates)} 日 / "
-              f"embargo {args.horizon} 日 / val {len(val_dates)} 日")
+        print(f"[SPLIT] time: train {n_tr_d} 日 / "
+              f"embargo {args.horizon} 日 / val {n_val_d} 日")
     else:
         # 論文 4.3: 隨機 80/20 切 train/val
         n_train = int(n_total * 0.8)
@@ -320,7 +383,7 @@ def main():
 ### {exp_id}
 
 - **時間**: {record['datetime']}　**標的**: {args.tickers} ({len(data)} 檔)　**期間**: {args.start} ~ {args.end} (train_end={args.train_end})
-- **參數**: window={args.window}, m={args.m_pips}, N={args.N}, g={args.g}, stride={args.stride}, epochs={args.epochs}, lr={args.lr}, batch={args.batch_mode}, seed={args.seed}, horizon={args.horizon}, val={args.val_split}
+- **參數**: window={args.window}, m={args.m_pips}, N={args.N}, g={args.g}, stride={args.stride}, epochs={args.epochs}, lr={args.lr}, batch={args.batch_mode}, seed={args.seed}, horizon={args.horizon}, val={args.val_split}, indicator_n={args.indicator_n or args.window}, pip={args.pip_mode}, label={args.label}
 - **樣本**: train {n_total} (漲 {train_pos:.1f}%) / test {len(test_ds)} (漲 {test_pos:.1f}%)
 
 | 指標 | 本實驗 | 論文 SZ-50 | 差距 |

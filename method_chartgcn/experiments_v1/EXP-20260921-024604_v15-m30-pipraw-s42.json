@@ -1,0 +1,63 @@
+{
+  "exp_id": "EXP-20260921-024604_v15-m30-pipraw-s42",
+  "datetime": "2026-09-21T02:49:06",
+  "params": {
+    "tickers": "tw50",
+    "n_stocks": 0,
+    "start": "2016-01-01",
+    "train_end": "2023-12-31",
+    "end": "2024-12-31",
+    "window": 140,
+    "m_pips": 30,
+    "N": 10,
+    "g": 4,
+    "epochs": 30,
+    "lr": 0.001,
+    "stride": 1,
+    "horizon": 1,
+    "indicator_n": null,
+    "label": "abs",
+    "pip_mode": "raw",
+    "val_split": "time",
+    "batch_mode": "date",
+    "seed": 42,
+    "workers": 8,
+    "no_backtest": false,
+    "raw_features": true,
+    "no_attention": false,
+    "out_dir": "experiments_v1",
+    "md_file": "實驗記錄_v1.md",
+    "tag": "v15-m30-pipraw-s42"
+  },
+  "n_stocks": 50,
+  "n_train_samples": 90250,
+  "n_test_samples": 11950,
+  "train_pos_pct": 46.62,
+  "test_pos_pct": 45.81,
+  "metrics": {
+    "acc": 0.4499,
+    "pre_1": 0.4458,
+    "pre_0": 0.4728,
+    "rec_1": 0.8265,
+    "rec_0": 0.1316,
+    "f1_1": 0.5792,
+    "f1_0": 0.2058,
+    "val_f1_macro": 0.4227
+  },
+  "f1_macro": 0.3925,
+  "paper_ref_sz50": {
+    "acc": 69.26,
+    "pre_1": 65.76,
+    "pre_0": 72.26,
+    "f1_1": 66.4,
+    "f1_0": 71.67
+  },
+  "acc_gap_vs_paper": -24.27,
+  "backtest": {
+    "strategy_nv": 1.0410764223322198,
+    "benchmark_nv": 1.120261946054844,
+    "excess_pct": -7.918552372262422
+  },
+  "build_time_s": 36.7,
+  "train_time_s": 143.8
+}

@@ -17,8 +17,7 @@ def cross_section_features(panel: pd.DataFrame) -> pd.DataFrame:
     for col in RANK_COLS:
         out[f"cs_rank_{col}"] = g[col].rank(pct=True)
 
-    # 等權市場
-    r_wide = panel["ret_lag_1"].unstack("ticker")          # date × ticker
+    r_wide = panel["ret_lag_1"].unstack("ticker")
     mkt_r = r_wide.mean(axis=1)
     mkt_cum = (1 + mkt_r.fillna(0)).cumprod()
     mkt_roc = {w: mkt_cum / mkt_cum.shift(w) - 1 for w in W}

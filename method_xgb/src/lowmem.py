@@ -31,7 +31,6 @@ def cs_column_names(has_chip):
 
 def build_lowmem(stock_data: dict, prefix: str, chip_data: dict = None, verbose=True):
     has_chip = chip_data is not None
-    # 先探一檔決定欄位
     tk0, df0 = next(iter(stock_data.items()))
     f0, fam = single_stock_features(df0)
     feat_cols = list(f0.columns)
@@ -72,7 +71,6 @@ def build_lowmem(stock_data: dict, prefix: str, chip_data: dict = None, verbose=
     pd.DataFrame({"date": index.get_level_values(0), "ticker": index.get_level_values(1)}
                  ).to_parquet(prefix + "_index.parquet")
 
-    # 橫斷面:只讀需要的欄位
     need = list(dict.fromkeys(RANK_COLS + [f"roc_{w}" for w in W] + ["ret_lag_1"]
                               + (CHIP_RANK_COLS if has_chip else [])))
     small = pd.DataFrame({c: np.array(mm[:, cols.index(c)]) for c in need}, index=index)
@@ -83,7 +81,6 @@ def build_lowmem(stock_data: dict, prefix: str, chip_data: dict = None, verbose=
         mm[:, cols.index(c)] = cs[c].values.astype(np.float32)
     del cs
 
-    # 標籤
     close = pd.Series(np.array(mm[:, cols.index("close")]), index=index).unstack("ticker")
     for h in HORIZONS:
         r = (close.shift(-h) / close - 1).stack(future_stack=True).reindex(index)

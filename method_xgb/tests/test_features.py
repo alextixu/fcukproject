@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
-from features import single_stock_features  # noqa: E402
+from features import single_stock_features
 
 
 def synth(n=400, seed=0):
@@ -28,7 +28,6 @@ def main():
     nan_tail = f.iloc[-1].isna().sum()
     assert nan_tail == 0, f"最後一列仍有 {nan_tail} 個 NaN: {list(f.columns[f.iloc[-1].isna()])}"
 
-    # 未來洩漏:改動 t 之後的價格,t 的特徵不可變
     t = 300
     df2 = df.copy()
     df2.iloc[t + 1:, :4] *= 1.5

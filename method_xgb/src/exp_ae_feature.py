@@ -22,10 +22,8 @@ m=m[0] if isinstance(m,tuple) else m; m.eval()
 with torch.no_grad():
     rec,z=m(torch.FloatTensor(X)); err=((rec-torch.FloatTensor(X))**2).mean(1).numpy(); z=z.numpy()
 ae=pd.DataFrame(z, index=bm.index, columns=[f'ae_z{i}' for i in range(Z)]); ae['ae_err']=err
-# 診斷:重建誤差對「大漲」的 AUC(誤差越小越像大漲前夕 → 用 −err)
 for nm,mm in (('2024',np.asarray((d>'2023-12-31')&(d<='2024-12-31'))),('2025-26',np.asarray(d>'2024-12-31'))):
     print(f'  AE 誤差 AUC(−err vs 大漲 {K:g}σ){nm}: {roc_auc_score(pos[mm], -err[mm]):.4f}', flush=True)
-# XGB
 x25=json.load(open(f'{R}/method_xgb/experiments/x25-tw50-h5-cs.json')); cfg=x25['config']; feats=x25['results']['full_permpos']['features']; ycol='y_cs_h5'
 panel=pd.read_parquet(os.path.join(P.FEATURES,'features_tw50_2016-01-01_2026-09-11.parquet'), columns=feats+[ycol,'r_h5'])
 panel=panel.join(ae, how='left')

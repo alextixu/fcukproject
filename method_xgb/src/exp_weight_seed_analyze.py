@@ -27,7 +27,7 @@ for name in ('base', 'hl2', 'hl3'):
             rows.append(dict(exp=name, year=yr, rule=rule, n=int(m.sum()),
                              acc=f'{mu[0]:.2f}±{sd[0]:.2f}', f1m=f'{mu[1]:.2f}±{sd[1]:.2f}', P=f'{mu[2]:.2f}±{sd[2]:.2f}', R=f'{mu[3]:.2f}±{sd[3]:.2f}',
                              ens3_acc=f'{e3[0]:.2f}', ens3_f1m=f'{e3[1]:.2f}', ens5_acc=f'{e5[0]:.2f}' if e5 is not None else '', ens5_f1m=f'{e5[1]:.2f}' if e5 is not None else ''))
-    if len(seeds) >= 5:   # 5 seed 個別分佈(看 seed 間變異)
+    if len(seeds) >= 5:
         for yr in (2025, 2026):
             m = yrs == yr
             accs = [prf(y[m], daily_pred(te[s].values[m], d[m]))[0] for s in seeds]

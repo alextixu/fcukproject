@@ -1,0 +1,273 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<div style="max-width:1040px;margin:0 auto 18px;padding-inline:16px;font-size:14px;font-family:system-ui,sans-serif"><a href="index.html" style="color:#1B5FA8;text-decoration:none">← 回專題首頁</a></div>
+<title>Chart-GCN 架構圖</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+:root{
+  --ground:#F2F5F7; --surface:#FFFFFF; --sunken:#E8EDF1; --ink:#15202B; --muted:#566573; --line:#D5DDE4;
+  --front:#1B5FA8; --front-soft:#DCE9F7; --back:#5F6B77; --back-soft:#E3E8EC;
+  --bad:#A62B1F; --bad-soft:#FBE3DF; --warn:#8A5A0B; --warn-soft:#F6E7C8; --ok:#0B6E66; --ok-soft:#D7EFEC;
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F151B; --surface:#172029; --sunken:#1E2933; --ink:#E4EAF0; --muted:#97A5B2; --line:#2B3844;
+    --front:#7FB2F0; --front-soft:#16304D; --back:#9AA6B1; --back-soft:#26313B;
+    --bad:#FF9484; --bad-soft:#44201B; --warn:#EDB55C; --warn-soft:#3D2F12; --ok:#5FD3C6; --ok-soft:#123B38;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F151B; --surface:#172029; --sunken:#1E2933; --ink:#E4EAF0; --muted:#97A5B2; --line:#2B3844;
+  --front:#7FB2F0; --front-soft:#16304D; --back:#9AA6B1; --back-soft:#26313B;
+  --bad:#FF9484; --bad-soft:#44201B; --warn:#EDB55C; --warn-soft:#3D2F12; --ok:#5FD3C6; --ok-soft:#123B38;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 64px}
+.wrap{max-width:1040px;margin-inline:auto;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--serif);margin:0;line-height:1.35;text-wrap:balance}
+h1{font-size:clamp(28px,5vw,38px)} h2{font-size:23px} h3{font-size:17px;font-weight:600}
+p{margin:0}
+.eyebrow{font-size:13px;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.lede{color:var(--muted);max-width:42em}
+header{display:flex;flex-direction:column;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:22px}
+section{display:flex;flex-direction:column;gap:16px}
+code,.mono{font-family:var(--mono);font-size:.88em}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+.pipe{display:flex;flex-direction:column}
+.stage{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:0 28px}
+.node{position:relative;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--back);border-radius:6px;padding:14px 18px;display:flex;flex-direction:column;gap:6px}
+.node.front{border-left-color:var(--front)}
+.node .file{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.node .io{font-family:var(--mono);font-size:13px;background:var(--sunken);border-radius:4px;padding:4px 8px;overflow-wrap:anywhere}
+.node p{font-size:14.5px;line-height:1.65}
+.arrow{grid-column:1;height:30px;display:flex;justify-content:center;align-items:center;color:var(--muted);font-size:18px;line-height:1}
+.group{grid-column:1;font-size:13px;letter-spacing:.06em;color:var(--front);font-weight:700;padding-block:4px}
+.group.back{color:var(--back)}
+.notes{display:flex;flex-direction:column;gap:8px;align-self:start;padding-block:2px}
+.note{font-size:14.5px;line-height:1.65;border-radius:6px;padding:10px 14px;background:var(--sunken)}
+.note b.tag{display:inline-block;font-size:12px;font-weight:700;padding:0 8px;border-radius:4px;margin-right:6px;line-height:1.7}
+.note.bad{background:var(--bad-soft)} .note.bad .tag{background:var(--bad);color:var(--surface)}
+.note.warn{background:var(--warn-soft)} .note.warn .tag{background:var(--warn);color:var(--surface)}
+.note.ok{background:var(--ok-soft)} .note.ok .tag{background:var(--ok);color:var(--surface)}
+.note .src{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;font-size:14.5px;min-width:560px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:700}
+td.num{font-family:var(--mono);text-align:right}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 44px}
+.cols ul,.plain{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px;font-size:15px}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:760px){
+  .stage{grid-template-columns:1fr;gap:8px}
+  .notes{padding-left:14px;border-left:2px solid var(--line)}
+}
+
+.now{display:grid;grid-template-columns:auto 1fr;gap:6px 28px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px 22px}
+.now .ver{font-family:var(--mono);font-size:34px;font-weight:500;line-height:1;color:var(--front)}
+.now .what{display:flex;flex-direction:column;gap:2px}
+.now .what b{font-size:17px}
+.now .sub{font-size:13px;color:var(--muted)}
+.counts{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px 22px;font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
+.counts b{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--ink)}
+.st{display:inline-block;font-size:12px;font-weight:700;padding:0 8px;border-radius:4px;line-height:1.7;margin-right:6px;white-space:nowrap}
+.st.open{box-shadow:inset 0 0 0 1px var(--muted);color:var(--muted)}
+.st.testing{background:var(--front);color:var(--surface)}
+.st.fixed,.st.done{background:var(--ok);color:var(--surface)}
+.st.nogain{background:var(--back);color:var(--surface)}
+.note.ok .st.fixed{background:var(--ok)}
+.note .upd{display:block;font-size:13.5px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.note .cid{font-family:var(--mono);font-size:12px;color:var(--muted);margin-right:6px}
+.log{display:flex;flex-direction:column}
+.rel{display:grid;grid-template-columns:120px 1fr;gap:4px 24px;padding-block:18px;border-top:1px solid var(--line)}
+.rel .v{font-family:var(--mono);font-size:20px;font-weight:500}
+.rel .d{font-size:13px;color:var(--muted)}
+.rel h3{margin-bottom:4px}
+.rel .k{font-size:13px;color:var(--muted);letter-spacing:.04em;margin-top:8px}
+.rel ul{margin:0;padding-left:1.2em;font-size:14.5px;display:flex;flex-direction:column;gap:4px}
+.road{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.road .v{font-family:var(--mono);color:var(--muted);margin-right:10px}
+@media (max-width:760px){.rel{grid-template-columns:1fr}.now{grid-template-columns:1fr}}
+
+.closedline{font-size:13px;color:var(--muted);padding-inline:2px}
+.closedline a,.hist a{color:var(--front)}
+.histbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px;color:var(--muted)}
+.histbar button{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:3px 12px;cursor:pointer}
+.histbar button:focus-visible,.hist summary:focus-visible{outline:2px solid var(--front);outline-offset:2px}
+.hist{display:flex;flex-direction:column}
+.hist details{border-top:1px solid var(--line);padding-block:12px;scroll-margin-top:16px}
+.hist details:last-child{border-bottom:1px solid var(--line)}
+.hist summary{cursor:pointer;font-size:15px;line-height:1.7}
+.hist summary .where{font-size:13px;color:var(--muted);margin-left:6px}
+.hist .hb{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 24px;padding:12px 0 4px 18px;font-size:14.5px;line-height:1.65}
+.hist .hb .k{font-size:13px;color:var(--muted);letter-spacing:.04em;padding-top:1px}
+.hist .hb ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.hist .hb .src{font-size:12.5px;color:var(--muted)}
+@media (max-width:760px){.hist .hb{grid-template-columns:1fr;gap:2px 0;padding-left:8px}.hist .hb .k{margin-top:8px}}
+.poolwarn{background:var(--bad-soft);border:1px solid var(--bad);color:var(--ink);padding:14px 18px;font-size:15px;line-height:1.7}
+.poolwarn b{color:var(--bad)}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">台股選股專題 · Chart-GCN 系統</p>
+    <h1>Chart-GCN 架構圖與前段資料處理檢查</h1>
+    <p class="lede">左邊是資料從下載到回測的每一站,右邊是那一站還沒解決的問題;處理完的收在「歷史疑慮」。每改一項就升一個版本,這一頁跟著更新。依據 <code>method_chartgcn/</code> 現行程式與 2026-07 的審查記錄,加上 2026-09-21 用台灣 50 實際資料做的檢查。</p>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--front)"></i>前段:資料與圖形處理</span>
+      <span><i class="sw" style="background:var(--back)"></i>後段:模型、訓練、回測</span>
+      <span><i class="sw" style="background:var(--bad)"></i>確認的問題</span>
+      <span><i class="sw" style="background:var(--warn)"></i>設計上的疑慮,還沒做實驗</span>
+      <span><i class="sw" style="background:var(--ok)"></i>沒問題或先前已處理</span>
+    </div>
+  </header>
+
+  <div class="poolwarn" role="note"><b>2026-09-21 警告:這一頁的「台灣 50」股票池不是臺灣 50 指數的成分股。</b>它是一份 2026-05-28 手動補齊、沒有日期與出處的 50 檔大型股名單,和任何一天的官方成分股差 7 ~ 18 檔。頁面上的數字暫不可引用;「等權」對照組用的也是同一份名單。股票池修正中,記錄在專案的 <code>docs/2026-09-21_repo的TW50名單不是官方成分股_出處與受影響的結果.md</code>。</div>
+
+  <section>
+    <h2>目前版本</h2>
+    <div class="now" id="now"></div>
+  </section>
+
+  <section>
+    <h2>版本記錄</h2>
+    <div class="log" id="log"></div>
+    <h3>接下來的安排</h3>
+    <ul class="road" id="road"></ul>
+  </section>
+
+  <section>
+    <h2>架構圖</h2>
+    <p class="lede">現行最佳參數:視窗 140 天、關鍵點 80 個、核心節點 10 個、每個子圖 4 個節點。入口是 <code>test/run_paper_repro.py</code>。</p>
+    <div class="pipe" id="pipe"></div>
+  </section>
+
+  <section id="history">
+    <h2>歷史疑慮</h2>
+    <p class="lede">已經處理完的疑慮不再放在上面的圖裡,改收在這裡。點開可以看原本的疑慮、改了哪些程式、結果如何。</p>
+    <div class="histbar"><span id="histcount"></span><button type="button" id="histtoggle">全部展開</button></div>
+    <div class="hist" id="hist"></div>
+  </section>
+
+  <section>
+    <h2>實測:關鍵點的挑法會跟著股價高低變</h2>
+    <p class="lede">做法:拿台灣 50 每檔最近 140 天的收盤價,用現行程式挑關鍵點,再和「把價格縮放到跟時間軸同尺度」後挑出的點比對。重疊越少,代表現行挑法離「只看形狀」越遠。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>股價區間</th><th>檔數</th><th>挑 30 點時的重疊</th><th>挑 80 點時的重疊</th><th>解讀</th></tr></thead>
+      <tbody>
+        <tr><td>均價低於 50 元</td><td class="num">12</td><td class="num">19.8 / 30</td><td class="num">65.9 / 80</td><td>約三分之一的關鍵點不是形狀決定的</td></tr>
+        <tr><td>均價高於 300 元</td><td class="num">14</td><td class="num">28.1 / 30</td><td class="num">77.7 / 80</td><td>幾乎完全由價格決定</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">例子:中鋼(均價 19 元,每天平均動 0.21 元)重疊 19/30;聯發科(均價 3,240 元,每天平均動 117 元)重疊 28/30。140 天的時間軸長度固定是 140,價格軸卻從零點幾元到上百元,兩者直接相加,結果就是每檔股票用的尺不一樣。</p>
+  </section>
+
+  <section>
+    <h2>我的判斷</h2>
+    <div class="cols">
+      <div>
+        <h3>你的懷疑有道理的部分</h3>
+        <ul>
+          <li>前段確實有四個實質問題:關鍵點挑法受股價影響、80/140 幾乎沒篩、指標週期 140 天太慢、圖的形狀沒有真的進模型。</li>
+          <li>其中關鍵點尺度和橫斷面標籤這兩項,07 月就寫進待辦,但程式一直沒改,所以沒有人知道修了會怎樣。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>要保留的部分</h3>
+        <ul>
+          <li>同樣 9 個指標直接丟 XGBoost,不經過任何圖形處理,結果和 Chart-GCN 一樣(準確率 53.9%,同樣塌縮)。所以瓶頸不只在圖形處理,也在這 9 個慢指標和絕對漲跌標籤。</li>
+          <li>用論文自己的上證 50 資料也停在 50% 左右,論文的 69% 重現不出來。修好前段不保證能突破。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>驗證之後的結果(v1.1 ~ v1.6)</h3>
+        <ul>
+          <li>當初建議的四項都做了:標籤改成高於當天中位數、關鍵點挑選前先把價格縮放、指標週期和視窗脫鉤、視窗和格子數往下試。細節在「歷史疑慮」。</li>
+          <li>結果:挑點標準和驗證集切法這兩個邏輯問題修好了,但沒有一筆贏過基準。換成橫斷面標籤後準確率 50.2 ~ 50.8%,同樣標籤下 XGBoost 是 52 ~ 54%。瓶頸不在前段資料處理。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>還沒驗證的事</h3>
+        <ul>
+          <li>格子裡改放形狀資訊、保留圖的連接關係(G1);關鍵點數量單獨往下試(P2)。</li>
+          <li>成交量 0 的假 K 棒、每次少抓最後一天(D1、D2);重要設定多跑幾個 seed;300 檔的結果(v1.7 執行中)。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>來源:method_chartgcn/ 的 README、台積電_資料流程.md、實驗記錄_論文對齊.md、core/*.py;實測資料為 common/cache/yf_2026 的台灣 50 成分股。論文:Li, Wu, Jiang &amp; Xu (2022), Chart GCN, Knowledge-Based Systems 248.</footer>
+</div>
+
+<script>
+const S = {"current": "v1.7", "updated": "2026-09-21", "versions": [{"v": "v1.7", "date": "2026-09-21", "title": "股票池擴大到 300 檔,之後每個實驗都跑 50 和 300 兩個池", "state": "五筆已完成;最好的那一筆補 seed 確認中", "concerns": [], "changes": ["core/data_loader.py:新增股票池 tw300 = 既有 500 檔巢狀池的前 300 檔(台灣 50 → 中型 100 → 前 200 大 → 其餘依代碼),已剔除下市和抓不到的。300 檔在本地資料夾都有檔,2016-02 之後才上市的只有 5 檔", "新增 test/run_v17_pools_batch.sh:每個池跑同樣五筆——絕對漲跌 1 日(視窗 140),加上橫斷面標籤的(視窗 140、視窗 30)×(1 日、5 日)。標準設定:驗證集按時間切、關鍵點算法 minmax。已有結果的會自動跳過", "台灣 50 這五筆在 v1.5、v1.6 已經跑過同樣的設定,這一輪先補 300 檔", "新增 test/run_v17_seeds_batch.sh:300 檔那筆 52.6% 只有一個 seed,兩個池各補 seed 43、44 確認"], "results": ["300 檔五筆 09-21 13:28 跑完(第一次 03:16 啟動後中斷,12:48 重新啟動)。測試 2024 年約 7.1 萬筆,是 50 檔的 6 倍;單一 seed 42", "絕對漲跌、視窗 140、1 日:50 檔 46.1% / F1 macro 46.1%(全猜跌 54.2%)→ 300 檔 49.4% / 49.3%(全猜跌 55.8%)。兩個池都輸給全猜跌", "橫斷面標籤、視窗 140、1 日:50 檔 50.5% / 48.4% → 300 檔 49.7% / 46.7%(偏向猜漲,召回率 75%)", "橫斷面標籤、視窗 140、5 日:50 檔 50.4% / 49.6% → 300 檔 52.6% / 52.4%。這是 Chart-GCN 到目前為止唯一明顯高過基準(50.1%)的一筆,漲跌兩類的 F1 是 49.5 和 55.3,沒有塌縮", "橫斷面標籤、視窗 30、1 日:50 檔 50.2% / 50.2% → 300 檔 49.3% / 46.9%", "橫斷面標籤、視窗 30、5 日:50 檔 50.8% / 50.4% → 300 檔 50.1% / 49.1%", "回測(零成本)相對等權:300 檔五筆是 +6.9、+9.5、0.0、−2.3、+4.0 個百分點;準確率最高的那筆回測剛好是 0,準確率低於 50% 的兩筆反而贏,兩者對不上", "判讀:五筆裡四筆在 49 ~ 50%,擴大股票池本身沒有幫助。52.6% 那筆要小心:5 日標籤相鄰幾天高度重疊,7 萬筆不是 7 萬個獨立樣本;而且只有一個 seed。補 seed 的結果出來前不下結論", "參考:同樣是橫斷面標籤,XGBoost 在 50 檔、5 日、同樣測試 2024 年是 54.2%(逐年走動那次);在 500 檔、20 日、2025 和 2026 年是 53.8 ~ 54.8%"]}, {"v": "v1.6", "date": "2026-09-21", "title": "標籤改成「是否高於當天所有股票的中位數」", "state": "已完成:不再塌縮,但等於丟銅板", "concerns": ["S2"], "changes": ["test/run_paper_repro.py:新增 relabel_cs_median 和 --label abs|cs(預設仍是 abs,等結果出來再決定要不要換)", "做法:每個決策日算所有股票未來 h 日報酬的中位數,高於中位數標 1。當天不到 10 檔的日子整天丟掉。大盤當天的漲跌會被中位數扣掉", "新增 test/run_v16_cslabel_batch.sh,四筆:(視窗 140、關鍵點 80)與(視窗 30、關鍵點 15)各跑預測 1 日和 5 日;驗證集按時間切、關鍵點算法 minmax"], "results": ["換標籤後類別接近各半:1 日 49.3%、5 日 49.8%,所以基準就是 50%,模型沒辦法靠全猜一邊拿分數", "抽查一天(2024-06-05、50 檔),程式的標籤和手算完全一致", "準確率 / F1 macro(2024 測試,基準 50%,單一 seed):視窗 140、1 日 → 50.5% / 48.4%;視窗 140、5 日 → 50.4% / 49.6%;視窗 30、1 日 → 50.2% / 50.2%;視窗 30、5 日 → 50.8% / 50.4%", "測試樣本約 11,800 筆,準確率的抽樣誤差約 ±0.5 個百分點;最高的 50.8% 不到 2 個標準誤,統計上和 50% 分不開", "回測(零成本):視窗 140、5 日那筆贏等權 5.0 個百分點,其餘三筆輸 1.1~2.3 個百分點", "和 XGB 系統比:同樣的標籤、台灣 50、預測 5 日,XGB 是 52~54%。Chart-GCN 的圖形處理沒有比直接用指標好", "結論:這個標籤讓數字變得誠實好解讀(不會塌縮、基準就是 50%),建議當成之後評估的標準;但它沒有讓 Chart-GCN 抓到訊號"]}, {"v": "v1.5", "date": "2026-09-21", "title": "關鍵點的挑法改成和股價高低無關", "state": "已完成:挑點標準已修正,預測無改善", "concerns": ["P1"], "changes": ["決定:採用改法一 minmax 當之後的標準。v1.3、v1.4 的批次維持論文原式(v1.4 腳本已寫死),對照才乾淨;v1.3 跑完後已把 run_paper_repro.py 的預設值改成 minmax", "core/pip_algorithm.py:extract_pips 新增 mode 參數。raw = 論文原式(預設,舊行為不變);minmax = 視窗內價格先線性縮放到 0 ~ 139,和時間軸同長度;vd = 垂直距離", "core/dataset.py、test/run_paper_repro.py:新增 pip_mode / --pip-mode,資料集快取檔名加 _pip<算法>", "新增 test/run_v15_pipmode_batch.sh,五筆:關鍵點 80 個配 minmax、vd;關鍵點 30 個配 raw、minmax、vd。80 個時 140 天裡過半都入選,算法差異會被稀釋,所以另外用 30 個再比"], "results": ["單位不變性驗證通過:台積電最近 140 天,價格乘 0.01、或乘 3 加 500,原式挑到的點都會變;minmax 和 vd 挑到的點完全不變", "三種算法互相比較(台灣 50、每檔挑 30 點):低價股 18 檔,原式和 minmax 重疊 19.1、和 vd 重疊 19.8;高價股 10 檔,原式和 minmax 重疊 28.5、和 vd 重疊 21.4", "準確率 / F1 macro(2024 測試,全猜跌 54.2%,單一 seed)。關鍵點 80 個:原式 52.4% / 48.9%、minmax 46.1% / 46.1%、垂直距離 53.5% / 43.3%", "關鍵點 30 個:原式 45.0% / 39.3%(塌縮成多半猜漲)、minmax 54.2% / 35.1%(完全塌縮成全猜跌)、垂直距離 52.4% / 47.7%", "三種算法沒有一致的高下:80 點時原式最好、30 點時垂直距離最好,minmax 兩邊都不突出。差距看起來是各次訓練塌縮方向不同造成的,不是算法本身", "結論:minmax 修正的是「挑點標準不一致」這個邏輯問題,這點已驗證;但它沒有讓預測變好。五筆回測都輸等權 6~22 個百分點"]}, {"v": "v1.4", "date": "2026-09-21", "title": "視窗縮到 30 天,並減少格子數", "state": "已完成,無明顯改善", "concerns": ["G2"], "changes": ["新增 test/run_v14_window_cells_batch.sh,四筆:(視窗 140、格子 20)、(視窗 30、格子 40)、(視窗 30、格子 20)、(視窗 30、格子 15)", "視窗 30 天時關鍵點取 15 個,指標週期跟著視窗 = 30 天;對照組是 v1.3 的「視窗 140、指標 30 天、格子 40」,兩者只差視窗", "程式本身不用改:視窗、關鍵點數、核心節點數、子圖大小原本就是參數。限制是核心節點最少 5 個(卷積核大小決定)"], "results": ["準確率 / F1 macro(2024 測試 11,950 筆,全猜跌 54.2%):視窗 140 格子 20 → 50.8% / 50.6%;視窗 30 格子 40 → 51.5% / 51.4%;視窗 30 格子 20 → 47.1% / 46.2%;視窗 30 格子 15 → 50.6% / 47.8%", "對照:視窗 140、格子 40 的基準是 52.4% / 48.9%;視窗 140、指標 30 天、格子 40 是 46.0% / 34.1%", "縮視窗:和只差視窗的對照組比,F1 macro 從 34.1% 升到 51.4%,不再塌縮;漲跌兩類的 F1 是 49.1 和 53.7,目前最平衡的一筆。回測輸等權 0.2 個百分點", "減格子:視窗 140 時 F1 macro 小升(48.9 → 50.6)、準確率小降;視窗 30 時反而變差。沒有一致的方向", "結論:都還在 50% 附近,沒有一筆贏過全猜跌。單一 seed,幾個百分點的差距不能當真;「視窗 30、格子 40」值得之後多跑幾個 seed 確認"]}, {"v": "v1.3", "date": "2026-09-21", "title": "指標週期和視窗脫鉤,從一週開始試", "state": "已完成,無改善", "concerns": ["I1"], "changes": ["run_paper_repro.py:新增 --indicator-n(不給就跟著視窗,和論文一樣);資料集快取檔名加上週期,不會和舊快取混用", "新增 test/run_v13_indicator_batch.sh:同一組參數(視窗 140、關鍵點 80、核心 10、子圖 4)依序跑週期 140、5、10、20 天", "回測裡「MACD 小於 0 就賣」的規則維持 140 天不動,這樣各版的交易規則一致,只比特徵", "第二批加跑 30 天和 60 天(test/run_v13_indicator_batch2.sh),共六筆:140、5、10、20、30、60 天"], "results": ["2024 測試集 11,950 筆,上漲佔 45.8%,所以全猜跌就有 54.2%。六筆都沒有超過這條線", "準確率 / F1 macro:5 天 48.4% / 48.3%;10 天 48.2% / 45.6%;20 天 46.3% / 37.5%;30 天 46.0% / 34.1%;60 天 50.7% / 49.9%;140 天(論文設定)52.4% / 48.9%", "20 天和 30 天塌縮成幾乎全猜漲(下跌那一類的 F1 只有 14% 和 6%),而 2024 測試期下跌比較多,所以準確率最低", "回測(零成本)只有 10 天那筆小贏等權 1 個百分點,其餘輸 0.5~12.6 個百分點", "結論:縮短指標週期沒有幫助,維持論文設定(週期跟著視窗)。限制:每種只跑一個 seed,2~3 個百分點以內的差距不能當真"]}, {"v": "v1.2", "date": "2026-09-21", "title": "股價改成只讀本地資料夾", "state": "已完成", "concerns": ["D3"], "changes": ["core/data_loader.py:預設資料夾由 common/cache/yf(到 2024)改成 common/cache/yf_2026(到 2026-09,815 檔,每檔一個 parquet)", "Chart-GCN 的實驗預設不連網,不會再因為日期涵蓋不足就自動重抓、覆寫檔案", "資料夾裡沒有的股票、涵蓋不到請求區間的股票都會印出清單", "要補資料:跑 test/download_data.py,或設 TW_ALLOW_DOWNLOAD=1 恢復舊行為。XGB 系統的讀法沒有動"], "results": ["實測通過:台灣 50 共 50 檔都從資料夾讀到,2016-01-04 ~ 2026-09-10;不存在的代碼有列出並略過", "注意:新資料夾是 2026-09 下載的還原價,和 07 月實驗用的那份數值略有不同(之後配息會回頭調整歷史價),所以 v1.0 的 2024 數字不能和之後的逐位比較;v1.3 會重跑一筆同條件基準"]}, {"v": "v1.1", "date": "2026-09-21", "title": "驗證集改成按時間切", "state": "已完成", "concerns": ["S1"], "changes": ["run_paper_repro.py:--val-split 預設由 random 改成 time,切分邏輯抽成共用函式 time_split_indices", "grid_search_paper.py:原本寫死隨機切,改成按日期切(新增 --val-split、--workers)", "run_xgb_baseline.py:早停用的驗證集同樣改成按日期切"], "results": ["兩階段網格 31 組跑完(台灣 50、訓練到 2023、測試 2024、同一天的股票一批),共 25 分鐘", "最佳參數變了:原本是視窗 140、關鍵點 80、核心 10、子圖 4;乾淨的驗證集選到視窗 140、關鍵點 30、核心 25、子圖 4(驗證 F1 macro 0.568,測試準確率 51.9%、測試 F1 macro 0.485)", "31 組的測試準確率介於 47.9%~54.2%,平均 51.4%;測試 F1 macro 平均 0.481", "驗證分數和測試分數幾乎無關:等級相關 −0.07(p=0.70)。也就是不管怎麼切驗證集,在這個訊號強度下挑出來的「最佳參數」都接近運氣", "還沒做:用隨機切重跑同一個網格當對照(排在 v1.4 之後)"]}, {"v": "v1.0", "date": "2026-09-21", "title": "重新起算的基準", "state": "基準", "concerns": [], "changes": ["版本從這裡重新編號。程式是 xgb 分支工作區裡的 method_chartgcn/,未做任何修改", "標準協定:原始指標值、同一天的股票一批;參數為視窗 140、關鍵點 80、核心節點 10、子圖 4 個節點;驗證集隨機切"], "results": ["2024 測試(3 個 seed):準確率 53.7% ± 0.6,F1 macro 38.3%,塌縮成全猜跌(全猜跌即 54.2%)", "2025 測試:準確率 47.9%;2026 測試:準確率 51.1%;兩年 F1 macro 都低於 0.5", "盤點出 11 項待處理的疑慮,見下方架構圖"]}], "roadmap": [{"v": "v1.8", "text": "格子裡改放形狀資訊(相對高低點的位置、距今幾天),不只放指標;50 和 300 檔都跑", "concerns": ["G1"]}, {"v": "待排", "text": "用隨機切重跑 v1.1 的網格當對照", "concerns": ["S1"]}, {"v": "待排", "text": "過濾成交量 0 的假 K 棒、補回每次少抓的最後一個交易日(300 檔時假 K 棒比較多,影響較大)", "concerns": ["D1", "D2"]}, {"v": "待排", "text": "重要設定多跑幾個 seed", "concerns": []}], "stages": [{"n": 1, "group": "front", "title": "讀取股價", "file": "core/data_loader.py", "desc": "從本地資料夾讀,每檔一個 parquet(2016-01 起的還原日線,目前 815 檔、到 2026-09-10)。預設不連網;要補資料另外跑 test/download_data.py。v1.7 起每個實驗都跑台灣 50 和 300 檔兩個池。", "io": "common/cache/yf_2026/<代碼>.parquet → 每檔 (天數, 5):開高低收量"}, {"n": 2, "group": "front", "title": "算技術指標", "file": "core/indicators.py", "desc": "9 個指標:SMA、WMA、動能、MACD、威廉 %R、CCI、K%、D%、RSI。全部只用當天以前的資料。週期原本跟著視窗(140 天),v1.3 起可用 --indicator-n 單獨設。", "io": "(天數, 5) → (天數, 9)"}, {"n": 3, "group": "front", "title": "滑動視窗切樣本", "file": "core/dataset.py", "desc": "每檔股票每天往前取 140 天當一個樣本。標籤:隔天收盤是否高於今天,持平算跌。", "io": "收盤價 (140,) + 指標 (140, 9) + 標籤 0/1"}, {"n": 4, "group": "front", "title": "抽關鍵轉折點(PIP)", "file": "core/pip_algorithm.py", "desc": "首尾兩天固定,之後每次挑「離左右兩個已選點最遠」的那一天,直到 80 個。每個點有重要性分數。距離的算法 v1.5 起可選:論文原式、價格先縮放、垂直距離。", "io": "收盤價 (140,) → 80 個日期索引 + 分數"}, {"n": 5, "group": "front", "title": "連成可視圖", "file": "core/vg_graph.py", "desc": "兩個關鍵點之間的連線如果沒被中間的點擋住,就連一條邊。", "io": "80 個點 → 一張圖(節點帶日期和價格)"}, {"n": 6, "group": "front", "title": "切子圖、綁指標", "file": "core/subgraph.py", "desc": "挑分數最高的 10 個點當核心(首尾兩天一定入選),各自沿著邊往外擴成 4 個節點,每個節點填入那一天的 9 個指標。", "io": "圖 + 指標 → 一個樣本 (10, 4, 9)"}, {"n": 7, "group": "back", "title": "Chart GCN 模型", "file": "core/model.py", "desc": "三層卷積(4×9 → 5×1 → 6×1)→ 全連接 84 → 32 → 對同一批樣本做 self-attention → 漲/跌兩類。約 2.7 萬個參數。", "io": "(批次, 10, 4, 9) → (批次, 2)"}, {"n": 8, "group": "back", "title": "訓練與評估", "file": "core/train.py", "desc": "Adam、30 個 epoch,用驗證集 macro-F1 挑最好的權重,測試集只評一次。", "io": "訓練/驗證/測試集 → 模型 + 四大指標"}, {"n": 9, "group": "back", "title": "回測", "file": "backtest.py", "desc": "預測漲就買;預測跌或 MACD 小於 0 就賣。", "io": "模型 + 測試集 → 累積報酬圖"}], "concerns": [{"id": "D1", "stage": 1, "kind": "bad", "label": "確認", "text": "成交量 0 的假 K 棒沒過濾。台灣 50 在 2016 年後有 333 列(0.26%),其中 327 列收盤等於前一天,標籤一定是「跌」。對台灣 50 影響小,對 200、500 檔的大池子較大。", "src": "09-21 實測;07 月審查在 279 檔上數到 3,482 列", "status": "open", "ver": "", "note": ""}, {"id": "D2", "stage": 1, "kind": "bad", "label": "確認", "text": "yfinance 的結束日不含當天,每次都少抓最後一個交易日。", "src": "07 月審查實測", "status": "open", "ver": "", "note": ""}, {"id": "D3", "stage": 1, "kind": "ok", "label": "確認", "text": "單檔下載失敗會被靜默跳過,不同次執行的股票組成可能不一樣。", "src": "", "status": "fixed", "ver": "v1.2", "note": "改成只讀本地資料夾、預設不連網。資料夾裡沒有的股票會明確列出來,不再靜默跳過。實測:故意多要一檔不存在的代碼,有列出並略過;50 檔正常讀到 2026-09-10。"}, {"id": "I1", "stage": 2, "kind": "warn", "label": "疑慮", "text": "指標週期跟著視窗走,現在是 140 天。也就是 140 日 RSI、140 日 KD、140 日威廉 %R,拿來猜「明天」漲跌反應非常慢。這是論文的設定,不是寫錯,但很可能是訊號薄的原因之一。", "src": "讀碼確認 <code>indicator_n = window<\/code>;沒有做過短週期的對照實驗", "status": "nogain", "ver": "v1.3", "note": "六種週期都跑過了(其餘設定相同、單一 seed):5 天 48.4%、10 天 48.2%、20 天 46.3%、30 天 46.0%、60 天 50.7%、140 天 52.4%。縮短沒有變好,5~30 天反而低於 50%;20 天和 30 天還塌縮成幾乎全猜漲。指標週期維持跟著視窗走。"}, {"id": "I2", "stage": 2, "kind": "warn", "label": "未複驗", "text": "動能指標前 139 天算不出來,被填成 0,訓練集開頭的樣本含這些人工的 0。", "src": "", "status": "open", "ver": "", "note": ""}, {"id": "S1", "stage": 3, "kind": "ok", "label": "確認", "text": "相鄰兩個樣本共用 139/140 天。訓練/驗證用隨機 80/20 切,79.7% 的驗證樣本在訓練集裡有「隔天的雙胞胎」,用驗證集選模型、選參數會被污染。", "src": "07 月審查 P4", "status": "fixed", "ver": "v1.1", "note": "三支腳本都改成按日期切:前 80% 交易日訓練、空 1 個決策日、後 20% 驗證。重跑 31 組網格後,最佳參數從「關鍵點 80、核心 10」變成「關鍵點 30、核心 25」。另一個發現:31 組的驗證分數和測試分數幾乎無關(等級相關 −0.07),代表在這個訊號強度下,用驗證集挑參數本身就不太可靠。"}, {"id": "S2", "stage": 3, "kind": "warn", "label": "疑慮", "text": "標籤是單檔的絕對漲跌,大盤漲跌直接混在裡面。XGB 系統用的是「是否高於當天所有股票的中位數」,天生 50/50。07 月的報告把這項列為最值得試的改動,但沒有做。", "src": "", "status": "nogain", "ver": "v1.6", "note": "四筆都跑完:準確率 50.2%~50.8%,類別各半所以基準是 50%。以約 11,800 筆測試樣本算,抽樣誤差約 ±0.5 個百分點,最高的 50.8% 也不到 2 個標準誤,分不出和丟銅板的差別。好處是模型不再塌縮成全猜一邊,數字變得好解讀;但同樣的標籤下 XGB 系統是 52~54%,Chart-GCN 沒有抓到訊號。"}, {"id": "P1", "stage": 4, "kind": "ok", "label": "確認", "text": "距離公式把「相隔幾天」和「差幾元」直接平方相加,而且丟進去的是沒有正規化的原始股價。高價股幾乎只看價格,低價股有一部分被時間軸左右,同一套參數在不同股票上挑點的標準不一樣。", "src": "09-21 實測見下表;07 月審查 P3;修法只寫在報告裡,程式沒改", "status": "fixed", "ver": "v1.5", "note": "已採用改法一(minmax)並設為預設:先把視窗內的價格縮放到和時間軸同長度,再用論文原本的距離公式。同一條線換單位後挑到的點完全相同,挑點標準不再隨股價高低變。但對預測沒有幫助:五筆對照的準確率散落在 45%~54%,看不出哪種算法比較好(見 v1.5)。"}, {"id": "P2", "stage": 4, "kind": "warn", "label": "疑慮", "text": "140 天裡挑 80 個「關鍵點」,等於 57% 的日子都算關鍵,幾乎沒有篩。網格搜尋選到的正好是可選範圍的上限。", "src": "", "status": "open", "ver": "", "note": "v1.1 的乾淨網格已有初步答案:第一階段依關鍵點數平均的驗證 F1 為 30 點 0.529、40 點 0.539、60 點 0.524、80 點 0.516,80 點最低;但差距小於組間的雜訊(標準差 0.033)。v1.4 會試視窗 30 天、關鍵點 15 個。"}, {"id": "V1", "stage": 5, "kind": "ok", "label": "沒問題", "text": "定義符合標準可視圖,日期沒有錯位,視窗內沒有未來資料。", "src": "07 月審查", "status": "none", "ver": "", "note": ""}, {"id": "G1", "stage": 6, "kind": "warn", "label": "疑慮", "text": "圖的形狀沒有真的進到模型:節點只帶那天的指標值,不帶價格或相對位置;邊的連接關係(鄰接矩陣)在這一步被丟掉。圖形只透過「挑了哪幾天、怎麼排順序」間接影響輸入。140 天最後只剩最多 40 格「某一天的 9 個指標」。", "src": "程式註解寫明這是照論文的設計;沒有做過保留圖結構的對照", "status": "open", "ver": "", "note": ""}, {"id": "G2", "stage": 6, "kind": "bad", "label": "確認", "status": "nogain", "ver": "v1.4", "text": "40 格裡有重複,而且大多是很久以前的日子。不重複的日子平均只有 24.3 天(最少 18、最多 33);其中落在最近 10 天的平均只有 3.5 天。指標週期一縮短,這些格子就變成「很久以前的短期雜訊」。", "src": "09-21 實測:台灣 50 隨機抽 300 個樣本", "note": "四筆都跑完(單一 seed):只減格子(視窗 140、格子 20)50.8%;只縮視窗(視窗 30、格子 40)51.5%;兩個一起(格子 20)47.1%、(格子 15)50.6%。減格子沒有一致的好處。縮視窗那筆比它的對照組(視窗 140、指標 30 天:46.0%、塌縮成全猜漲)好很多,F1 macro 51.4% 也是目前最高,但仍在 50% 附近,沒有贏過全猜跌的 54.2%。"}, {"id": "M1", "stage": 7, "kind": "ok", "label": "已處理", "text": "論文的 attention 是對「同一批的樣本」做的。原本依序 128 筆一批,同一批會混進同一檔股票隔天的樣本,等於偷看答案。現在改成「同一天的股票一批」。", "src": "07 月審查 P1:有洩漏 52.7%,逐筆評估 46.8%,同日批 51.3%", "status": "done", "ver": "v1.0 前", "note": "2026-07 已改成同一天的股票一批"}, {"id": "T1", "stage": 8, "kind": "bad", "label": "確認", "text": "模型常常塌縮成「全部猜跌」:準確率 53.7% 看起來不差,其實全猜跌就有 54.2%,F1 macro 只有 38%。", "src": "", "status": "open", "ver": "", "note": "換成橫斷面標籤(v1.6)後不再塌縮,漲跌兩類的 F1 都在 38~59 之間;但準確率只有 50% 出頭。"}, {"id": "B1", "stage": 9, "kind": "info", "label": "結果", "text": "2024 測試三個 seed 都輸等權買入持有 10~13%;2026 測試策略淨值 1.01,同期大盤 1.65。", "src": "", "status": "none", "ver": "", "note": ""}]};
+const ST = {open:"未處理", testing:"已改程式,驗證中", fixed:"已修", done:"先前已處理", nogain:"已驗證,沒有改善"};
+const isClosed = c => ["fixed","done","nogain"].includes(c.status);
+const byId = Object.fromEntries(S.concerns.map(c => [c.id, c]));
+const tracked = S.concerns.filter(c => c.status !== "none" && c.status !== "done");
+const cnt = k => tracked.filter(c => c.status === k).length;
+const cur = S.versions.find(v => v.v === S.current);
+
+document.getElementById("now").innerHTML =
+  `<div class="ver">${S.current}</div>
+   <div class="what"><b>${cur.title}</b><span class="sub">${cur.state} · 最後更新 ${S.updated}</span></div>
+   <div class="counts"><span>圖上還在的疑慮 <b>${tracked.filter(c => !isClosed(c)).length}</b> 項</span><span>未處理 <b>${cnt("open")}</b></span><span>驗證中 <b>${cnt("testing")}</b></span><span><a href="#history" style="color:var(--front)">歷史疑慮</a> <b>${S.concerns.filter(isClosed).length}</b> 項(已修 ${cnt("fixed")}、試過沒有改善 ${cnt("nogain")})</span></div>`;
+
+document.getElementById("log").innerHTML = S.versions.map(v =>
+  `<div class="rel"><div><div class="v">${v.v}</div><div class="d">${v.date} · ${v.state}</div></div>
+   <div><h3>${v.title}</h3>
+   ${v.concerns.length ? `<div class="k">處理的疑慮</div><ul>${v.concerns.map(id => `<li><span class="mono">${id}</span> ${byId[id].text.split("。")[0]}。</li>`).join("")}</ul>` : ""}
+   <div class="k">改了什麼</div><ul>${v.changes.map(x => `<li>${x}</li>`).join("")}</ul>
+   <div class="k">結果</div><ul>${v.results.map(x => `<li>${x}</li>`).join("")}</ul></div></div>`).join("");
+
+document.getElementById("road").innerHTML = S.roadmap.map(r =>
+  `<li><span class="v">${r.v}</span>${r.text}<span class="mono" style="color:var(--muted);margin-left:8px">${r.concerns.join(" ")}</span></li>`).join("");
+
+const arrow = '<div class="stage"><div class="arrow">↓</div></div>';
+let html = '<div class="stage"><div class="group">前段 · 資料與圖形處理</div></div>', lastGroup = "front";
+S.stages.forEach((s, i) => {
+  if (s.group !== lastGroup) { html += '<div class="stage"><div class="group back">後段 · 模型、訓練、回測</div></div>'; lastGroup = s.group; }
+  const closedHere = S.concerns.filter(c => c.stage === s.n && isClosed(c));
+  const notes = S.concerns.filter(c => c.stage === s.n && !isClosed(c)).map(c => {
+    const chip = c.status === "none" ? "" : `<span class="st ${c.status}">${c.ver ? c.ver + " " : ""}${ST[c.status]}</span>`;
+    const tagStyle = c.kind === "info" ? ' style="background:var(--back);color:var(--surface)"' : "";
+    return `<div class="note ${c.kind === "info" ? "" : c.kind}"><span class="cid">${c.id}</span><b class="tag"${tagStyle}>${c.label}</b>${chip}${c.text}
+      ${c.src ? `<span class="src">${c.src}</span>` : ""}${c.note ? `<span class="upd">${c.note}</span>` : ""}</div>`;
+  }).join("");
+  html += `<div class="stage"><div class="node ${s.group === "front" ? "front" : ""}"><h3>${s.n} ${s.title}</h3><span class="file">${s.file}</span><p>${s.desc}</p><span class="io">${s.io}</span></div><div class="notes">${notes}${closedHere.length ? `<div class="closedline">已處理完、收進歷史疑慮:${closedHere.map(c => `<a href="#h-${c.id}" class="mono">${c.id}</a>`).join("、")}</div>` : ""}</div></div>`;
+  if (i < S.stages.length - 1 && S.stages[i + 1].group === s.group) html += arrow;
+  else if (i < S.stages.length - 1) html += arrow;
+});
+document.getElementById("pipe").innerHTML = html;
+
+const closedList = S.concerns.filter(isClosed);
+const stageOf = Object.fromEntries(S.stages.map(s => [s.n, s]));
+document.getElementById("histcount").innerHTML =
+  `共 <b>${closedList.length}</b> 項:已修 ${closedList.filter(c => c.status === "fixed").length}、試過沒有改善 ${closedList.filter(c => c.status === "nogain").length}、先前已處理 ${closedList.filter(c => c.status === "done").length}`;
+document.getElementById("hist").innerHTML = closedList.map(c => {
+  const vs = S.versions.filter(v => v.concerns.includes(c.id));
+  const st = stageOf[c.stage];
+  return `<details id="h-${c.id}"><summary><span class="cid mono">${c.id}</span><span class="st ${c.status}">${c.ver ? c.ver + " " : ""}${ST[c.status]}</span>${c.text.split("。")[0]}。<span class="where">第 ${st.n} 站 ${st.title}</span></summary>
+    <div class="hb">
+      <div class="k">原本的疑慮</div><div>${c.text}${c.src ? `<br><span class="src">${c.src}</span>` : ""}</div>
+      ${vs.map(v => `<div class="k">改了什麼<br>${v.v} · ${v.date}</div><div><ul>${v.changes.map(x => `<li>${x}</li>`).join("")}</ul></div>`).join("")}
+      <div class="k">結果</div><div>${c.note || "—"}</div>
+    </div></details>`;
+}).join("");
+const histBtn = document.getElementById("histtoggle");
+histBtn.addEventListener("click", () => {
+  const ds = [...document.querySelectorAll("#hist details")], open = ds.some(d => !d.open);
+  ds.forEach(d => d.open = open); histBtn.textContent = open ? "全部收合" : "全部展開";
+});
+function openHash(){ const el = document.getElementById(decodeURIComponent(location.hash.slice(1))); if (el && el.tagName === "DETAILS") { el.open = true; el.scrollIntoView(); } }
+window.addEventListener("hashchange", openHash); openHash();
+</script>
+
+</body></html>

@@ -33,12 +33,12 @@ def chip_features(price: pd.DataFrame, parts: dict) -> pd.DataFrame:
     vol20 = price["volume"].rolling(20).mean()
     f = {}
 
-    # ── 三大法人 ──
     inst = parts.get("institutional")
     if inst is not None and len(inst):
         w = inst.pivot_table(index="date", columns="name", values=["buy", "sell"], aggfunc="sum")
         net = (w["buy"] - w["sell"]).reindex(idx)
-        g = lambda c: net[c] if c in net.columns else pd.Series(0.0, index=idx)
+        has = net.notna().any(axis=1)
+        g = lambda c: (net[c].fillna(0.0).where(has) if c in net.columns else pd.Series(0.0, index=idx).where(has))
         foreign = g("Foreign_Investor") + g("Foreign_Dealer_Self")
         trust = g("Investment_Trust")
         dealer = g("Dealer_self") + g("Dealer_Hedging")
@@ -57,7 +57,6 @@ def chip_features(price: pd.DataFrame, parts: dict) -> pd.DataFrame:
         s = f["inst_foreign_net_r"]
         f["inst_foreign_z60"] = safe_div(s - s.rolling(60).mean(), s.rolling(60).std())
 
-    # ── 融資融券 ──
     mg = parts.get("margin")
     if mg is not None and len(mg):
         m = mg.drop_duplicates("date").set_index("date").reindex(idx)
@@ -74,7 +73,6 @@ def chip_features(price: pd.DataFrame, parts: dict) -> pd.DataFrame:
         f["mg_bal_roc20"] = bal / bal.shift(20) - 1
         f["mg_bal_to_vol"] = bal / vol20
 
-    # ── 外資持股 ──
     sh = parts.get("shareholding")
     if sh is not None and len(sh):
         s = sh.drop_duplicates("date").set_index("date").reindex(idx)
@@ -103,6 +101,5 @@ CHIP_COLUMNS = (
        "sh_foreign_z60", "sh_foreign_room"]
 )
 
-# 橫斷面排名用
 CHIP_RANK_COLS = ["inst_foreign_sum20", "inst_trust_sum20", "inst_all_sum5",
                   "mg_bal_chg20", "ss_bal_chg5", "sh_foreign_chg20"]

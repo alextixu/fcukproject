@@ -33,5 +33,5 @@ for c in mom:
     s_te=te[c].fillna(te[c].median()).values; s_sc=score[c].fillna(score[c].median()).values
     r_te=pd.Series(s_te).groupby(dte).rank(pct=True).values; r_sc=pd.Series(s_sc).groupby(np.asarray(score.index.get_level_values('date'))).rank(pct=True).values
     report('mom_'+c,r_te,r_sc)
-    if c in ('cs_excess_roc_20','roc_20'): report('rev_'+c,1-r_te,1-r_sc)   # 反向(均值回歸)
+    if c in ('cs_excess_roc_20','roc_20'): report('rev_'+c,1-r_te,1-r_sc)
 json.dump(res,open(os.path.join(P.XGB_EXP,'baselines_2026.json'),'w'),indent=1); sp.to_parquet(os.path.join(P.RESULTS,'fullpred_baselines_2026.parquet')); print('[DONE]')

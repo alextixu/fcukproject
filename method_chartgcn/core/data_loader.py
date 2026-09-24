@@ -13,10 +13,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# 快取固定放在專案根目錄下, 不受執行時工作目錄影響
+# 股價資料夾: 每檔一個 <ticker>.parquet (2016-01 起的還原日線) + _manifest.json。
+# v1.2 起預設指向 common/cache/yf_2026 (到 2026-09, 815 檔), 不受執行時工作目錄影響;
+# TW_CACHE_DIR 可改指別的資料夾。
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-# TW_CACHE_DIR 可改指另一個快取資料夾(例如 2026 回測用 cache_2026,避免覆寫舊實驗用的主檔)
-DEFAULT_CACHE_DIR = os.environ.get("TW_CACHE_DIR") or str(PROJECT_ROOT.parent / "common" / "cache" / "yf")
+DEFAULT_CACHE_DIR = os.environ.get("TW_CACHE_DIR") or str(PROJECT_ROOT.parent / "common" / "cache" / "yf_2026")
 _MANIFEST_NAME = "_manifest.json"
 
 
@@ -355,10 +356,14 @@ def _clean_yf_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fetch_yfinance(tickers, start: str, end: str, cache_dir: str = None):
+def fetch_yfinance(tickers, start: str, end: str, cache_dir: str = None,
+                   allow_download: bool = True):
     """
     讀取本地主檔快取; 只有「沒抓過 / 覆蓋區間不足」的股票才會下載。
     回傳區間一律切片為 [start, end) (與 yfinance end-exclusive 慣例一致)。
+
+    allow_download=False (v1.2, Chart-GCN 實驗的預設): 完全不連網, 只讀資料夾裡的檔。
+    資料夾裡沒有的股票、或檔案涵蓋不到請求區間的股票會明確列出, 不再靜默跳過。
     """
     if cache_dir is None:
         cache_dir = DEFAULT_CACHE_DIR
@@ -368,6 +373,7 @@ def fetch_yfinance(tickers, start: str, end: str, cache_dir: str = None):
 
     out = {}
     skipped_empty = []
+    missing, short = [], []   # 離線模式: 沒有檔 / 檔案涵蓋不足
     yf = None  # 延遲 import, 全快取命中時完全不需要 yfinance
     for tk in tickers:
         entry = manifest.get(tk)
@@ -396,6 +402,18 @@ def fetch_yfinance(tickers, start: str, end: str, cache_dir: str = None):
             out[tk] = df
             continue
 
+        if not allow_download:
+            # 離線: 有檔就用檔裡有的部分, 沒檔就記下來, 一律不下載
+            if os.path.exists(master):
+                df = pd.read_parquet(master)
+                df = df[(df.index >= t_start) & (df.index < t_end)]
+                if not df.empty:
+                    out[tk] = df
+                    short.append(tk)
+                    continue
+            missing.append(tk)
+            continue
+
         # 需要下載: 取「請求 ∪ 已覆蓋」聯集區間, 主檔只會變大不會變小
         dl_start, dl_end = start, end
         if entry is not None and not entry.get("empty"):
@@ -418,6 +436,12 @@ def fetch_yfinance(tickers, start: str, end: str, cache_dir: str = None):
         if not df.empty:
             out[tk] = df
 
+    if missing:
+        print(f"[DATA] ⚠ 資料夾 {cache_dir} 裡沒有這 {len(missing)} 檔, 已略過 "
+              f"(補抓: python test/download_data.py): {', '.join(missing)}")
+    if short:
+        print(f"[DATA] ⚠ 這 {len(short)} 檔的檔案涵蓋不到 {start} ~ {end}, "
+              f"只用檔裡有的部分: {', '.join(short)}")
     if skipped_empty:
         print(f"[CACHE] {len(skipped_empty)} 檔已標記查無資料, 略過下載 "
               f"(重試: python test/download_data.py --retry-empty): "
@@ -428,14 +452,18 @@ def fetch_yfinance(tickers, start: str, end: str, cache_dir: str = None):
 
 def fetch_tw_stocks(tickers=None, start="2018-01-01", end="2024-12-31"):
     """
-    主接口: 用 yfinance 下載台股資料。
+    主接口 (Chart-GCN 實驗用): 從本地股價資料夾讀台股還原日線。
+    v1.2 起預設不連網; 要補抓資料請跑 test/download_data.py,
+    或設環境變數 TW_ALLOW_DOWNLOAD=1 恢復「缺了就下載」的舊行為。
     """
     if tickers is None:
         tickers = TW50_TICKERS
 
-    data = fetch_yfinance(tickers, start, end)
+    allow = os.environ.get("TW_ALLOW_DOWNLOAD") == "1"
+    data = fetch_yfinance(tickers, start, end, allow_download=allow)
     if not data:
-        raise RuntimeError("yfinance 回傳空，請確認網路連線與股票代碼是否正確")
+        raise RuntimeError(f"股價資料夾 {DEFAULT_CACHE_DIR} 讀不到任何一檔; "
+                           f"請先跑 python test/download_data.py")
     return data
 
 
@@ -690,6 +718,7 @@ TICKER_SETS = {
     "tw50": TW50_TICKERS,
     "tw100": TW100_TICKERS,
     "tw200": TW200_TICKERS,
+    "tw300": TW500_TICKERS[:300],   # v1.7: TW500 巢狀池的前 300 檔 (TW50 → TW100 → TW200 → 其餘按代碼)
     "tw500": TW500_TICKERS,
     "elec_all": TW_ELEC_ALL,
     "semi": TW_SEMI,

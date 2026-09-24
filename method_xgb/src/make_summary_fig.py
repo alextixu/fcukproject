@@ -10,9 +10,9 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import matplotlib  # noqa: E402
+import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 plt.rcParams["font.family"] = ["Microsoft JhengHei", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False

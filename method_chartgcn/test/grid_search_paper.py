@@ -19,7 +19,7 @@ from datetime import datetime
 
 import numpy as np
 import torch
-from torch.utils.data import random_split
+from torch.utils.data import random_split, Subset
 
 _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 _sys.path.insert(0, _root)
@@ -31,7 +31,7 @@ from dataset import ChartGCNDataset, split_by_date
 from train import fit
 from backtest import run_backtest, plot_backtest
 from run_paper_repro import (ArrayDataset, save_ds_cache, load_ds_cache,
-                             TICKER_SETS)
+                             TICKER_SETS, time_split_indices)
 
 SEED = 42
 SEARCH_STRIDE, SEARCH_EPOCHS = 5, 15
@@ -42,6 +42,10 @@ ap.add_argument("--start", default="2016-01-01")
 ap.add_argument("--train-end", default="2023-12-31")
 ap.add_argument("--end", default="2024-12-31")
 ap.add_argument("--batch-mode", default="paper", choices=["paper", "date"])
+ap.add_argument("--val-split", default="time", choices=["random", "time"],
+                help="time=依決策日前 80%% 訓練+embargo+後 20%% 驗證 (v1.1 起預設); "
+                     "random=論文 4.3 隨機 80/20 (驗證集會被污染, 僅供對照)")
+ap.add_argument("--workers", type=int, default=1, help="建 dataset 的行程數")
 ap.add_argument("--out-dir", default="experiments_paper")
 ap.add_argument("--md-file", default="實驗記錄_論文對齊.md")
 ARGS = ap.parse_args()
@@ -65,10 +69,10 @@ def build_or_load(data, window, m, N, g, stride):
                                           warmup_rows=2 * window)
     train_full = ChartGCNDataset(
         train_data, window=window, m_pips=m, N=N, g=g,
-        stride=stride, n_workers=1, norm_stats=raw_stats, verbose=False)
+        stride=stride, n_workers=ARGS.workers, norm_stats=raw_stats, verbose=False)
     test_ds = ChartGCNDataset(
         test_data, window=window, m_pips=m, N=N, g=g,
-        stride=1, n_workers=1, norm_stats=raw_stats,
+        stride=1, n_workers=ARGS.workers, norm_stats=raw_stats,
         min_date=TRAIN_END, verbose=False)
     save_ds_cache(tr_c, train_full)
     save_ds_cache(te_c, test_ds)
@@ -79,11 +83,15 @@ def eval_combo(data, window, m, N, g):
     torch.manual_seed(SEED)
     np.random.seed(SEED)
     train_full, test_ds = build_or_load(data, window, m, N, g, SEARCH_STRIDE)
-    n_total = len(train_full)
-    n_train = int(n_total * 0.8)
-    train_ds, val_ds = random_split(
-        train_full, [n_train, n_total - n_train],
-        generator=torch.Generator().manual_seed(SEED))
+    if ARGS.val_split == "time":
+        tr_idx, val_idx, _, _ = time_split_indices(train_full, horizon=1)
+        train_ds, val_ds = Subset(train_full, tr_idx), Subset(train_full, val_idx)
+    else:
+        n_total = len(train_full)
+        n_train = int(n_total * 0.8)
+        train_ds, val_ds = random_split(
+            train_full, [n_train, n_total - n_train],
+            generator=torch.Generator().manual_seed(SEED))
     _, metrics = fit(train_ds, val_ds, test_ds,
                      N=N, g=g, F_dim=9,
                      epochs=SEARCH_EPOCHS, lr=1e-3, weight_decay=5e-5,

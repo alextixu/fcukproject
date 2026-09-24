@@ -21,18 +21,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(ROOT))
-from common import paths as P  # noqa: E402
+from common import paths as P
 
-from data import load_pool, PAPER9_NAMES                      # noqa: E402
-from features import build_panel, CLASSIC_SETS                # noqa: E402
-from labels import add_labels, label_col, HORIZONS            # noqa: E402
-from split import time_split, filter_features, apply_deadzone                 # noqa: E402
-from train_xgb import fit_xgb, predict_p                      # noqa: E402
+from data import load_pool, PAPER9_NAMES
+from features import build_panel, CLASSIC_SETS
+from labels import add_labels, label_col, HORIZONS
+from split import time_split, filter_features, apply_deadzone
+from train_xgb import fit_xgb, predict_p
 from importance import (gain_importance, permutation_importance, shap_importance,
-                        composite_rank, dedupe_correlated)    # noqa: E402
-from prune import apply_rule, RULES                           # noqa: E402
-from evaluate import clf_metrics, clf_metrics_csmed, decile_eval                 # noqa: E402
-import plots                                                  # noqa: E402
+                        composite_rank, dedupe_correlated)
+from prune import apply_rule, RULES
+from evaluate import clf_metrics, clf_metrics_csmed, decile_eval
+import plots
 
 EXP = os.path.join(ROOT, "experiments")
 FIGS = os.path.join(ROOT, "figs")
@@ -53,7 +53,7 @@ def get_panel(cfg, rebuild=False):
     key = f"{cfg['pool']}_{cfg['start']}_{cfg['end']}" + ("_chip" if cfg.get("chip") else "")
     fp = os.path.join(P.FEATURES, f"features_{key}.parquet")
     lm_prefix = os.path.join(P.FEATURES, f"features_{key}_lowmem")
-    cat_key_fp = os.path.join(CFG, f"feature_catalog_{key}.csv")   # 建構時一律寫這個
+    cat_key_fp = os.path.join(CFG, f"feature_catalog_{key}.csv")
     cat_fp = cat_key_fp if os.path.exists(cat_key_fp) else os.path.join(CFG, f"feature_catalog_{cfg['pool']}.csv")
     from lowmem import build_lowmem, load_lowmem
     if os.path.exists(lm_prefix + "_cols.json") and not rebuild:
@@ -67,7 +67,7 @@ def get_panel(cfg, rebuild=False):
         print(f"[FEAT] 讀快取 {fp}")
         panel = pd.read_parquet(fp)
         fam = pd.read_csv(cat_fp, index_col=0)["family"].to_dict()
-        fam = {k: v for k, v in fam.items() if k in panel.columns}   # 目錄可能含此快取沒有的族群(如 chip)
+        fam = {k: v for k, v in fam.items() if k in panel.columns}
         return panel, fam
     t0 = time.time()
     data = load_pool(cfg["pool"], cfg["start"], cfg["end"])
@@ -109,11 +109,11 @@ def feature_list(name, fam):
     if name.startswith("nofamily:"):
         f = name.split(":", 1)[1]
         return [k for k, v in fam.items() if v not in ("paper9", f)]
-    if name.startswith("top:"):          # top:<tag>:<K> → 沿用某次實驗的重要性前 K 欄
+    if name.startswith("top:"):
         _, tag, k = name.split(":")
         imp = pd.read_csv(os.path.join(EXP, f"{tag}_importance.csv"), index_col=0)
         return [f for f in imp.sort_values("rank_mean").index[:int(k)] if f in fam]
-    if name.startswith("frozen:"):       # frozen:<tag>:<set> → 原封沿用某次實驗某特徵集的完整欄位清單
+    if name.startswith("frozen:"):
         _, tag, sname = name.split(":")
         feats = json.load(open(os.path.join(EXP, f"{tag}.json"), encoding="utf-8"))["results"][sname]["features"]
         return [f for f in feats if f in fam]
@@ -159,7 +159,7 @@ def run_set(name, feats, tr, va, te, ycol, cfg, seeds, null_reps, want_importanc
            "decile": decile_eval(te, p_ens, HORIZONS, null_reps=null_reps, null_h=cfg["horizon"])}
     out = {"features": feats, "n_feat": len(feats), "per_seed": per_seed, "ensemble": ens,
            "summary": summarize(per_seed, cfg["horizon"]),
-           "_p_ens": p_ens}   # 存 testpred 用,寫 JSON 前 pop 掉
+           "_p_ens": p_ens}
     imp = None
     if want_importance:
         imp = pd.DataFrame(index=feats)
@@ -275,7 +275,7 @@ def main():
                 keep &= (panel["vol_sma_ratio_20"] >= k - 1).fillna(False)
             else:
                 raise ValueError(rule)
-        panel.loc[~keep.values, ycol] = np.nan        # 不符合的列不進 train / val / test
+        panel.loc[~keep.values, ycol] = np.nan
         print(f"[SAMPLE] {a.sample_filter}:保留 {keep.mean() * 100:.1f}% 的樣本")
     tr, va, te = time_split(panel, cfg["train_end"], cfg["val_end"], cfg["horizon"], ycol)
     if cfg.get("stride", 1) > 1 and not cfg.get("_strided"):
@@ -324,13 +324,11 @@ def main():
             results[f"full_{rule}"], _ = run_set(f"full_{rule}", sel, tr, va, te, ycol, cfg,
                                                  cfg["seeds"], cfg["null_reps"])
 
-    # 圖:各特徵集十分位(ensemble)
     h = cfg["horizon"]
     plots.decile_bars({n: r["ensemble"]["decile"][f"h{h}"] for n, r in results.items() if r["ensemble"]["decile"].get(f"h{h}")},
                       h, os.path.join(FIGS, f"{a.tag}_decile_h{h}.png"),
                       f"{a.tag}  十分位年化報酬(test, 3-seed 平均機率)")
 
-    # test 期 ensemble 機率存檔(src/backtest_2026.py 用來畫累積報酬 / 可交易回測)
     pred = te[[c for c in te.columns if c.startswith("r_h")]].copy()
     for n, r in results.items():
         pred[f"p_{n}"] = np.asarray(r.pop("_p_ens"), dtype="float32")

@@ -28,7 +28,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 
 from data_loader import fetch_tw_stocks
 from indicators import compute_indicators
-from run_paper_repro import load_ds_cache, TICKER_SETS
+from run_paper_repro import load_ds_cache, TICKER_SETS, time_split_indices
 
 MARKETS = {
     "tw": dict(tickers="tw50", start="2016-01-01", train_end="2023-12-31",
@@ -68,6 +68,9 @@ def fit_xgb(Xtr, ytr, Xva, yva, Xte):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--market", default="tw", choices=["tw", "cn"])
+    ap.add_argument("--val-split", default="time", choices=["random", "time"],
+                    help="早停驗證集: time=依決策日前 80%% 訓練+embargo+後 20%% 驗證 "
+                         "(v1.1 起預設); random=隨機 80/20 (驗證集會被污染, 僅供對照)")
     args = ap.parse_args()
     cfg = MARKETS[args.market]
 
@@ -78,11 +81,16 @@ def main():
     test_ds = load_ds_cache(_os.path.join(cache, f"{key}_test.npz"))
     print(f"[DATA] {key}: train {len(train_ds)}, test {len(test_ds)}")
 
-    # 與 Chart GCN 相同的隨機 80/20 切分 (同 seed)
-    rng = np.random.default_rng(SEED)
     n = len(train_ds)
-    perm = rng.permutation(n)
-    tr_idx, va_idx = perm[:int(n * 0.8)], perm[int(n * 0.8):]
+    if args.val_split == "time":
+        # 與 Chart GCN 相同的時間序切分 (run_paper_repro.time_split_indices)
+        tr_idx, va_idx, _, _ = time_split_indices(train_ds, horizon=1)
+        tr_idx, va_idx = np.array(tr_idx), np.array(va_idx)
+    else:
+        rng = np.random.default_rng(SEED)
+        perm = rng.permutation(n)
+        tr_idx, va_idx = perm[:int(n * 0.8)], perm[int(n * 0.8):]
+    print(f"[SPLIT] {args.val_split}: train {len(tr_idx)} / val {len(va_idx)}")
 
     results = {}
 

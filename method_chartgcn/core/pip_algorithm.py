@@ -13,11 +13,17 @@ import bisect
 import numpy as np
 
 
-def extract_pips(series: np.ndarray, m: int):
+def extract_pips(series: np.ndarray, m: int, mode: str = "raw"):
     """
     Args:
         series: 1D numpy array, 收盤價序列, 長度 n
         m:      想保留的關鍵點數, m < n
+        mode:   距離怎麼算 (修正 P3/P1: 原式把「天數」和「元」直接平方相加)
+                "raw"    = 論文原式, 原始股價 + Euclidean 距離 (預設, v1.0 行為)
+                "minmax" = 先把視窗內的價格線性縮放到 0 ~ n-1 (和時間軸同長度) 再算
+                           Euclidean 距離 → 挑點只看形狀, 和股價高低無關
+                "vd"     = 垂直距離: 候選點到「左右相鄰 PIP 連線」的垂直落差,
+                           不含時間項 → 挑點順序和股價單位無關
 
     Returns:
         indices: List[int], 排序後的 m 個 PIP index
@@ -29,7 +35,13 @@ def extract_pips(series: np.ndarray, m: int):
         scores = np.full(n, np.inf)
         return list(range(n)), scores
 
+    if mode not in ("raw", "minmax", "vd"):
+        raise ValueError(f"unknown pip mode: {mode}")
     s = np.asarray(series, dtype=np.float64)
+    if mode == "minmax":
+        lo, hi = s.min(), s.max()
+        # 整個視窗完全平盤時 hi == lo, 價格項歸零, 退化成只看時間軸
+        s = (s - lo) / (hi - lo) * (n - 1) if hi > lo else np.zeros(n)
     scores = np.zeros(n, dtype=np.float64)
 
     # d[k] = 候選點 k 到其左右相鄰 PIP 的 Euclidean 距離和 (Eq.1);
@@ -41,6 +53,10 @@ def extract_pips(series: np.ndarray, m: int):
         if R - L < 2:
             return
         k = np.arange(L + 1, R)
+        if mode == "vd":
+            line = s[L] + (s[R] - s[L]) * (k - L) / (R - L)
+            d[L + 1:R] = np.abs(s[k] - line)
+            return
         d_left = np.sqrt((k - L) ** 2 + (s[k] - s[L]) ** 2)
         d_right = np.sqrt((R - k) ** 2 + (s[R] - s[k]) ** 2)
         d[L + 1:R] = d_left + d_right

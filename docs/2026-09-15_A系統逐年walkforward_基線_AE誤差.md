@@ -1,5 +1,7 @@
 # A 系統補實驗:2021~2026 逐年 walk-forward、基線模型、Autoencoder 還原誤差(2026-09-15 深夜)
 
+> **【2026-09-21 警告】這份文件裡的「台灣 50 / tw50」股票池不是臺灣 50 指數的成分股**,而是一份 2026-05-28 手動補齊、沒有日期與出處的 50 檔大型股名單(和任何一天的官方成分股差 7 ~ 18 檔)。**相關數字暫不可引用**;「tw50 等權」對照組用的也是同一份名單,所以「2021 ~ 2025 連續五年輸等權」等結論一併暫停使用。詳見 [2026-09-21_repo的TW50名單不是官方成分股_出處與受影響的結果](2026-09-21_repo的TW50名單不是官方成分股_出處與受影響的結果.md)。
+
 回應 50 點審查的第 6、22、23、34 點。腳本 `method_xgb/src/exp_ae_years.py`、`exp_baselines.py`、`backtest/ncku/run_ae_years.py`;
 結果 `experiments/ae_years.json`、`baselines_2026.json`、`ncku/out/summary_ae_years.json`、`summary_tw50_rank_baselines.json`。
 
