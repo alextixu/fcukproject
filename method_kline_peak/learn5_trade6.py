@@ -37,6 +37,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from feasibility import START, END, COST, load_pool, clean  # noqa: E402
 from tail_precision import FOLDS, QS, KNN_K, lgb_proba, wilson  # noqa: E402
+from peak_labels import OTHER, TOP, BOTTOM, label_window  # noqa: E402
 
 OUT = os.path.join(HERE, "results")
 N_IN, HOLD = 5, 6                  # 輸入第 1–5 天;持有第 6 天開 → 第 11 天收
@@ -65,6 +66,9 @@ def build_panel(data):
         part["ret_win"] = lc - np.log(O.shift(N_IN - 1))           # 第 1 天開 → 第 5 天收
         part["sig20"] = lc.diff().rolling(20, min_periods=20).std()
         part["fwd"] = C.shift(-HOLD) / O.shift(-1) - 1              # 第 6 天開 → 第 11 天收
+        # 形態版標籤(confusion.py --labels peak 用):第 6 天是 11 日最高點 → 跌、最低點 → 漲、其餘不漲不跌
+        peak = label_window(df, "hl")["label"].shift(-1)            # 中心日 = 第 6 天 = 第 5 天 + 1
+        part["y_peak"] = peak.map({OTHER: FLAT, TOP: DOWN, BOTTOM: UP}).fillna(-1).astype(int)  # 頂底同日 → -1
         part["ticker"] = tk
         part.index.name = "date"
         parts.append(part.reset_index())

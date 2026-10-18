@@ -30,7 +30,8 @@ from learn5_trade6 import FLAT, UP, DOWN, NAMES, LABELS, RAW5, build_panel, spli
 
 OUT = os.path.join(HERE, "results")
 ORDER = [UP, FLAT, DOWN]                         # 顯示順序:漲 / 不漲不跌 / 跌
-LABEL_TEXT = {"pct3": "±3%", "sig1": "±1σ"}
+LABEL_TEXT = {"pct3": "不漲不跌帶寬 ±3%", "sig1": "不漲不跌帶寬 ±1σ",
+              "peak": "第 6 天 11 日最高 → 跌、最低 → 漲"}
 TOP_Q = 0.01
 # 依序列(sequential)單一藍色色階,淺 → 深(dataviz 參考色票 100 → 650)
 CMAP = LinearSegmentedColormap.from_list("blue", ["#f4f8fd", "#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#104281"])
@@ -90,15 +91,27 @@ def draw(ax, s, title):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pool", default="tw50")
+    ap.add_argument("--labels", nargs="+", default=list(LABELS), choices=list(LABEL_TEXT))
     args = ap.parse_args()
     plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
     panel = build_panel(load_pool(args.pool, START, END))
 
-    out, cells = {}, []
+    out, cells = {"label_dist": {}}, []
+    for label in args.labels:
+        ok = panel[f"y_{label}"] >= 0
+        dist = {"全期": panel.loc[ok, f"y_{label}"]}
+        for fold_name, fold in FOLDS.items():
+            a, b = fold["test"]
+            dist[f"測試 {fold_name}"] = panel.loc[ok & panel["date"].between(a, b), f"y_{label}"]
+        out["label_dist"][label] = {k: {NAMES[c]: float((s == c).mean()) for c in ORDER} | {"n": int(len(s))}
+                                    for k, s in dist.items()}
+        for k, d in out["label_dist"][label].items():
+            print(f"[{label}] {k:<13} n={d['n']:>7,}  " + "  ".join(f"{NAMES[c]} {d[NAMES[c]]:.1%}" for c in ORDER))
+
     for fold_name, fold in FOLDS.items():
-        for label in LABELS:
+        for label in args.labels:
             ycol = f"y_{label}"
-            sp = {k: d.assign(y=d[ycol]) for k, d in split(panel, fold).items()}
+            sp = {k: d.assign(y=d[ycol]) for k, d in split(panel[panel[ycol] >= 0], fold).items()}
             proba = lgb_proba(sp["train"], sp["val"], sp["test"], RAW5)
             y = sp["test"]["y"].to_numpy()
             key = f"{fold_name}|{label}"
@@ -110,15 +123,19 @@ def main():
 
     fig, axes = plt.subplots(2, len(cells), figsize=(5.4 * len(cells), 13.5), facecolor=SURFACE)
     for j, (fold_name, label, r) in enumerate(cells):
-        head = f"測試 {fold_name} · 不漲不跌帶寬 {LABEL_TEXT[label]}"
+        head = f"測試 {fold_name} · {LABEL_TEXT[label]}"
         draw(axes[0, j], r["argmax"], f"{head}\n判法:三類取機率最大")
         draw(axes[1, j], r["top1pct"], f"{head}\n判法:只有前 1% 判漲 / 跌")
-    fig.suptitle(f"{args.pool.upper()}:學第 1–5 天 → 第 11 天收盤 vs 第 6 天開盤(LightGBM)",
+    target = ("第 6 天是不是 11 日最高(跌)/ 最低(漲)點" if args.labels == ["peak"]
+              else "第 11 天收盤 vs 第 6 天開盤")
+    fig.suptitle(f"{args.pool.upper()}:學第 1–5 天 → {target}(LightGBM)",
                  fontsize=14, color=INK, x=0.01, ha="left")
-    fig.subplots_adjust(left=0.05, right=0.99, top=0.9, bottom=0.09, wspace=0.4, hspace=0.62)
-    png = os.path.join(OUT, f"confusion_{args.pool}.png")
+    left = 0.05 if len(cells) > 2 else 0.09
+    fig.subplots_adjust(left=left, right=0.99, top=0.9, bottom=0.09, wspace=0.4, hspace=0.62)
+    suffix = "" if args.labels == list(LABELS) else "_" + "_".join(args.labels)
+    png = os.path.join(OUT, f"confusion_{args.pool}{suffix}.png")
     fig.savefig(png, dpi=110, facecolor=SURFACE)
-    with open(os.path.join(OUT, f"confusion_{args.pool}.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(OUT, f"confusion_{args.pool}{suffix}.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
     print(f"輸出 {png}")
 
