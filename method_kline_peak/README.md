@@ -164,6 +164,31 @@ t 收盤時已經知道左半條件:頂 ⊆ `left_top`(t 高於前 5 日高點,�
   漲、跌樣本在五根 K 的形態上跟其他日子沒有分開,OC-SVM 圈出的範圍幾乎蓋住整個特徵空間,acc 只剩 20–22%。
 - 改成只判前 1%,命中 10–15%,比隨機(約 6%)好,但比 LightGBM 的 19–23% 差。
 
+### 7. 論文標籤 + AE + OC-SVM(`paper_aeocsvm.py`)
+
+標籤照郭念慈、李俊宏(逢甲資工)〈基於券商分點籌碼與雙分支圖神經網路之台股局部高低點預測〉2.1 節:
+- t 日收盤為 t−5 ~ t+5 最高 → 高點,最低 → 低點,其餘 → 非極值。
+- 並列最高(最低)的每一天都算;視窗內全部同價 → 非極值。
+- t 日收盤後判斷。
+
+輸入是 t−5 ~ t 六根 K(29 維),模型只用 AE + OC-SVM(不用 LightGBM),AE 種子 42 / 43 / 44 取平均。
+用論文的規則重貼 TW50,比例是低點 / 非極值 / 高點 = 7.3 / 85.1 / 7.5%(論文訓練期)、8.0 / 85.0 / 7.0%(論文測試期),
+與論文表 1 的 8.0 / 84.2 / 7.8、8.5 / 84.5 / 7.0 一致。
+
+| 測試集 macro-F1(BalAcc) | 論文切分(訓練 2024-05 ~ 2025-08,測試 2025-10 ~ 2026-03) | 我們的切分(訓練 2020–2023,測試 2025-01 ~ 2026-09) | 論文表 2(12 檔) |
+|---|---|---|---|
+| 全猜非極值 | 約 30.6% | 約 30.7% | 30.53% |
+| 規則基準(t 日為 t−5 ~ t 最高 / 最低) | **52.32%**(84.69%) | **53.54%**(85.27%) | **53.38%**(84.90%) |
+| AE + OC-SVM(原系統判法) | 25.70 ± 1.42%(59.55%) | 29.06 ± 0.86%(61.31%) | — |
+| 規則候選 + AE + OC-SVM | 51.96 ± 0.15%(75.77%) | 53.89 ± 0.13%(76.29%) | — |
+| 論文 DualChartGNN3 | — | — | 54.81%(76.47%) |
+
+- 規則基準在我們的資料上重現論文:52.3–53.5% 對 53.4%,BalAcc 84.7–85.3% 對 84.9%。
+- AE + OC-SVM 單獨用(原系統判法)比全猜非極值還差:判低點 / 高點的日子佔 50% / 30%,精確率只有 14–17%。
+- 「規則候選 + AE + OC-SVM」:OC-SVM 只決定規則挑出的候選點要不要保留。
+  它剔除真低點與假低點的比例差不多(約 12%),高點也一樣(約 22%),所以精確率幾乎不變(低點 28–32%、高點 25–26%),macro-F1 與規則基準相差 ±0.4 點。
+  論文的模型比規則多 1.43 點,同樣是在誤差範圍附近。
+
 ### 結論
 
 - **標籤本身可以貼,定義清楚**。作為描述性的形態搜尋(標註歷史轉折、畫圖、當事件取樣)沒問題。
@@ -184,6 +209,7 @@ python method_kline_peak/tail_precision.py --pool tw50     # 第 5–7 天三日
 python method_kline_peak/learn5_trade6.py --pool tw50      # 學第 1–5 天、第 6 天交易、看第 11 天(約 40 秒)
 python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train2020-23   # LightGBM 混淆矩陣
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
+python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 ```
 
 資料:`common/cache/yf_2026`(還原 OHLCV)+ 大盤 `0050.TW`;需要 `pyarrow`、`scikit-learn`、`lightgbm`。
@@ -197,4 +223,5 @@ python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆�
 | `learn5_trade6.py` | 使用者設計:第 1–5 天五根 K → 第 11 天收 vs 第 6 天開的漲 / 跌 / 不漲不跌,高分尾端命中率 |
 | `confusion.py` | LightGBM 的 acc 與混淆矩陣(`--labels peak`:第 6 天最高 / 最低點;`--folds train2020-23`) |
 | `ae_ocsvm.py` | 原系統 AE + OC-SVM 套到第 6 天最高 / 最低點標籤,acc 與混淆矩陣,與 LightGBM 對照(需要 torch) |
+| `paper_aeocsvm.py` | 論文的局部高低點標籤 + AE + OC-SVM,論文切分與我們的切分,規則基準對照(需要 torch) |
 | `results/feasibility_<pool>.json`、`results/diagnose_<pool>.json` | 全部數字 |

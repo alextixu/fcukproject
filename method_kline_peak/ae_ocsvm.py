@@ -85,7 +85,7 @@ def predict(models, X):
     rank = np.zeros((len(X), 3))
     for cls in (UP, DOWN):
         rank[:, cls] = pd.Series(score[cls]).rank(pct=True).to_numpy()
-    return native, rank
+    return native, rank, inside
 
 
 def main():
@@ -109,7 +109,7 @@ def main():
         ytr, yte = tr["y_peak"].to_numpy(), te["y_peak"].to_numpy()
         print(f"== {fold_name}:train {len(tr):,} / test {len(te):,}", flush=True)
         models = {cls: fit_direction(Xtr, ytr, cls, print) for cls in (UP, DOWN)}
-        native, rank = predict(models, Xte)
+        native, rank, _ = predict(models, Xte)
         key = f"{fold_name}|peak"
         out[key] = {"native": summarize(yte, native), "top1pct": summarize(yte, selective_pred(rank)),
                     "native_signal_rate": {NAMES[c]: float((native == c).mean()) for c in (UP, DOWN)}}

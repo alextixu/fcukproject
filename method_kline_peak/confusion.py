@@ -57,21 +57,24 @@ def selective_pred(proba):
     return pred
 
 
-def summarize(y, pred):
+def summarize(y, pred, names=NAMES):
     cm = confusion_matrix(y, pred, labels=ORDER)
     col = cm.sum(axis=0)
     row = cm.sum(axis=1)
+    f1 = f1_score(y, pred, labels=ORDER, average=None, zero_division=0)
     return {
         "acc": float((y == pred).mean()),
         "majority_acc": float(max((y == c).mean() for c in ORDER)),
-        "macro_f1": float(f1_score(y, pred, labels=ORDER, average="macro", zero_division=0)),
+        "macro_f1": float(f1.mean()),
+        "bal_acc": float(np.mean([cm[i, i] / row[i] for i in range(3) if row[i]])),   # 三類召回率平均
         "confusion_rows_true_cols_pred(漲,不漲不跌,跌)": cm.tolist(),
-        "precision": {NAMES[c]: float(cm[i, i] / col[i]) if col[i] else None for i, c in enumerate(ORDER)},
-        "recall": {NAMES[c]: float(cm[i, i] / row[i]) if row[i] else None for i, c in enumerate(ORDER)},
+        "precision": {names[c]: float(cm[i, i] / col[i]) if col[i] else None for i, c in enumerate(ORDER)},
+        "recall": {names[c]: float(cm[i, i] / row[i]) if row[i] else None for i, c in enumerate(ORDER)},
+        "f1": {names[c]: float(f1[i]) for i, c in enumerate(ORDER)},
     }
 
 
-def draw(ax, s, title):
+def draw(ax, s, title, names=NAMES):
     cm = np.array(s["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"])
     pct = cm / cm.sum(axis=1, keepdims=True)
     ax.imshow(pct, cmap=CMAP, vmin=0, vmax=1)
@@ -79,7 +82,8 @@ def draw(ax, s, title):
         for j in range(3):
             ax.text(j, i, f"{cm[i, j]:,}\n{pct[i, j]:.0%}", ha="center", va="center", fontsize=10,
                     color=SURFACE if pct[i, j] > 0.55 else INK)
-    names = [NAMES[c] for c in ORDER]
+    flat_name = names[FLAT]
+    names = [names[c] for c in ORDER]
     col = cm.sum(axis=0)
     xt = [f"{n}\n判 {col[j]:,} 筆" + (f"\n命中 {cm[j, j] / col[j]:.0%}" if col[j] else "\n命中 —")
           for j, n in enumerate(names)]
@@ -87,7 +91,7 @@ def draw(ax, s, title):
     ax.set_yticks(range(3), names, fontsize=10, color=INK)
     ax.set_xlabel("模型判斷", fontsize=9, color=INK_MUTED)
     ax.set_ylabel("實際", fontsize=9, color=INK_MUTED, labelpad=8)
-    ax.set_title(f"{title}\nacc {s['acc']:.1%}(全猜不漲不跌 {s['majority_acc']:.1%})  macro-F1 {s['macro_f1']:.2f}",
+    ax.set_title(f"{title}\nacc {s['acc']:.1%}(全猜{flat_name} {s['majority_acc']:.1%})  macro-F1 {s['macro_f1']:.2f}",
                  fontsize=10, color=INK, loc="left")
     for sp in ax.spines.values():
         sp.set_visible(False)
