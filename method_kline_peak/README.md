@@ -189,6 +189,30 @@ t 收盤時已經知道左半條件:頂 ⊆ `left_top`(t 高於前 5 日高點,�
   它剔除真低點與假低點的比例差不多(約 12%),高點也一樣(約 22%),所以精確率幾乎不變(低點 28–32%、高點 25–26%),macro-F1 與規則基準相差 ±0.4 點。
   論文的模型比規則多 1.43 點,同樣是在誤差範圍附近。
 
+### 8. 論文的規則基準框架 + AE + OC-SVM 否決假候選(`paper_rule_aeocsvm.py`)
+
+框架照論文:規則先挑候選(t 日收盤為 t−5 ~ t 最高 → 高點候選、最低 → 低點候選),非候選一律判非極值。
+模型的唯一工作是否決「其後 5 日被超越」的假候選,這裡換成我們的 AE + OC-SVM。
+- 與第 7 節的「規則候選 + AE + OC-SVM」不同,AE 與 OC-SVM **只用訓練期的候選點**訓練。
+  重要性權重 = 相似候選點中同為真高(低)點的比例。
+- nu 除了原系統的 0.1,另掃 0.2 / 0.3 / 0.5。
+- 對照組:每類隨機否決同樣數量的候選點(20 次平均)。
+
+候選點中真的比例(測試期):高點 25–27%、低點 29–32%,這就是規則基準的精確率。
+
+| 測試集 | 論文切分 macro-F1(隨機否決) | 論文切分:真 / 假候選保留率(高點;低點) | 我們的切分 macro-F1(隨機否決) | 我們的切分:真 / 假候選保留率(高點;低點) |
+|---|---|---|---|---|
+| 規則基準 | 52.32% | 100 / 100%;100 / 100% | 53.54% | 100 / 100%;100 / 100% |
+| + AE + OC-SVM nu 0.1 | 52.56%(52.64%) | 75 / 76%;92 / 91% | 53.69%(53.83%) | 75 / 75%;83 / 84% |
+| nu 0.2 | 52.52%(52.69%) | 67 / 69%;86 / 85% | 53.17%(53.53%) | 65 / 65%;70 / 72% |
+| nu 0.3 | 51.98%(52.40%) | 59 / 60%;75 / 77% | 52.39%(52.83%) | 56 / 57%;59 / 61% |
+| nu 0.5 | 50.21%(51.18%) | 41 / 44%;52 / 55% | 50.75%(50.94%) | 41 / 42%;41 / 42% |
+
+- 每一個 nu 下,AE + OC-SVM 保留真候選與假候選的比例都一樣(差距 ≤ 3 點),所以保留下來的命中率不變(高點約 25–26%、低點約 29–32%)。
+  macro-F1 與「隨機否決同樣數量」相同或略差。
+- nu 越大否決越多,acc 從 61–62% 升到 73–76%。但這只是多判非極值:真高低點被一起刪掉,macro-F1 反而下降。
+- 結論:用六根 K 的形態,AE + OC-SVM 分不出「之後 5 天會被超越」的假候選。
+
 ### 結論
 
 - **標籤本身可以貼,定義清楚**。作為描述性的形態搜尋(標註歷史轉折、畫圖、當事件取樣)沒問題。
@@ -210,6 +234,7 @@ python method_kline_peak/learn5_trade6.py --pool tw50      # 學第 1–5 天、
 python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train2020-23   # LightGBM 混淆矩陣
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
+python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
 ```
 
 資料:`common/cache/yf_2026`(還原 OHLCV)+ 大盤 `0050.TW`;需要 `pyarrow`、`scikit-learn`、`lightgbm`。
@@ -224,4 +249,5 @@ python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE +
 | `confusion.py` | LightGBM 的 acc 與混淆矩陣(`--labels peak`:第 6 天最高 / 最低點;`--folds train2020-23`) |
 | `ae_ocsvm.py` | 原系統 AE + OC-SVM 套到第 6 天最高 / 最低點標籤,acc 與混淆矩陣,與 LightGBM 對照(需要 torch) |
 | `paper_aeocsvm.py` | 論文的局部高低點標籤 + AE + OC-SVM,論文切分與我們的切分,規則基準對照(需要 torch) |
+| `paper_rule_aeocsvm.py` | 論文的規則基準框架:規則挑候選、AE + OC-SVM(只用候選點訓練)否決假候選;nu 掃描與隨機否決對照 |
 | `results/feasibility_<pool>.json`、`results/diagnose_<pool>.json` | 全部數字 |
