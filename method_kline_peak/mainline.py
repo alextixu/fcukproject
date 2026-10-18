@@ -20,13 +20,19 @@
   --splits   paper(論文切分)/ ours(訓練 2020–2023、測試 2025-01 ~ 2026-09)
   --seeds    AE 亂數種子
   --tag      實驗名稱;每次執行在 results/experiments.csv 追加一列,詳細結果存 results/main_<tag>.json
+  --mode     oneclass(預設):AE + OC-SVM 只學真候選,候選落在範圍內才保留
+             contrast:真候選、假候選各學一組 AE + OC-SVM,分數 = 像真的程度 − 像假的程度
+               分數兩種:ocsvm(兩個 OC-SVM 的 decision 在各自訓練集中的百分位數相減)、
+                         recon(假候選 AE 的重建誤差 − 真候選 AE 的重建誤差)
+               保留規則:分數 > 0,或只留分數最高的 90 / 70 / 50 / 30%;另算保留下來的候選直接交易
+               (t+1 開盤進、t+5 收盤出,低點做多、高點放空,扣 0.42% 成本)
 
 用法: python method_kline_peak/mainline.py --tag base
       python method_kline_peak/mainline.py --tag win20 --window 20
       python method_kline_peak/mainline.py --tag chip --extra chip
+      python method_kline_peak/mainline.py --tag contrast --mode contrast
 """
 import argparse
-import csv
 import json
 import os
 import sys
@@ -40,7 +46,7 @@ from sklearn.svm import OneClassSVM
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from feasibility import P, START, END, load_pool, clean  # noqa: E402
+from feasibility import P, START, END, COST, load_pool, clean  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 from peak_labels import causal_features  # noqa: E402
 from confusion import ORDER, SURFACE, INK, plt, draw, summarize  # noqa: E402
@@ -53,6 +59,7 @@ LOG = os.path.join(OUT, "experiments.csv")
 POOL = "tw50"
 CAND = {DOWN: "cand_hi", UP: "cand_lo"}
 N_RANDOM, N_BOOT, BLOCK = 20, 500, 10
+KEEP_RULES = ("s>0", 0.9, 0.7, 0.5, 0.3)          # contrast 模式的保留規則(數字 = 只留分數最高的比例)
 GROUPS = {
     "pos": ["chi_margin", "clo_margin", "upper_atr", "lower_atr"],
     "ctx": ["ret5", "ret10", "ret20", "ret60", "dhi20", "dhi60", "dlo20", "dlo60",
@@ -97,13 +104,14 @@ def build_panel(data, window, extra):
             feats.append(cp.add_prefix("chip_"))
         part = pd.concat(feats, axis=1).replace([np.inf, -np.inf], np.nan)
         part["y"], part["cand_hi"], part["cand_lo"], part["ticker"] = y, cand_hi, cand_lo, tk
+        part["r5"] = df["close"].shift(-5) / df["open"].shift(-1) - 1   # 只用於交易評估,不進特徵
         part.index.name = "date"
         parts.append(part.reset_index())
     panel = pd.concat(parts, ignore_index=True)
     shape_cols = list(feats[0].columns)
     panel = panel[panel["y"].notna() & panel[shape_cols].notna().all(axis=1) & (panel["date"] >= START)]
     panel["y"] = panel["y"].astype(int)
-    feat_cols = [c for c in panel.columns if c not in ("date", "y", "cand_hi", "cand_lo", "ticker")]
+    feat_cols = [c for c in panel.columns if c not in ("date", "y", "cand_hi", "cand_lo", "ticker", "r5")]
     return panel.reset_index(drop=True), feat_cols
 
 
@@ -220,13 +228,147 @@ def log_row(args, n_feat, sp_name, res):
         "keep_true_high": round(kp["高點"]["真"] * 100, 1), "keep_false_high": round(kp["高點"]["假"] * 100, 1),
         "keep_true_low": round(kp["低點"]["真"] * 100, 1), "keep_false_low": round(kp["低點"]["假"] * 100, 1),
     }
-    new = not os.path.exists(LOG)
-    with open(LOG, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(row))
-        if new:
-            w.writeheader()
-        w.writerow(row)
+    row["mode"] = "oneclass"
+    write_log(row)
     return row
+
+
+def write_log(row):
+    """追加一列到 experiments.csv;欄位不同時取聯集重寫(舊列缺的欄位留空)。"""
+    old = pd.read_csv(LOG) if os.path.exists(LOG) else pd.DataFrame()
+    pd.concat([old, pd.DataFrame([row])], ignore_index=True).to_csv(LOG, index=False)
+
+
+# ── contrast 模式:真候選、假候選各一組 AE + OC-SVM ───────────────────────────
+
+def fit_pop(X, w, nu, gamma):
+    ae = KA.train_ae(X, X.shape[1], lambda s: None)
+    ae.eval()
+    with torch.no_grad():
+        z = ae.encode(torch.FloatTensor(X)).numpy()
+    w = np.maximum(w, 1e-3)
+    oc = OneClassSVM(kernel="rbf", nu=nu, gamma=gamma).fit(z, sample_weight=w / w.mean())
+    return {"ae": ae, "oc": oc, "dec": np.sort(oc.decision_function(z))}
+
+
+def fit_contrast(tr, cls, feat_cols, args):
+    c = tr[CAND[cls]].to_numpy()
+    X = tr.loc[c, feat_cols]
+    med = X.median()
+    sc = StandardScaler().fit(X.fillna(med))
+    Xc = np.clip(sc.transform(X.fillna(med)), -5, 5).astype(np.float32)
+    yb = (tr["y"].to_numpy()[c] == cls).astype(int)                    # 1 = 真候選、0 = 假候選
+    gamma = args.gamma if args.gamma == "scale" else float(args.gamma)
+    pops = {}
+    for name, lab in (("T", 1), ("F", 0)):
+        idx, w = ae_ocsvm.neighbor_purity(Xc, yb, lab)                  # 相似候選中與自己同為真(假)的比例
+        if args.weight == "none":
+            w = np.ones_like(w)
+        pops[name] = fit_pop(Xc[idx], w, args.nu[0], gamma)
+    return {"med": med, "sc": sc, **pops}
+
+
+def contrast_scores(m, X):
+    out = {}
+    Xt = torch.FloatTensor(X)
+    for name in ("T", "F"):
+        p = m[name]
+        with torch.no_grad():
+            rec, z = p["ae"](Xt)
+        dec = p["oc"].decision_function(z.numpy())
+        out[name] = (np.searchsorted(p["dec"], dec) / len(p["dec"]),           # 在自己訓練集中的百分位
+                     ((rec - Xt) ** 2).mean(1).numpy())
+    return {"ocsvm": out["T"][0] - out["F"][0], "recon": out["F"][1] - out["T"][1]}
+
+
+def keep_mask(s, rule):
+    return s > 0 if rule == "s>0" else s >= np.quantile(s, 1 - rule)
+
+
+def trade(r5, side):
+    r = r5 if side == "long" else -r5
+    return {"n": int(len(r)), "win": float((r > 0).mean()) if len(r) else None,
+            "avg_net_pct": float((r - COST).mean() * 100) if len(r) else None}
+
+
+def run_contrast(panel, feat_cols, sp_name, sp, args, rng):
+    d = split(panel, sp)
+    tr, te = d["train"], d["test"]
+    yte, r5 = te["y"].to_numpy(), te["r5"].to_numpy()
+    rule_p = rule_pred(te)
+    cand_idx = {cls: np.flatnonzero(te[CAND[cls]].to_numpy()) for cls in (DOWN, UP)}
+    side = {UP: "long", DOWN: "short"}
+    res = {"rule": summarize(yte, rule_p, NAMES),
+           "rule_trade": {NAMES[cls]: trade(r5[cand_idx[cls]], side[cls]) for cls in (DOWN, UP)},
+           "contrast": {}}
+    scores = []                                                          # 每個種子:{cls: {score: 陣列}}
+    for seed in args.seeds:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        per = {}
+        for cls in (DOWN, UP):
+            m = fit_contrast(tr, cls, feat_cols, args)
+            Xt = np.clip(m["sc"].transform(te.loc[cand_idx[cls], feat_cols].fillna(m["med"])), -5, 5).astype(np.float32)
+            per[cls] = contrast_scores(m, Xt)
+        scores.append(per)
+    for sname in ("ocsvm", "recon"):
+        res["contrast"][sname] = {}
+        for rule in KEEP_RULES:
+            preds, rand, keep, trades = [], [], {c: {"真": [], "假": []} for c in (DOWN, UP)}, {c: [] for c in (DOWN, UP)}
+            for per in scores:
+                p = np.full(len(te), FLAT)
+                for cls in (DOWN, UP):
+                    idx, k = cand_idx[cls], keep_mask(per[cls][sname], rule)
+                    p[idx[k]] = cls
+                    true_c = yte[idx] == cls
+                    keep[cls]["真"].append(float(k[true_c].mean()))
+                    keep[cls]["假"].append(float(k[~true_c].mean()))
+                    trades[cls].append(trade(r5[idx[k]], side[cls]))
+                preds.append(p)
+                for _ in range(N_RANDOM):
+                    rp = np.full(len(te), FLAT)
+                    for cls in (DOWN, UP):
+                        idx = cand_idx[cls]
+                        rp[rng.choice(idx, size=int((p[idx] == cls).sum()), replace=False)] = cls
+                    rand.append(fast_macro_f1(yte, rp))
+            runs = [summarize(yte, p, NAMES) for p in preds]
+            res["contrast"][sname][str(rule)] = {
+                "model": mean_metrics(runs), "random_veto_macro_f1": float(np.mean(rand)),
+                "delta_vs_rule_ci": delta_ci(yte, preds, rule_p, te["date"].to_numpy(), rng),
+                "keep_rate": {NAMES[c]: {k: float(np.mean(v)) for k, v in keep[c].items()} for c in (DOWN, UP)},
+                "trade": {NAMES[c]: {k: float(np.mean([t[k] for t in trades[c] if t[k] is not None] or [np.nan]))
+                                     for k in ("n", "win", "avg_net_pct")} for c in (DOWN, UP)},
+            }
+    res["n"] = {"train": len(tr), "test": len(te),
+                "train_cand": {NAMES[c]: int(tr[CAND[c]].sum()) for c in (DOWN, UP)}}
+    return res
+
+
+def log_contrast(args, n_feat, sp_name, res):
+    rows = []
+    for sname, by_rule in res["contrast"].items():
+        for rule, b in by_rule.items():
+            m, kp, ci, td = b["model"], b["keep_rate"], b["delta_vs_rule_ci"], b["trade"]
+            row = {
+                "time": time.strftime("%Y-%m-%d %H:%M"), "tag": args.tag, "mode": "contrast", "score": sname,
+                "keep_rule": rule, "split": sp_name, "window": args.window, "extra": "+".join(args.extra) or "-",
+                "n_features": n_feat, "latent": args.latent, "epochs": args.epochs, "nu": args.nu[0],
+                "gamma": args.gamma, "weight": args.weight, "dist": args.dist, "seeds": len(args.seeds),
+                "rule_macro_f1": round(res["rule"]["macro_f1"] * 100, 2),
+                "model_macro_f1": round(m["macro_f1"] * 100, 2), "model_sd": round(m["sd_macro_f1"] * 100, 2),
+                "random_veto_macro_f1": round(b["random_veto_macro_f1"] * 100, 2),
+                "delta_vs_rule": round((m["macro_f1"] - res["rule"]["macro_f1"]) * 100, 2),
+                "delta_ci_lo": round(ci[0] * 100, 2), "delta_ci_hi": round(ci[1] * 100, 2),
+                "bal_acc": round(m["bal_acc"] * 100, 2), "acc": round(m["acc"] * 100, 2),
+                "prec_high": round(m["precision"]["高點"] * 100, 2), "prec_low": round(m["precision"]["低點"] * 100, 2),
+                "keep_true_high": round(kp["高點"]["真"] * 100, 1), "keep_false_high": round(kp["高點"]["假"] * 100, 1),
+                "keep_true_low": round(kp["低點"]["真"] * 100, 1), "keep_false_low": round(kp["低點"]["假"] * 100, 1),
+                "trade_low_win": round(td["低點"]["win"] * 100, 1), "trade_low_net": round(td["低點"]["avg_net_pct"], 2),
+                "trade_high_win": round(td["高點"]["win"] * 100, 1), "trade_high_net": round(td["高點"]["avg_net_pct"], 2),
+            }
+            write_log(row)
+            rows.append(row)
+    return rows
 
 
 def main():
@@ -242,6 +384,7 @@ def main():
     ap.add_argument("--dist", type=float, default=3.0)
     ap.add_argument("--splits", nargs="+", default=["paper", "ours"], choices=["paper", "ours"])
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
+    ap.add_argument("--mode", default="oneclass", choices=["oneclass", "contrast"])
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
     KA.LATENT_DIM, KA.EPOCHS = args.latent, args.epochs
@@ -258,6 +401,23 @@ def main():
     out = {"args": vars(args), "features": feat_cols, "results": {}}
     for key in args.splits:
         sp_name = names[key]
+        if args.mode == "contrast":
+            res = run_contrast(panel, feat_cols, sp_name, SPLITS[sp_name], args, rng)
+            out["results"][sp_name] = res
+            rows = log_contrast(args, len(feat_cols), sp_name, res)
+            rt, ru = res["rule_trade"], res["rule"]
+            print(f"  {sp_name}:規則 macro-F1 {ru['macro_f1']:.2%}、命中率 高 {ru['precision']['高點']:.1%} / 低 {ru['precision']['低點']:.1%};"
+                  f"直接交易 低點做多 勝 {rt['低點']['win']:.1%} 淨 {rt['低點']['avg_net_pct']:+.2f}%、"
+                  f"高點放空 勝 {rt['高點']['win']:.1%} 淨 {rt['高點']['avg_net_pct']:+.2f}%")
+            print(f"    {'分數':<6}{'保留':<6}{'macro-F1':>9}{'隨機':>8}{'差 [95% CI]':>22}  {'命中 高/低':>12}  "
+                  f"{'保留率 高 真/假':>14} {'低 真/假':>10}  {'低點做多 勝/淨':>14} {'高點放空 勝/淨':>14}")
+            for r in rows:
+                print(f"    {r['score']:<6}{str(r['keep_rule']):<6}{r['model_macro_f1']:>8.2f}%{r['random_veto_macro_f1']:>7.2f}%"
+                      f"{r['delta_vs_rule']:>+8.2f} [{r['delta_ci_lo']:+.2f}, {r['delta_ci_hi']:+.2f}]"
+                      f"  {r['prec_high']:>5.1f}/{r['prec_low']:>5.1f}%  {r['keep_true_high']:>6.0f}/{r['keep_false_high']:<5.0f}"
+                      f" {r['keep_true_low']:>5.0f}/{r['keep_false_low']:<4.0f}  {r['trade_low_win']:>6.1f}%/{r['trade_low_net']:+.2f}%"
+                      f"  {r['trade_high_win']:>6.1f}%/{r['trade_high_net']:+.2f}%", flush=True)
+            continue
         res = run_split(panel, feat_cols, sp_name, SPLITS[sp_name], args, rng)
         out["results"][sp_name] = res
         row = log_row(args, len(feat_cols), sp_name, res)
@@ -274,7 +434,7 @@ def main():
                   f"  保留率 高 {kp['高點']['真']:.0%}/{kp['高點']['假']:.0%}、低 {kp['低點']['真']:.0%}/{kp['低點']['假']:.0%}")
     with open(os.path.join(OUT, f"main_{args.tag}.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1, default=str)
-    if args.plot:
+    if args.plot and args.mode == "oneclass":
         cells = list(out["results"].items())
         fig, axes = plt.subplots(len(cells), 2, figsize=(11.6, 6.3 * len(cells)), facecolor=SURFACE, squeeze=False)
         for i, (sp_name, res) in enumerate(cells):
