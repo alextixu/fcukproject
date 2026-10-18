@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from feasibility import START, END, load_pool  # noqa: E402
 from tail_precision import FOLDS, lgb_proba  # noqa: E402
+from feasibility import END as DATA_END  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN, NAMES, LABELS, RAW5, build_panel, split  # noqa: E402
 
 OUT = os.path.join(HERE, "results")
@@ -33,6 +34,15 @@ ORDER = [UP, FLAT, DOWN]                         # 顯示順序:漲 / 不漲不�
 LABEL_TEXT = {"pct3": "不漲不跌帶寬 ±3%", "sig1": "不漲不跌帶寬 ±1σ",
               "peak": "第 6 天 11 日最高 → 跌、最低 → 漲"}
 TOP_Q = 0.01
+# 切分組:default = tail_precision 的兩個測試段;train2020-23 = 只用 2020–2023 訓練,與原本 2016–2022 並排比較
+FOLD_SETS = {
+    "default": FOLDS,
+    "train2020-23": {
+        "訓練2016-22": FOLDS["2025-26"],
+        "訓練2020-23": {"train": ("2020-01-01", "2023-12-31"), "val": ("2024-01-01", "2024-12-31"),
+                       "test": ("2025-01-01", DATA_END)},
+    },
+}
 # 依序列(sequential)單一藍色色階,淺 → 深(dataviz 參考色票 100 → 650)
 CMAP = LinearSegmentedColormap.from_list("blue", ["#f4f8fd", "#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#104281"])
 INK, INK_MUTED, SURFACE = "#1f1f1d", "#5f5e5a", "#ffffff"
@@ -92,7 +102,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pool", default="tw50")
     ap.add_argument("--labels", nargs="+", default=list(LABELS), choices=list(LABEL_TEXT))
+    ap.add_argument("--folds", default="default", choices=list(FOLD_SETS))
     args = ap.parse_args()
+    folds = FOLD_SETS[args.folds]
     plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
     panel = build_panel(load_pool(args.pool, START, END))
 
@@ -100,7 +112,7 @@ def main():
     for label in args.labels:
         ok = panel[f"y_{label}"] >= 0
         dist = {"全期": panel.loc[ok, f"y_{label}"]}
-        for fold_name, fold in FOLDS.items():
+        for fold_name, fold in folds.items():
             a, b = fold["test"]
             dist[f"測試 {fold_name}"] = panel.loc[ok & panel["date"].between(a, b), f"y_{label}"]
         out["label_dist"][label] = {k: {NAMES[c]: float((s == c).mean()) for c in ORDER} | {"n": int(len(s))}
@@ -108,7 +120,7 @@ def main():
         for k, d in out["label_dist"][label].items():
             print(f"[{label}] {k:<13} n={d['n']:>7,}  " + "  ".join(f"{NAMES[c]} {d[NAMES[c]]:.1%}" for c in ORDER))
 
-    for fold_name, fold in FOLDS.items():
+    for fold_name, fold in folds.items():
         for label in args.labels:
             ycol = f"y_{label}"
             sp = {k: d.assign(y=d[ycol]) for k, d in split(panel[panel[ycol] >= 0], fold).items()}
@@ -117,13 +129,14 @@ def main():
             key = f"{fold_name}|{label}"
             out[key] = {"argmax": summarize(y, proba.argmax(axis=1)),
                         "top1pct": summarize(y, selective_pred(proba))}
-            cells.append((fold_name, label, out[key]))
+            cells.append((fold, label, out[key]))
             print(f"{key:<15} argmax acc {out[key]['argmax']['acc']:.1%}  前1% acc {out[key]['top1pct']['acc']:.1%}  "
                   f"全猜不漲不跌 {out[key]['argmax']['majority_acc']:.1%}", flush=True)
 
     fig, axes = plt.subplots(2, len(cells), figsize=(5.4 * len(cells), 13.5), facecolor=SURFACE)
-    for j, (fold_name, label, r) in enumerate(cells):
-        head = f"測試 {fold_name} · {LABEL_TEXT[label]}"
+    for j, (fold, label, r) in enumerate(cells):
+        (tr_a, tr_b), (te_a, te_b) = fold["train"], fold["test"]
+        head = f"訓練 {tr_a[:4]}–{tr_b[:4]} · 測試 {te_a[:7]} ~ {te_b[:7]}\n{LABEL_TEXT[label]}"
         draw(axes[0, j], r["argmax"], f"{head}\n判法:三類取機率最大")
         draw(axes[1, j], r["top1pct"], f"{head}\n判法:只有前 1% 判漲 / 跌")
     target = ("第 6 天是不是 11 日最高(跌)/ 最低(漲)點" if args.labels == ["peak"]
@@ -133,6 +146,7 @@ def main():
     left = 0.05 if len(cells) > 2 else 0.09
     fig.subplots_adjust(left=left, right=0.99, top=0.9, bottom=0.09, wspace=0.4, hspace=0.62)
     suffix = "" if args.labels == list(LABELS) else "_" + "_".join(args.labels)
+    suffix += "" if args.folds == "default" else "_" + args.folds
     png = os.path.join(OUT, f"confusion_{args.pool}{suffix}.png")
     fig.savefig(png, dpi=110, facecolor=SURFACE)
     with open(os.path.join(OUT, f"confusion_{args.pool}{suffix}.json"), "w", encoding="utf-8") as f:
