@@ -1,0 +1,430 @@
+<title>TW50 高低點窗口</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout:研究筆記本——上方摘要列,中間是一張寬的價格儀器圖(下方對齊三條標籤帶)與右側窗口檢視器(手機改上下),最後是樣本圖鑑 */
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #132029;
+  --ink-2: #47545f;
+  --muted: #7a8691;
+  --rule: #d9e0e6;
+  --band: #e8edf1;
+  --known: #eef2f5;
+  --high: #eb6834;
+  --low: #2a78d6;
+  --good: #0ca30c;
+  --bad: #d03b3b;
+  --serious: #ec835a;
+  --f-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --f-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161b; --surface: #182027; --ink: #e7ecf0; --ink-2: #b3bdc6; --muted: #85929e;
+    --rule: #2b343d; --band: #212a32; --known: #1d252c; --high: #d95926; --low: #3987e5; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161b; --surface: #182027; --ink: #e7ecf0; --ink-2: #b3bdc6; --muted: #85929e;
+  --rule: #2b343d; --band: #212a32; --known: #1d252c; --high: #d95926; --low: #3987e5; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; text-wrap: balance; margin: 0; line-height: 1.3; }
+h1 { font-size: clamp(1.6rem, 3.2vw, 2.3rem); }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.02rem; font-family: var(--f-body); }
+p { margin: 0; }
+.lede { color: var(--ink-2); max-width: 68ch; }
+.eyebrow { font-family: var(--f-data); font-size: 0.74rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+header { display: grid; gap: 10px; }
+
+/* 摘要 */
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--rule);
+  border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.fact { background: var(--surface); padding: 14px 16px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.fact .v { font-family: var(--f-data); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.fact .k { color: var(--ink-2); font-size: 0.86rem; }
+@media (max-width: 760px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 440px) { .facts { grid-template-columns: minmax(0, 1fr); } }
+.rule-box { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
+.rule-box ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; color: var(--ink-2); }
+.rule-box b { color: var(--ink); }
+.metrics { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.metrics th, .metrics td { padding: 6px 10px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+.metrics th:first-child, .metrics td:first-child { text-align: left; }
+.metrics thead th { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+.scroll-x { overflow-x: auto; }
+
+/* 主圖 + 檢視器 */
+.studio { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+@media (max-width: 920px) { .studio { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+select, button, input[type=range] { font: inherit; }
+select { background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); padding: 6px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.btn { border: 1px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.btn:hover, .seg button:hover { border-color: var(--ink-2); }
+button:focus-visible, select:focus-visible, input:focus-visible, .card:focus-visible { outline: 2px solid var(--low); outline-offset: 2px; }
+.range-row { display: flex; gap: 10px; align-items: center; }
+.range-row input { flex: 1; min-width: 0; accent-color: var(--ink-2); }
+.range-label { font-family: var(--f-data); font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+svg text { fill: var(--muted); font-family: var(--f-data); font-size: 11px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.82rem; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.out { background: transparent !important; border: 2px solid; }
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); font-family: var(--f-data);
+  font-size: 0.78rem; padding: 8px 10px; border-radius: 6px; line-height: 1.5; z-index: 20; white-space: nowrap; }
+
+.inspect h3 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 0.88rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 500; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid currentColor; }
+.chip.good { color: var(--good); } .chip.bad { color: var(--bad); } .chip.serious { color: var(--serious); } .chip.neutral { color: var(--muted); }
+.note { font-size: 0.82rem; color: var(--muted); }
+
+/* 圖鑑 */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button { border: 1px solid var(--rule); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 0.86rem; }
+.tabs button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); font-weight: 500; }
+.tabs .count { font-family: var(--f-data); color: var(--muted); margin-left: 4px; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 10px; display: grid; gap: 6px; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+.card:hover { border-color: var(--ink-2); }
+.card .cap { font-size: 0.8rem; color: var(--ink-2); display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+.gal-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: end; }
+@media (prefers-reduced-motion: no-preference) { .card, .btn { transition: border-color .15s ease; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">method_kline_peak · 主軸 · TW50</div>
+    <h1>TW50 高低點窗口</h1>
+    <p class="lede">每個樣本是連續 11 個交易日,中間那天(第 6 天,記為 t)若收盤是這 11 天最高就是<b>高點</b>、最低就是<b>低點</b>。
+      模型在 t 日收盤後只看得到 t−5 ~ t,要猜 t 是不是高低點;t+1 ~ t+5 是用來貼標籤的未來。點任何一天,右側會畫出它的 11 日窗口。</p>
+  </header>
+
+  <section class="facts" id="facts" aria-label="資料與結果摘要"></section>
+
+  <section class="rule-box" aria-label="方法與計分">
+    <h2>方法與怎樣算對</h2>
+    <ol>
+      <li><b>規則挑候選</b>:t 日收盤是 t−5 ~ t(近 6 天)最高 → 高點候選;最低 → 低點候選;其餘直接判非極值。真正的 11 日高低點一定也是 6 日高低點,所以規則一個都不會漏。</li>
+      <li><b>AE + OC-SVM 篩候選</b>:用訓練期(2020–2023)的候選點訓練,測試時候選點落在模型範圍內才保留為高 / 低點,否則改判非極值。</li>
+      <li><b>怎樣算對</b>:模型判斷的類別(高點 / 非極值 / 低點)與 11 日窗口貼出的標籤相同就算對。acc = 判對的天數 ÷ 全部天數。</li>
+    </ol>
+    <div class="scroll-x"><table class="metrics" id="metrics"></table></div>
+    <p class="note" id="metric-note"></p>
+  </section>
+
+  <section class="studio">
+    <div class="panel" aria-label="價格圖">
+      <div class="controls">
+        <label for="stock" class="note">股票</label>
+        <select id="stock"></select>
+        <div class="seg" role="group" aria-label="期間">
+          <button type="button" id="p-train" aria-pressed="false">訓練 2020–2023</button>
+          <button type="button" id="p-test" aria-pressed="true">測試 2025-01 ~ 2026-09</button>
+        </div>
+        <button type="button" class="btn" id="prev" aria-label="往前 60 天">◀ 往前</button>
+        <button type="button" class="btn" id="next" aria-label="往後 60 天">往後 ▶</button>
+        <button type="button" class="btn" id="jump">下一個高低點</button>
+      </div>
+      <div class="range-row">
+        <input type="range" id="range" min="0" max="0" step="1" value="0" aria-label="圖的起始日">
+        <span class="range-label" id="range-label"></span>
+      </div>
+      <div id="chart"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <aside class="panel inspect" aria-label="11 日窗口檢視">
+      <h3><span id="ins-title">11 日窗口</span><span class="chip neutral" id="ins-chip">—</span></h3>
+      <div id="ins-chart"></div>
+      <dl class="kv" id="ins-kv"></dl>
+      <p class="note">淺色底是判斷當下看得到的 t−5 ~ t;右半是未來 5 天,只用來貼標籤。虛線是 t 日收盤價。</p>
+    </aside>
+  </section>
+
+  <section class="panel" aria-label="樣本圖鑑">
+    <div class="gal-head">
+      <div>
+        <h2>找到的結果長什麼樣</h2>
+        <p class="note">從 50 檔股票隨機抽 12 個窗口。點卡片可在上方看細節。</p>
+      </div>
+      <button type="button" class="btn" id="reshuffle">換一批</button>
+    </div>
+    <div class="tabs" id="tabs" role="group" aria-label="樣本類別"></div>
+    <p class="note" id="tab-desc"></p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById('data').textContent);
+  const S = DATA.summary, STOCKS = DATA.stocks;
+  const LBL = { '-1': '窗口不完整', 0: '非極值', 1: '低點', 2: '高點' };
+  const VIEW = window.innerWidth < 640 ? 60 : 120;          // 手機一次看 60 天,桌機 120 天
+  const state = { stock: 0, period: 'test', start: 0, sel: null };
+  const $ = id => document.getElementById(id);
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const pct = (x, d = 1) => (x * 100).toFixed(d) + '%';
+  const fmt = n => n.toLocaleString('en-US');
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+  // ── 摘要 ──
+  const R = S.rule, M = S.model, dt = S.dist_test, dtr = S.dist_train;
+  const facts = [
+    ['50 檔', 'TW50 成分股,yfinance 還原價'],
+    [fmt(S.n_train), `訓練樣本(${S.split.train[0].slice(0, 7)} ~ ${S.split.train[1].slice(0, 7)})`],
+    [fmt(S.n_test), `測試樣本(${S.split.test[0].slice(0, 7)} ~ ${S.split.test[1].slice(0, 7)})`],
+    [`${pct(dtr['低點'])} / ${pct(dtr['非極值'])} / ${pct(dtr['高點'])}`, '訓練期 低點 / 非極值 / 高點'],
+    [pct(R.recall['高點'], 0) + ' / ' + pct(R.recall['低點'], 1), '規則找到的真高點 / 真低點(召回率)'],
+    [pct(M.precision['非極值']), '模型判「不是高低點」時的正確率'],
+  ];
+  $('facts').innerHTML = facts.map(([v, k]) => `<div class="fact"><span class="v">${v}</span><span class="k">${k}</span></div>`).join('');
+  const row = (name, x) => `<tr><td>${name}</td><td class="num">${pct(x.acc)}</td><td class="num">${pct(x.macro_f1, 2)}</td>
+    <td class="num">${pct(x.recall['高點'])}</td><td class="num">${pct(x.recall['低點'])}</td><td class="num">${pct(x.precision['非極值'])}</td>
+    <td class="num">${pct(x.precision['高點'])}</td><td class="num">${pct(x.precision['低點'])}</td></tr>`;
+  $('metrics').innerHTML = `<thead><tr><th>測試期 2025-01 ~ 2026-09</th><th>acc</th><th>macro-F1</th><th>高點找到率</th><th>低點找到率</th>
+    <th>非極值判對率</th><th>判高點命中</th><th>判低點命中</th></tr></thead><tbody>
+    <tr><td>全猜非極值</td><td class="num">${pct(M.majority_acc)}</td><td class="num">${pct(2 * dt['非極值'] / (1 + dt['非極值']) / 3, 2)}</td><td class="num">0.0%</td><td class="num">0.0%</td><td class="num">${pct(dt['非極值'])}</td><td class="num">—</td><td class="num">—</td></tr>
+    ${row('規則基準(論文)', R)}${row('規則 + AE + OC-SVM(主軸,種子 42)', M)}</tbody>`;
+  $('metric-note').textContent = `找到率 = 真的高(低)點裡被判出來的比例;判對率 / 命中 = 判成該類的日子裡真的是該類的比例。測試期真高點佔 ${pct(dt['高點'])}、真低點 ${pct(dt['低點'])},所以隨機亂猜的命中只有約 7–8%。`;
+
+  // ── 控制 ──
+  const sel = $('stock');
+  sel.innerHTML = STOCKS.map((s, i) => `<option value="${i}">${s.ticker.replace('.TW', '')} ${s.name}</option>`).join('');
+  const P = () => STOCKS[state.stock][state.period];
+  function setPeriod(p) {
+    state.period = p; state.start = 0; state.sel = null;
+    $('p-train').setAttribute('aria-pressed', p === 'train'); $('p-test').setAttribute('aria-pressed', p === 'test');
+    syncRange(); autoSelect(); render();
+  }
+  function syncRange() {
+    const n = P().d.length, r = $('range');
+    r.max = Math.max(0, n - VIEW); r.value = state.start;
+    const end = Math.min(n, state.start + VIEW) - 1;
+    $('range-label').textContent = `${P().d[state.start]} ~ ${P().d[end]}`;
+  }
+  function autoSelect() {
+    const p = P(), end = Math.min(p.d.length - 5, state.start + VIEW);
+    for (let i = Math.max(5, state.start); i < end; i++) if (p.y[i] > 0 && (state.period === 'train' || p.pred[i] === p.y[i])) { state.sel = i; return; }
+    state.sel = Math.min(p.d.length - 6, Math.max(5, state.start + 5));
+  }
+  sel.addEventListener('change', () => { state.stock = +sel.value; state.start = 0; syncRange(); autoSelect(); render(); });
+  $('p-train').addEventListener('click', () => setPeriod('train'));
+  $('p-test').addEventListener('click', () => setPeriod('test'));
+  $('range').addEventListener('input', e => { state.start = +e.target.value; syncRange(); render(); });
+  const shift = d => { const n = P().d.length; state.start = Math.max(0, Math.min(n - VIEW, state.start + d)); syncRange(); render(); };
+  $('prev').addEventListener('click', () => shift(-60));
+  $('next').addEventListener('click', () => shift(60));
+  $('jump').addEventListener('click', () => {
+    const p = P(), from = (state.sel ?? state.start) + 1;
+    for (let i = Math.max(5, from); i < p.d.length - 5; i++) if (p.y[i] > 0 || p.pred[i] > 0) {
+      state.sel = i; const n = p.d.length;
+      if (i < state.start || i >= state.start + VIEW) state.start = Math.max(0, Math.min(n - VIEW, i - 20));
+      syncRange(); render(); return;
+    }
+  });
+
+  // ── 判斷結果分類 ──
+  function outcome(p, i, period) {
+    const y = p.y[i], c = p.cand[i], pr = p.pred[i];
+    if (y < 0) return ['neutral', '窗口不完整'];
+    if (period === 'train') return y > 0 ? ['neutral', `訓練資料:真${LBL[y]}`] : (c > 0 ? ['neutral', '訓練資料:假候選'] : ['neutral', '訓練資料:非極值']);
+    if (pr > 0 && pr === y) return ['good', `判對${LBL[y]} ✓`];
+    if (pr > 0) return ['bad', `誤報:判成${LBL[pr]} ✗`];
+    if (y > 0) return ['serious', `漏判:真${LBL[y]}被刪掉 !`];
+    if (c > 0) return ['good', '正確刪掉假候選 ✓'];
+    return ['good', '非候選,判非極值 ✓'];
+  }
+
+  // ── 主圖 ──
+  const tip = $('tip');
+  function render() {
+    const p = P(), n = p.d.length, a = state.start, b = Math.min(n, a + VIEW);
+    const W = 960, plotH = 300, top = 14, left = 54, right = 10, stripH = 16, gap = 6;
+    const strips = state.period === 'test' ? ['真實標籤', '規則候選', '模型判斷'] : ['真實標籤', '規則候選'];
+    const H = top + plotH + 26 + strips.length * (stripH + gap) + 6;
+    const cw = (W - left - right) / VIEW;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = a; i < b; i++) { lo = Math.min(lo, p.l[i]); hi = Math.max(hi, p.h[i]); }
+    const padv = (hi - lo) * 0.08 || 1; lo -= padv; hi += padv;
+    const Y = v => top + (hi - v) / (hi - lo) * plotH, X = i => left + (i - a + 0.5) * cw;
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': `${STOCKS[state.stock].name} 價格與高低點` });
+    const grid = css('--rule'), ink2 = css('--ink-2'), cHi = css('--high'), cLo = css('--low');
+    for (let k = 0; k <= 4; k++) {
+      const v = lo + (hi - lo) * k / 4, y = Y(v);
+      el('line', { x1: left, x2: W - right, y1: y, y2: y, stroke: grid, 'stroke-width': 1 }, svg);
+      el('text', { x: left - 6, y: y + 4, 'text-anchor': 'end' }, svg).textContent = v.toFixed(v < 100 ? 1 : 0);
+    }
+    if (state.sel != null && state.sel >= a && state.sel < b) {
+      const s0 = Math.max(a, state.sel - 5), s1 = Math.min(b - 1, state.sel + 5);
+      el('rect', { x: X(s0) - cw / 2, y: top, width: (s1 - s0 + 1) * cw, height: H - top - 4, fill: css('--band') }, svg);
+      el('rect', { x: X(state.sel) - cw / 2, y: top, width: cw, height: H - top - 4, fill: 'none', stroke: css('--ink'), 'stroke-width': 1.2 }, svg);
+    }
+    for (let i = a; i < b; i++) {
+      const x = X(i), up = p.c[i] >= p.o[i], bw = Math.max(1.5, cw * 0.62);
+      el('line', { x1: x, x2: x, y1: Y(p.h[i]), y2: Y(p.l[i]), stroke: ink2, 'stroke-width': 1 }, svg);
+      const y0 = Y(Math.max(p.o[i], p.c[i])), y1 = Y(Math.min(p.o[i], p.c[i]));
+      el('rect', { x: x - bw / 2, y: y0, width: bw, height: Math.max(1, y1 - y0), fill: up ? css('--surface') : ink2, stroke: ink2, 'stroke-width': 1 }, svg);
+      if (p.y[i] === 2) el('path', { d: `M${x - 4},${Y(p.h[i]) - 10} L${x + 4},${Y(p.h[i]) - 10} L${x},${Y(p.h[i]) - 4} Z`, fill: cHi }, svg);
+      if (p.y[i] === 1) el('path', { d: `M${x - 4},${Y(p.l[i]) + 10} L${x + 4},${Y(p.l[i]) + 10} L${x},${Y(p.l[i]) + 4} Z`, fill: cLo }, svg);
+    }
+    for (let k = a; k < b; k += 20) el('text', { x: X(k), y: top + plotH + 16, 'text-anchor': 'middle' }, svg).textContent = p.d[k].slice(2);
+    strips.forEach((name, si) => {
+      const y = top + plotH + 26 + si * (stripH + gap);
+      el('text', { x: left - 6, y: y + 12, 'text-anchor': 'end' }, svg).textContent = name;
+      el('rect', { x: left, y, width: W - left - right, height: stripH, fill: css('--known'), rx: 3 }, svg);
+      for (let i = a; i < b; i++) {
+        const v = si === 0 ? p.y[i] : si === 1 ? p.cand[i] : p.pred[i];
+        if (v !== 1 && v !== 2) continue;
+        const col = v === 2 ? cHi : cLo, wrong = si === 2 && v !== p.y[i];
+        el('rect', { x: X(i) - cw * 0.42, y: y + 2, width: cw * 0.84, height: stripH - 4, rx: 2,
+          fill: wrong ? 'none' : col, stroke: col, 'stroke-width': wrong ? 1.5 : 0 }, svg);
+      }
+    });
+    for (let i = a; i < b; i++) {
+      const hit = el('rect', { x: X(i) - cw / 2, y: top, width: cw, height: H - top, fill: 'transparent', style: 'cursor:pointer' }, svg);
+      hit.addEventListener('click', () => { state.sel = i; render(); });
+      hit.addEventListener('mousemove', ev => {
+        tip.hidden = false;
+        tip.innerHTML = `${p.d[i]}<br>開 ${p.o[i]} 高 ${p.h[i]}<br>低 ${p.l[i]} 收 ${p.c[i]}<br>標籤 ${LBL[p.y[i]]}` +
+          (state.period === 'test' && p.pred[i] >= 0 ? `<br>模型 ${LBL[p.pred[i]]}` : '');
+        const tx = Math.min(ev.clientX + 14, window.innerWidth - 170);
+        tip.style.left = tx + 'px'; tip.style.top = (ev.clientY + 14) + 'px';
+      });
+      hit.addEventListener('mouseleave', () => { tip.hidden = true; });
+    }
+    $('chart').replaceChildren(svg);
+    renderLegend(); renderInspect();
+  }
+  function renderLegend() {
+    const items = [['high', '真高點(▼)/判高點'], ['low', '真低點(▲)/判低點']];
+    let h = items.map(([c, t]) => `<span><i class="sw" style="background:var(--${c})"></i>${t}</span>`).join('');
+    if (state.period === 'test') h += `<span><i class="sw out" style="border-color:var(--high)"></i>模型判斷帶的空心格 = 判錯(誤報)</span>`;
+    h += `<span>K 棒:空心 = 收漲、實心 = 收跌</span>`;
+    $('legend').innerHTML = h;
+  }
+
+  // ── 11 日窗口 ──
+  function windowSvg(p, i, w, h, compact) {
+    const a = Math.max(0, i - 5), b = Math.min(p.d.length - 1, i + 5);
+    const pad = compact ? 6 : 34, top = compact ? 8 : 14, bot = compact ? 8 : 22;
+    let lo = Infinity, hi = -Infinity;
+    for (let k = a; k <= b; k++) { lo = Math.min(lo, p.l[k]); hi = Math.max(hi, p.h[k]); }
+    const pv = (hi - lo) * 0.12 || 1; lo -= pv; hi += pv;
+    const cw = (w - pad - 6) / 11, X = k => pad + (k - (i - 5) + 0.5) * cw, Y = v => top + (hi - v) / (hi - lo) * (h - top - bot);
+    const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, width: '100%', role: 'img', 'aria-label': `${p.d[i]} 的 11 日窗口` });
+    el('rect', { x: X(i - 5) - cw / 2, y: top - 4, width: cw * 6, height: h - top - bot + 8, fill: css('--known') }, svg);
+    el('rect', { x: X(i) - cw / 2, y: top - 4, width: cw, height: h - top - bot + 8, fill: css('--band'), stroke: css('--ink'), 'stroke-width': 1 }, svg);
+    el('line', { x1: pad, x2: w - 6, y1: Y(p.c[i]), y2: Y(p.c[i]), stroke: css('--muted'), 'stroke-dasharray': '4 3', 'stroke-width': 1 }, svg);
+    const ink2 = css('--ink-2'), col = p.y[i] === 2 ? css('--high') : p.y[i] === 1 ? css('--low') : null;
+    for (let k = a; k <= b; k++) {
+      const x = X(k), up = p.c[k] >= p.o[k], bw = cw * 0.6;
+      el('line', { x1: x, x2: x, y1: Y(p.h[k]), y2: Y(p.l[k]), stroke: k === i && col ? col : ink2, 'stroke-width': k === i ? 1.6 : 1 }, svg);
+      const y0 = Y(Math.max(p.o[k], p.c[k])), y1 = Y(Math.min(p.o[k], p.c[k]));
+      const stroke = k === i && col ? col : ink2;
+      el('rect', { x: x - bw / 2, y: y0, width: bw, height: Math.max(1, y1 - y0), fill: up ? css('--surface') : stroke, stroke, 'stroke-width': k === i ? 1.6 : 1 }, svg);
+      if (!compact) el('text', { x, y: h - 6, 'text-anchor': 'middle' }, svg).textContent = k === i ? 't' : (k < i ? `${k - i}` : `+${k - i}`);
+    }
+    if (!compact) {
+      el('text', { x: pad - 4, y: Y(p.c[i]) + 4, 'text-anchor': 'end' }, svg).textContent = p.c[i].toFixed(p.c[i] < 100 ? 1 : 0);
+      el('text', { x: X(i - 5) - cw / 2 + 2, y: top + 6 }, svg).textContent = '看得到';
+      el('text', { x: X(i + 1) - cw / 2 + 2, y: top + 6 }, svg).textContent = '未來 5 天';
+    }
+    return svg;
+  }
+  function renderInspect() {
+    const p = P(), i = state.sel, s = STOCKS[state.stock];
+    if (i == null) return;
+    const [cls, txt] = outcome(p, i, state.period);
+    $('ins-title').textContent = `${s.ticker.replace('.TW', '')} ${s.name} · ${p.d[i]}`;
+    const chip = $('ins-chip'); chip.className = `chip ${cls}`; chip.textContent = txt;
+    $('ins-chart').replaceChildren(windowSvg(p, i, 340, 210, false));
+    const a = Math.max(0, i - 5), b = Math.min(p.d.length - 1, i + 5);
+    const win = p.c.slice(a, b + 1), mx = Math.max(...win), mn = Math.min(...win);
+    const why = p.y[i] === 2 ? `t 日收盤 ${p.c[i]} 是 11 天最高(最高 ${mx})` : p.y[i] === 1 ? `t 日收盤 ${p.c[i]} 是 11 天最低(最低 ${mn})`
+      : p.y[i] === 0 ? `t 日收盤 ${p.c[i]},11 天最高 ${mx}、最低 ${mn}` : '資料尾端,湊不滿 11 天';
+    const cand = p.cand[i] === 2 ? '是 t−5 ~ t 最高 → 高點候選' : p.cand[i] === 1 ? '是 t−5 ~ t 最低 → 低點候選' : '不是近 6 天最高或最低 → 直接判非極值';
+    const pred = state.period === 'train' ? '訓練期不做預測' : p.pred[i] < 0 ? '—' :
+      (p.cand[i] > 0 ? (p.pred[i] > 0 ? `保留 → 判${LBL[p.pred[i]]}` : '刪掉 → 判非極值') : '判非極值');
+    const r5 = p.r5[i];
+    const ret = r5 == null ? '—' : `${r5 > 0 ? '+' : ''}${r5.toFixed(2)}%(t+1 開盤買、t+5 收盤賣)`;
+    $('ins-kv').innerHTML = `<dt>真實標籤</dt><dd><b>${LBL[p.y[i]]}</b>:${why}</dd><dt>規則</dt><dd>${cand}</dd>
+      <dt>AE + OC-SVM</dt><dd>${pred}</dd><dt>之後 5 天</dt><dd class="num">${ret}</dd>`;
+  }
+
+  // ── 圖鑑 ──
+  const CATS = [
+    ['tp_hi', '判對的高點', 'test', (p, i) => p.pred[i] === 2 && p.y[i] === 2, '模型判高點,而且 t 日真的是 11 天最高。'],
+    ['tp_lo', '判對的低點', 'test', (p, i) => p.pred[i] === 1 && p.y[i] === 1, '模型判低點,而且 t 日真的是 11 天最低。'],
+    ['tn', '正確刪掉的假候選', 'test', (p, i) => p.cand[i] > 0 && p.pred[i] === 0 && p.y[i] === 0, '規則挑出來、但之後 5 天被超越的候選,模型正確把它刪掉。'],
+    ['fp', '誤報(假候選)', 'test', (p, i) => p.pred[i] > 0 && p.pred[i] !== p.y[i], '模型判高(低)點,但之後 5 天價格又創新高(低),所以它不是 11 天的高低點。'],
+    ['fn', '漏判', 'test', (p, i) => p.y[i] > 0 && p.pred[i] === 0, '真的是 11 天高(低)點,規則有挑到,但被 AE + OC-SVM 刪掉。'],
+    ['tr_hi', '訓練:真高點', 'train', (p, i) => p.y[i] === 2, '訓練期 2020–2023 的真高點,AE 學的就是這些樣本的形態。'],
+    ['tr_lo', '訓練:真低點', 'train', (p, i) => p.y[i] === 1, '訓練期 2020–2023 的真低點。'],
+    ['tr_f', '訓練:假候選', 'train', (p, i) => p.cand[i] > 0 && p.y[i] === 0, '訓練期裡是 6 日高低點、但之後 5 天被超越的日子。'],
+  ];
+  const pools = {};
+  for (const [key, , per, f] of CATS) {
+    pools[key] = [];
+    STOCKS.forEach((s, si) => { const p = s[per]; for (let i = 5; i < p.d.length - 5; i++) if (f(p, i)) pools[key].push([si, i]); });
+  }
+  let cat = 'tp_hi', seed = 7;
+  const rand = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  $('tabs').innerHTML = CATS.map(([k, name]) => `<button type="button" data-k="${k}" aria-pressed="${k === cat}">${name}<span class="count">${fmt(pools[k].length)}</span></button>`).join('');
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.k; renderGallery(); });
+  $('reshuffle').addEventListener('click', () => { seed = (seed + 977) % 2147483647; renderGallery(); });
+  function renderGallery() {
+    [...$('tabs').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.k === cat));
+    const c = CATS.find(x => x[0] === cat), per = c[2], pool = pools[cat];
+    $('tab-desc').textContent = `${c[4]} 共 ${fmt(pool.length)} 個。`;
+    const pick = [];
+    const used = new Set();
+    while (pick.length < Math.min(12, pool.length)) { const j = Math.floor(rand() * pool.length); if (!used.has(j)) { used.add(j); pick.push(pool[j]); } }
+    const g = $('gallery'); g.replaceChildren();
+    for (const [si, i] of pick) {
+      const s = STOCKS[si], p = s[per];
+      const card = document.createElement('button'); card.type = 'button'; card.className = 'card';
+      card.appendChild(windowSvg(p, i, 220, 120, true));
+      const r5 = p.r5[i];
+      const capR = r5 == null ? '' : `<span class="num">5 日 ${r5 > 0 ? '+' : ''}${r5.toFixed(1)}%</span>`;
+      const cap = document.createElement('div'); cap.className = 'cap';
+      cap.innerHTML = `<span>${s.ticker.replace('.TW', '')} ${s.name}</span><span class="num">${p.d[i]}</span>${capR}`;
+      card.appendChild(cap);
+      card.addEventListener('click', () => {
+        state.stock = si; sel.value = si; if (state.period !== per) { state.period = per; $('p-train').setAttribute('aria-pressed', per === 'train'); $('p-test').setAttribute('aria-pressed', per === 'test'); }
+        state.start = Math.max(0, Math.min(p.d.length - VIEW, i - 40)); state.sel = i; syncRange(); render();
+        document.querySelector('.studio').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      });
+      g.appendChild(card);
+    }
+  }
+
+  syncRange(); autoSelect(); render(); renderGallery();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { render(); renderGallery(); });
+  new MutationObserver(() => { render(); renderGallery(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>

@@ -324,6 +324,9 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
+python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)
+# 網頁:把 windows_data.json 的內容填進 web/window_viewer.html 的 __DATA__
+# 簡報:report/figs.py <windows_data.json> 產生圖,report/build_deck.js 產生 .pptx(需要 pptxgenjs)
 ```
 
 資料:`common/cache/yf_2026`(還原 OHLCV)+ 大盤 `0050.TW`;需要 `pyarrow`、`scikit-learn`、`lightgbm`。
@@ -341,4 +344,7 @@ python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 
 | `paper_rule_aeocsvm.py` | 論文的規則基準框架:規則挑候選、AE + OC-SVM(只用候選點訓練)否決假候選;nu 掃描與隨機否決對照 |
 | `rule_trading.py` | 論文規則訊號直接交易:勝率、報酬、真 / 假候選拆解、不重疊持倉、損益兩平命中率 |
 | **`mainline.py`** | **目前主軸**:同上框架,參數化(輸入窗格、特徵組、AE / OC-SVM 參數、權重、切分),bootstrap CI,自動寫 `results/experiments.csv` |
+| `export_windows.py` | 匯出主軸(種子 42、nu 0.1、我們的切分)每檔訓練 / 測試期的 K 線、標籤、規則候選、模型判斷 |
+| `web/window_viewer.html` | 互動網頁:逐檔 K 線 + 真實標籤 / 規則候選 / 模型判斷,點任一天看 11 日窗口,分類範例畫廊 |
+| `report/` | 專題進度簡報 `TW50_局部高低點_專題進度.pptx` 與產生它的 `figs.py`、`build_deck.js` |
 | `results/feasibility_<pool>.json`、`results/diagnose_<pool>.json` | 全部數字 |
