@@ -115,31 +115,59 @@ T(s, "每 100 天只有約 7–8 天是高點、7–8 天是低點,其餘 85 天
   { x: 7.6, y: 5.25, w: 5.1, h: 1.0, fontSize: 13, color: C.text2 });
 s.addNotes("資料是 TW50 的 50 檔股票,2016 到 2026 年 9 月的還原日 K,總共約 12.9 萬個股票日。訓練用 2020 到 2023 年 48,585 筆,測試用 2025 年到 2026 年 9 月 20,189 筆。高點和低點各只佔 7 到 8%,這個不平衡很重要,後面算 acc 時會再提到。");
 
-// ───────────────────────── 6. 方法流程 ─────────────────────────
+// ───────────────────────── 6. 訓練輸入:11 天中的哪幾天、哪些特徵 ─────────────────────────
 sec = S("方法與計分");
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("方法流程:規則挑候選,AE + OC-SVM 篩候選", { placeholder: "title" });
-const steps = [
-  ["1", "t 日收盤後", "取 t-5 ~ t 六根 K 線(開高低收量,29 個數字)"],
-  ["2", "規則挑候選", "t 日收盤是近 6 天最高 → 高點候選;最低 → 低點候選;其餘直接判非極值"],
-  ["3", "AE + OC-SVM 篩選", "候選落在「真高(低)點」的範圍內才保留,範圍外改判非極值"],
-  ["4", "輸出", "每天一個判斷:高點 / 非極值 / 低點"],
-];
-steps.forEach(([n, h, d], j) => {
-  const x = 0.6 + j * 3.1;
-  card(s, x, 1.7, 2.8, 3.2, C.background2, `step-${n}`);
-  s.addShape(pres.shapes.OVAL, { x: x + 0.25, y: 1.95, w: 0.55, h: 0.55, fill: { color: j === 2 ? C.accent1 : C.text1 }, line: { color: j === 2 ? C.accent1 : C.text1 }, objectName: `step-dot-${n}` });
-  T(s, n, { x: x + 0.25, y: 1.95, w: 0.55, h: 0.55, fontSize: 18, bold: true, color: C.background1, align: "center", valign: "middle" });
-  T(s, h, { x: x + 0.25, y: 2.7, w: 2.35, h: 0.5, fontSize: 18, bold: true });
-  T(s, d, { x: x + 0.25, y: 3.25, w: 2.35, h: 1.6, fontSize: 13, color: C.text2 });
-  if (j < 3) s.addShape(pres.shapes.RIGHT_ARROW, { x: x + 2.83, y: 3.15, w: 0.24, h: 0.3, fill: { color: C.accent6 }, line: { color: C.accent6 }, objectName: `step-arrow-${n}` });
-});
-card(s, 0.6, 5.2, 12.1, 1.15, C.background2, "why-rule");
+s.addText("訓練輸入:11 天中的前 6 天,每天 5 個特徵", { placeholder: "title" });
+// 11 天的方塊:前 6 天丟進模型,後 5 天只貼標籤
+for (let k = 0; k < 11; k++) {
+  const x = 0.6 + k * 1.11, used = k < 6, isT = k === 5;
+  const fill = isT ? C.accent1 : used ? C.text1 : C.background2;
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.45, w: 1.0, h: 0.8, fill: { color: fill }, line: { color: fill }, rectRadius: 0.06, objectName: `day-${k + 1}` });
+  T(s, [
+    { text: `第 ${k + 1} 天`, options: { fontSize: 12, breakLine: true } },
+    { text: k === 5 ? "t" : k < 5 ? `t-${5 - k}` : `t+${k - 5}`, options: { fontSize: 16, bold: true } },
+  ], { x, y: 1.45, w: 1.0, h: 0.8, align: "center", valign: "middle", color: used ? C.background1 : C.accent5 });
+}
+s.addShape(pres.shapes.LINE, { x: 0.6, y: 2.4, w: 6.55, h: 0, line: { color: HEX.dk1, width: 1.5 }, objectName: "bracket-used" });
+s.addShape(pres.shapes.LINE, { x: 7.26, y: 2.4, w: 5.44, h: 0, line: { color: HEX.accent6, width: 1.5 }, objectName: "bracket-label" });
+T(s, "丟進模型:t 日收盤時都已經知道", { x: 0.6, y: 2.48, w: 6.55, h: 0.35, fontSize: 13, bold: true, align: "center" });
+T(s, "不丟進模型:只用來貼標籤(看第 6 天是不是 11 天最高 / 最低)", { x: 7.26, y: 2.48, w: 5.44, h: 0.35, fontSize: 13, color: C.accent5, align: "center" });
+
+// 特徵表:5 個特徵 × 6 天,附台積電 2026-02-25 的實際數字
+const days = ["t-5", "t-4", "t-3", "t-2", "t-1", "t"];
+const ex = {
+  開: [-9.2, -8.4, -6.7, -5.7, -5.0, -1.0], 高: [-8.9, -6.7, -4.5, -4.0, -2.0, 0.5],
+  低: [-9.9, -8.7, -6.9, -5.7, -5.0, -1.0], 收: [-9.9, -6.7, -5.0, -5.7, -2.5, null],
+  量: [0.95, 1.09, 1.06, 1.82, 1.07, 1.06],
+};
+const how = { 開: "開盤 ÷ t 日收盤", 高: "最高 ÷ t 日收盤", 低: "最低 ÷ t 日收盤", 收: "收盤 ÷ t 日收盤", 量: "成交量 ÷ 10 日均量" };
+const fmt = (k, v) => v === null ? "拿掉" : k === "量" ? `${v.toFixed(2)}×` : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}%`;
+const fRows = [[head("特徵"), head("算法"), ...days.map(d => ({ text: d, options: { bold: true, color: HEX.accent5, fontSize: 12, align: "center" } }))]];
+Object.keys(ex).forEach(k => fRows.push([
+  { text: k, options: { bold: true } }, { text: how[k], options: { color: HEX.dk2 } },
+  ...ex[k].map((v, j) => ({ text: fmt(k, v), options: { align: "center", color: v === null ? HEX.accent5 : HEX.dk1,
+    fill: { color: j === 5 ? "FCE9E0" : "FFFFFF" } } })),
+]));
+s.addTable(fRows, { x: 0.6, y: 3.05, w: 8.1, colW: [0.7, 2.3, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85], rowH: 0.4, fontSize: 13,
+  fontFace: THEME.bodyFontFace, color: HEX.dk1, valign: "middle", border: { type: "solid", pt: 0.75, color: "D9E0E6" }, margin: [0, 0.08, 0, 0.08] });
+T(s, "例:台積電 2026-02-25(第 1 頁的高點)。價格以 % 顯示,模型實際用 ln 值;量的 10 日均量算到 t 日為止。",
+  { x: 0.6, y: 5.5, w: 8.1, h: 0.35, fontSize: 11, color: C.accent5 });
+
+card(s, 9.0, 3.05, 3.7, 2.8, C.background2, "count-29");
+T(s, "6 天 × 5 − 1 = 29", { x: 9.25, y: 3.2, w: 3.3, h: 0.6, fontSize: 24, bold: true, color: C.accent1 });
+T(s, bullets([
+  "t 日收盤 ÷ 自己永遠是 1,沒有資訊,拿掉",
+  "價格都除以 t 日收盤:只看形狀,不看股價高低",
+  "量除以 10 日均量:看這幾天是平常的幾倍",
+], 13), { x: 9.25, y: 3.9, w: 3.3, h: 1.85, color: C.text2 });
+
+card(s, 0.6, 6.0, 12.1, 0.75, C.background2, "train-samples");
 T(s, [
-  { text: "為什麼規則不會漏:", options: { bold: true } },
-  { text: "t 日如果是 11 天最高,一定也是近 6 天(t-5 ~ t)最高,而這在 t 日收盤就知道。所以真高低點全部都在候選裡,模型的工作只剩「從候選裡刪掉之後 5 天被超越的假候選」。", options: { color: C.text2 } },
-], { x: 0.9, y: 5.38, w: 11.5, h: 0.85, fontSize: 14 });
-s.addNotes("流程分四步。關鍵在第二步的規則:真正的 11 日高點,一定也是近 6 天的高點,所以規則先把所有可能的候選挑出來,保證不漏。第三步才是我們的 AE 加 OC-SVM,它要從候選裡刪掉那些之後 5 天又被超越的假候選。");
+  { text: "訓練樣本:", options: { bold: true } },
+  { text: "2020–2023 的規則候選日(t 日收盤是近 6 天最高 → 高點候選 13,994 天;最低 → 低點候選 11,465 天),高點、低點各訓練一組 AE + OC-SVM。", options: { color: C.text2 } },
+], { x: 0.85, y: 6.0, w: 11.6, h: 0.75, fontSize: 13, valign: "middle" });
+s.addNotes("這頁說明我們丟進模型的是什麼。一個樣本是 11 個交易日,第 6 天是 t。模型只看前 6 天,也就是 t-5 到 t,這些在 t 日收盤時都已經知道;後 5 天只用來貼標籤,模型看不到。每天取 5 個特徵:開、高、低、收都除以 t 日收盤,量除以 10 日均量。t 日收盤除以自己永遠是 1,所以拿掉,總共 29 個數字。表上是台積電 2026-02-25 的實際數字:前 5 天的價格都在 t 日收盤下方,代表一路往上收到 t 日。訓練只用規則挑出的候選日,高點和低點各訓練一組模型。");
 
 // ───────────────────────── 7. AE + OC-SVM ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
