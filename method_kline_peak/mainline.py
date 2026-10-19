@@ -15,6 +15,8 @@
                mkt  大盤(0050)1 / 5 / 20 日報酬、距 20 日高點、20 日波動
                chip 三大法人 / 融資券 / 外資持股 40 欄(method_xgb 的 chip_features,整組延後 1 日避免未公布資料)
   --latent / --epochs   AE 潛在維度 / 訓練輪數(原系統 4 / 60)
+  --arch     AE 結構:orig(原系統,輸入 → 2×輸入 → 8 → latent)/ shallow(輸入 → latent 一層線性,不先升維)
+             / shallow-tanh(同 shallow,潛在層加 tanh)
   --nu       OC-SVM nu,可多個(第一個為主要),--gamma(scale 或數值)
   --weight   OC-SVM 樣本權重:purity(距離 ≤ dist 的相似候選中同為真的比例)/ none
   --dist     相似樣本的歐氏距離門檻(原系統 3.0)
@@ -144,6 +146,28 @@ def delta_ci(y, preds, rule, dates, rng):
     return [float(np.percentile(out, 2.5)), float(np.percentile(out, 97.5))]
 
 
+class ShallowAE(torch.nn.Module):
+    """一層編碼器:輸入 → latent(不先升維);解碼器 latent → 輸入。tanh=False 時等同線性 AE(近似 PCA)。"""
+
+    def __init__(self, input_dim, latent_dim, tanh=False):
+        super().__init__()
+        layers = [torch.nn.Linear(input_dim, latent_dim)] + ([torch.nn.Tanh()] if tanh else [])
+        self.encoder = torch.nn.Sequential(*layers)
+        self.decoder = torch.nn.Linear(latent_dim, input_dim)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        return self.decoder(z), z
+
+    def encode(self, x):
+        return self.encoder(x)
+
+
+ARCHS = {"orig": KA.Autoencoder,
+         "shallow": lambda d, k: ShallowAE(d, k),
+         "shallow-tanh": lambda d, k: ShallowAE(d, k, tanh=True)}
+
+
 def fit_class(tr, cls, feat_cols, args):
     c = tr[CAND[cls]].to_numpy()
     X = tr.loc[c, feat_cols]
@@ -218,7 +242,7 @@ def log_row(args, n_feat, sp_name, res):
     row = {
         "time": time.strftime("%Y-%m-%d %H:%M"), "tag": args.tag, "split": sp_name,
         "window": args.window, "vol_ma": args.vol_ma, "extra": "+".join(args.extra) or "-", "n_features": n_feat,
-        "latent": args.latent, "epochs": args.epochs, "nu": args.nu[0], "gamma": args.gamma,
+        "latent": args.latent, "arch": args.arch, "epochs": args.epochs, "nu": args.nu[0], "gamma": args.gamma,
         "weight": args.weight, "dist": args.dist, "seeds": len(args.seeds),
         "rule_macro_f1": round(res["rule"]["macro_f1"] * 100, 2),
         "model_macro_f1": round(m["macro_f1"] * 100, 2), "model_sd": round(m["sd_macro_f1"] * 100, 2),
@@ -354,7 +378,7 @@ def log_contrast(args, n_feat, sp_name, res):
             row = {
                 "time": time.strftime("%Y-%m-%d %H:%M"), "tag": args.tag, "mode": "contrast", "score": sname,
                 "keep_rule": rule, "split": sp_name, "window": args.window, "vol_ma": args.vol_ma, "extra": "+".join(args.extra) or "-",
-                "n_features": n_feat, "latent": args.latent, "epochs": args.epochs, "nu": args.nu[0],
+                "n_features": n_feat, "latent": args.latent, "arch": args.arch, "epochs": args.epochs, "nu": args.nu[0],
                 "gamma": args.gamma, "weight": args.weight, "dist": args.dist, "seeds": len(args.seeds),
                 "rule_macro_f1": round(res["rule"]["macro_f1"] * 100, 2),
                 "model_macro_f1": round(m["macro_f1"] * 100, 2), "model_sd": round(m["sd_macro_f1"] * 100, 2),
@@ -380,6 +404,7 @@ def main():
     ap.add_argument("--vol-ma", type=int, default=VOL_MA)
     ap.add_argument("--extra", nargs="*", default=[], choices=["pos", "ctx", "mkt", "chip"])
     ap.add_argument("--latent", type=int, default=4)
+    ap.add_argument("--arch", default="orig", choices=list(ARCHS))
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--nu", type=float, nargs="+", default=[0.1, 0.2, 0.3, 0.5])
     ap.add_argument("--gamma", default="scale")
@@ -391,13 +416,14 @@ def main():
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
     KA.LATENT_DIM, KA.EPOCHS = args.latent, args.epochs
+    KA.Autoencoder = ARCHS[args.arch]                       # train_ae 依名稱建模型,換成指定結構
     ae_ocsvm.DIST_THRESH = args.dist
     t0 = time.time()
     plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
 
     panel, feat_cols = build_panel(load_pool(POOL, START, END), args.window, args.extra, args.vol_ma)
     print(f"[{args.tag}] window {args.window}、量基準 {args.vol_ma} 日均量、extra {args.extra or '-'}:{len(feat_cols)} 個特徵,"
-          f"latent {args.latent}、epochs {args.epochs}、nu {args.nu}、gamma {args.gamma}、weight {args.weight}、dist {args.dist}"
+          f"AE {args.arch}、latent {args.latent}、epochs {args.epochs}、nu {args.nu}、gamma {args.gamma}、weight {args.weight}、dist {args.dist}"
           f"  ({time.time() - t0:.0f}s)", flush=True)
     names = {"paper": "論文切分", "ours": "我們的切分"}
     rng = np.random.default_rng(0)
