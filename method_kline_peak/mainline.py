@@ -8,7 +8,7 @@
      對照 = 規則基準、隨機否決同樣數量(20 次);macro-F1 − 規則基準 的 10 日區塊 bootstrap 95% CI
 可調參數(預設值 = 第 8 節的結果)
   --window   輸入 K 棒數(t−N+1 ~ t 的 O/H/L/C/量),預設 6
-  --vol-ma   量的基準:每天的量 ÷ 到 t 為止的 N 日均量,預設 20
+  --vol-ma   量的基準:每天的量 ÷ 到 t 為止的 N 日均量,預設 10(2026-10-19 起;5 / 10 / 20 / 60 比較見 README)
   --extra    額外特徵組,可多選:
                pos  收盤相對前 5 日最高 / 最低的突破幅度、上 / 下影線(ATR 倍數)
                ctx  5–60 日報酬、距 20 / 60 日高低點、均線乖離、20 日波動、ATR、RSI、量比
@@ -58,6 +58,7 @@ import kline.autoencoder as KA  # noqa: E402   (ae_ocsvm 已把 method_kline 加
 OUT = os.path.join(HERE, "results")
 LOG = os.path.join(OUT, "experiments.csv")
 POOL = "tw50"
+VOL_MA = 10                                       # 量的基準均量天數(2026-10-19 改為 10,之前為 20)
 CAND = {DOWN: "cand_hi", UP: "cand_lo"}
 N_RANDOM, N_BOOT, BLOCK = 20, 500, 10
 KEEP_RULES = ("s>0", 0.9, 0.7, 0.5, 0.3)          # contrast 模式的保留規則(數字 = 只留分數最高的比例)
@@ -69,7 +70,7 @@ GROUPS = {
 }
 
 
-def shape_features(df, n, vol_ma=20):
+def shape_features(df, n, vol_ma=VOL_MA):
     O, H, L, C, V = (df[k] for k in ("open", "high", "low", "close", "volume"))
     lc = np.log(C)
     vbase = V.rolling(vol_ma, min_periods=vol_ma).mean()          # 6 天的量共用「到 t 為止的 vol_ma 日均量」當分母
@@ -84,7 +85,7 @@ def shape_features(df, n, vol_ma=20):
     return pd.DataFrame(f, index=df.index)
 
 
-def build_panel(data, window, extra, vol_ma=20):
+def build_panel(data, window, extra, vol_ma=VOL_MA):
     mkt = clean(pd.read_parquet(os.path.join(P.YF_2026_CACHE, "0050.TW.parquet"))) if "mkt" in extra else None
     chips = {}
     if "chip" in extra:
@@ -376,7 +377,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", required=True)
     ap.add_argument("--window", type=int, default=6)
-    ap.add_argument("--vol-ma", type=int, default=20)
+    ap.add_argument("--vol-ma", type=int, default=VOL_MA)
     ap.add_argument("--extra", nargs="*", default=[], choices=["pos", "ctx", "mkt", "chip"])
     ap.add_argument("--latent", type=int, default=4)
     ap.add_argument("--epochs", type=int, default=60)

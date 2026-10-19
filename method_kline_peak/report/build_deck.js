@@ -63,63 +63,8 @@ const card = (slide, x, y, w, h, fill, name) => slide.addShape(pres.shapes.ROUND
 const bullets = (items, size = 15) => items.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < items.length - 1, paraSpaceAfter: 8, fontSize: size } }));
 const S = (title) => { pres.addSection({ title }); return title; };
 
-// ───────────────────────── 1. 封面 ─────────────────────────
-let sec = S("開場");
-let s = pres.addSlide({ masterName: "DARK", sectionTitle: sec });
-s.addText("TW50 局部高低點偵測", { placeholder: "title" });
-s.addText([
-  { text: "11 日窗口 · 論文標籤 + 規則候選 + AE + OC-SVM", options: { breakLine: true } },
-  { text: " ", options: { breakLine: true, fontSize: 10 } },
-  { text: "專題進度報告 · 2026-10-19", options: { fontSize: 15, color: C.accent6 } },
-], { placeholder: "body" });
-s.addNotes("今天報告我們把題目從「找 K 線型態預測漲跌」改成「找 11 天窗口裡的局部高點和低點」之後的結果。上面這排 11 個小方塊就是一個窗口,中間橘色那格是要判斷的那一天 t。");
-
-// ───────────────────────── 2. 一頁看結果 ─────────────────────────
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("一頁看結果:真高低點不漏,判非極值很準", { placeholder: "title" });
-const stats = [
-  ["100%", C.accent1, "真高低點全部進候選", "測試期 1,470 個 11 日高點,規則一個都沒漏;低點 1,532 個找到 1,531 個(99.9%)"],
-  ["94.5%", C.accent3, "判「不是高低點」時正確", "模型判非極值的 11,942 天裡,11,288 天真的不是高低點"],
-  ["3.5–4.2×", C.accent2, "候選的命中率是亂猜的倍數", "隨機挑一天是高(低)點的機率只有 7.3%(7.6%);被挑出的候選是 25.7%(31.5%)"],
-];
-stats.forEach(([v, col, k, d], j) => {
-  const x = 0.6 + j * 4.1;
-  card(s, x, 1.6, 3.8, 3.7, C.background2, `stat-${j}`);
-  T(s, v, { x: x + 0.3, y: 1.9, w: 3.3, h: 1.1, fontSize: 54, bold: true, color: col, valign: "middle" });
-  T(s, k, { x: x + 0.3, y: 3.1, w: 3.3, h: 0.5, fontSize: 18, bold: true });
-  T(s, d, { x: x + 0.3, y: 3.65, w: 3.3, h: 1.5, fontSize: 13, color: C.text2 });
-});
-T(s, "測試期 2025-01 ~ 2026-09,TW50 共 20,189 個股票日。限制:被挑出的候選中只有 25–32% 是真高低點,見第 13 頁。",
-  { x: 0.6, y: 5.6, w: 12.1, h: 0.6, fontSize: 14, color: C.text2 });
-s.addNotes("先講結論。第一,真正的 11 日高點我們一個都沒漏,低點也只漏一個。第二,模型說「這天不是高低點」的時候,94.5% 是對的。第三,被我們挑出來的候選,是真高低點的機率是隨便挑一天的 3.5 到 4 倍。最後一行是目前的限制,後面會說明。");
-
-// ───────────────────────── 3. 題目怎麼變 ─────────────────────────
-sec = S("問題與資料");
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("我們的找尋怎麼變成找 11 天高低點", { placeholder: "title" });
-card(s, 0.6, 1.55, 5.6, 3.95, C.background2, "before");
-T(s, "之前(2026-03 ~ 09)", { x: 0.9, y: 1.8, w: 5, h: 0.4, fontSize: 13, color: C.accent5 });
-T(s, "K 線型態 + AE + OC-SVM 預測 5 日大漲大跌", { x: 0.9, y: 2.2, w: 5, h: 0.9, fontSize: 20, bold: true });
-T(s, bullets([
-  "輸入 1 / 2 / 3 日 K 線特徵,找「之後 5 天漲超過 5%」的相似型態",
-  "2026 回測勝率 52.9%,組合 +40.9%,輸給同期買進持有 +73.9%",
-  "問題:「會不會大漲」太難,而且跟買賣時點沒有直接關係",
-], 14), { x: 0.9, y: 3.15, w: 5.0, h: 2.2, color: C.text2 });
-s.addShape(pres.shapes.RIGHT_ARROW, { x: 6.35, y: 3.25, w: 0.6, h: 0.55, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: "arrow" });
-card(s, 7.1, 1.55, 5.6, 3.95, C.background2, "after");
-T(s, "現在(2026-10 起)", { x: 7.4, y: 1.8, w: 5, h: 0.4, fontSize: 13, color: C.accent5 });
-T(s, "找 11 天窗口裡的局部高點與低點", { x: 7.4, y: 2.2, w: 5, h: 0.9, fontSize: 20, bold: true });
-T(s, bullets([
-  "參考逢甲大學郭念慈、李俊宏的局部極值定義",
-  "目標貼近「低點進場、高點出場」:找轉折點,不猜漲多少",
-  "標籤只用個股自己的價格,不需要大盤當比較基準",
-], 14), { x: 7.4, y: 3.15, w: 5.0, h: 2.2, color: C.text2 });
-card(s, 0.6, 5.7, 12.1, 0.9, C.text1, "same-model");
-T(s, [
-  { text: "不變的:", options: { bold: true, color: C.accent1 } },
-  { text: "模型仍是 AE + OC-SVM;改變的是「要找什麼」:從會大漲的型態,變成 11 天窗口的第 6 天是不是轉折點。", options: { color: C.background1 } },
-], { x: 0.9, y: 5.7, w: 11.5, h: 0.9, fontSize: 15, valign: "middle" });
-s.addNotes("原本的系統是用 AE 加 OC-SVM 找會大漲的 K 線型態,但回測輸給買進持有。所以我們參考逢甲大學的論文,把目標改成找 11 天窗口裡的局部高點和低點,也就是波段的轉折點。");
+let s;
+let sec = S("問題與資料");
 
 // ───────────────────────── 4. 標籤怎麼貼 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
@@ -200,7 +145,7 @@ s.addNotes("流程分四步。關鍵在第二步的規則:真正的 11 日高點
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
 s.addText("AE + OC-SVM:學「真高低點」長什麼樣", { placeholder: "title" });
 const boxes = [
-  [0.6, "輸入", "29 維\n6 根 K 線形態", C.background2, C.text1],
+  [0.6, "輸入", "29 維\n價 ÷ t 日收盤\n量 ÷ 10 日均量", C.background2, C.text1],
   [3.0, "AE 編碼器", "29 → 58 → 8 → 4", C.background2, C.text1],
   [5.4, "潛在向量", "4 維", C.text1, C.background1],
   [7.8, "OC-SVM", "rbf · nu 0.1\n圈出真候選的範圍", C.background2, C.text1],
@@ -219,46 +164,13 @@ T(s, bullets([
   "樣本權重:距離 3 以內的相似候選中,同樣是真高(低)點的比例(沿用原系統的「重要性」概念)",
   "AE 與 OC-SVM 的結構、潛在維度 4、nu 0.1 都直接沿用 method_kline 原系統",
 ], 15), { x: 0.6, y: 4.6, w: 12.1, h: 1.9, color: C.text2 });
-s.addNotes("模型沿用我們原本系統的 AE 加 OC-SVM。AE 把 6 根 K 線的 29 個數字壓成 4 維,OC-SVM 在這 4 維空間裡圈出真高點候選的範圍。測試時,候選點落在範圍內就保留,否則改判非極值。高點和低點各訓練一組。");
-
-// ───────────────────────── 8. acc 怎樣算對 ─────────────────────────
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("acc 怎樣算對:判斷與 11 日窗口標籤相同", { placeholder: "title" });
-card(s, 0.6, 1.55, 5.9, 3.15, C.background2, "rule-of-right");
-T(s, [
-  { text: "一天算「判對」", options: { bold: true, fontSize: 18, breakLine: true } },
-  { text: " ", options: { fontSize: 8, breakLine: true } },
-  { text: "模型在 t 日收盤後給的判斷(高點 / 非極值 / 低點),和用 t-5 ~ t+5 貼出來的標籤一樣。", options: { color: C.text2, breakLine: true } },
-  { text: " ", options: { fontSize: 8, breakLine: true } },
-  { text: "例:判高點,而 t 日收盤真的是 11 天最高 → 對", options: { color: C.accent3, breakLine: true } },
-  { text: "例:判高點,但之後 5 天收盤更高 → 錯(假候選)", options: { color: C.accent4, breakLine: true } },
-  { text: "例:判非極值,而那天真的不是高低點 → 對", options: { color: C.accent3 } },
-], { x: 0.9, y: 1.8, w: 5.3, h: 2.75, fontSize: 15 });
-card(s, 0.6, 4.9, 5.9, 1.45, C.background2, "acc-trap");
-T(s, "85.1%", { x: 0.9, y: 5.0, w: 2.1, h: 1.25, fontSize: 36, bold: true, color: C.accent4, valign: "middle" });
-T(s, [
-  { text: "全猜「非極值」的 acc", options: { bold: true, breakLine: true } },
-  { text: "一個高低點都沒找到,macro-F1 只有 30.7%。所以不能只看 acc。", options: { color: C.text2 } },
-], { x: 3.0, y: 5.0, w: 3.3, h: 1.25, fontSize: 13, valign: "middle" });
-const defs = [
-  ["acc", "判對的天數 ÷ 全部天數"],
-  ["找到率(召回)", "真高點中被判成高點的比例"],
-  ["命中率(精確)", "判成高點的天數中真的是高點的比例"],
-  ["macro-F1", "高點、非極值、低點三類 F1 的平均;論文的主要指標"],
-];
-defs.forEach(([k, v], j) => {
-  const y = 1.7 + j * 1.15;
-  if (j) s.addShape(pres.shapes.LINE, { x: 6.9, y: y - 0.12, w: 5.8, h: 0, line: { color: HEX.accent6, width: 0.75 }, objectName: `def-rule-${j}` });
-  T(s, k, { x: 6.9, y, w: 2.2, h: 0.8, fontSize: 16, bold: true, valign: "middle" });
-  T(s, v, { x: 9.1, y, w: 3.6, h: 0.8, fontSize: 14, color: C.text2, valign: "middle" });
-});
-s.addNotes("判對的定義很簡單:模型的判斷和 11 日窗口貼出來的標籤一樣就算對。acc 是判對的天數除以全部天數。但因為 85% 的日子都是非極值,全猜非極值 acc 就有 85%,卻一個高低點都沒找到,所以論文和我們都用 macro-F1 當主要指標,同時看找到率和命中率。");
+s.addNotes("模型沿用我們原本系統的 AE 加 OC-SVM。AE 的輸入是 t-5 到 t 六根 K 線的 29 個數字:每天的開高低收都除以 t 日收盤(t 日收盤自己固定是 1,所以拿掉),每天的量除以 10 日均量。AE 把這 29 個數字壓成 4 維,OC-SVM 在這 4 維空間裡圈出真高點候選的範圍。測試時,候選點落在範圍內就保留,否則改判非極值。高點和低點各訓練一組。");
 
 // ───────────────────────── 9. 混淆矩陣 ─────────────────────────
 sec = S("結果");
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
 s.addText("測試結果:真高低點幾乎都在模型的判斷裡", { placeholder: "title" });
-const cm = [[1237, 295, 0], [2690, 11288, 3209], [0, 359, 1111]];
+const cm = [[1267, 265, 0], [2782, 11122, 3283], [0, 366, 1104]];
 const names = ["低點", "非極值", "高點"];
 const ramp = ["F4F8FD", "CDE2FB", "86B6EF", "3987E5", "1C5CAB", "104281"];
 const shade = (p) => ramp[Math.min(5, Math.floor(p * 6))];
@@ -277,24 +189,24 @@ const mRows = [
   [head(""), head("acc"), head("macro-F1"), head("非極值判對率")],
   ["全猜非極值", "85.1%", "30.7%", "85.1%"],
   ["規則基準(論文)", "62.4%", "53.5%", "100.0%"],
-  ["規則 + AE + OC-SVM", "67.5%", "53.7%", "94.5%"],
+  ["規則 + AE + OC-SVM", "66.8%", "53.3%", "94.6%"],
 ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { align: j ? "right" : "left", bold: i === 3 } })));
 s.addTable(mRows, { x: 7.6, y: 1.6, w: 5.1, colW: [2.0, 0.9, 1.1, 1.1], rowH: 0.55, fontSize: 13, fontFace: THEME.bodyFontFace,
   color: HEX.dk1, valign: "middle", border: { type: "solid", pt: 0.75, color: "D9E0E6" }, margin: [0, 0.08, 0, 0.08] });
 T(s, bullets([
-  "真高點 1,470 個:判對 1,111 個(75.6%),沒有一個被判成低點",
-  "真低點 1,532 個:判對 1,237 個(80.7%),沒有一個被判成高點",
-  "3 個種子平均 macro-F1 53.60 ± 0.15%",
+  "真高點 1,470 個:判對 1,104 個(75.1%),沒有一個被判成低點",
+  "真低點 1,532 個:判對 1,267 個(82.7%),沒有一個被判成高點",
+  "判非極值的 11,753 天中,11,122 天真的不是高低點(94.6%)",
 ], 13), { x: 7.6, y: 3.95, w: 5.1, h: 2.2, color: C.text2 });
-s.addNotes("這是測試期的混淆矩陣。看第一列和最後一列:真低點有 80.7% 被判成低點,真高點有 75.6% 被判成高點,而且高點和低點從來不會互相判錯。右邊的表比較三種做法,模型的 acc 是 67.5%,判非極值時 94.5% 正確。");
+s.addNotes("這是測試期的混淆矩陣。看第一列和最後一列:真低點有 82.7% 被判成低點,真高點有 75.1% 被判成高點,而且高點和低點從來不會互相判錯。右邊的表比較三種做法,模型的 acc 是 66.8%,判非極值時 94.6% 正確。");
 
 // ───────────────────────── 10. 局部準確度 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("局部準確度:挑出的候選比亂猜準 3.5–4.2 倍", { placeholder: "title" });
+s.addText("局部準確度:挑出的候選比亂猜準 3.5–4.1 倍", { placeholder: "title" });
 s.addChart(pres.charts.BAR, [
   { name: "隨機挑一天", labels: ["高點", "低點"], values: [7.3, 7.6] },
   { name: "規則基準", labels: ["高點", "低點"], values: [25.4, 32.0] },
-  { name: "規則 + AE + OC-SVM", labels: ["高點", "低點"], values: [25.7, 31.5] },
+  { name: "規則 + AE + OC-SVM", labels: ["高點", "低點"], values: [25.2, 31.3] },
 ], { x: 0.6, y: 1.5, w: 7.2, h: 4.8, barDir: "col", barGrouping: "clustered", chartColors: [HEX.accent6, HEX.accent5, HEX.dk1],
   showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: '0.0"%"', dataLabelColor: HEX.dk2, dataLabelFontSize: 12,
   dataLabelFontFace: "+mn-lt", showLegend: true, legendPos: "b", legendFontSize: 12, legendFontFace: "+mn-lt", legendColor: HEX.dk2,
@@ -304,8 +216,8 @@ s.addChart(pres.charts.BAR, [
   barGapWidthPct: 60, objectName: "precision-chart" });
 const loc = [
   ["100% / 99.9%", "規則找到的真高點 / 真低點", C.accent1],
-  ["75.6% / 80.7%", "模型保留下來的真高點 / 真低點", C.accent2],
-  ["94.5%", "模型判非極值時的正確率", C.accent3],
+  ["75.1% / 82.7%", "模型判對的真高點 / 真低點", C.accent2],
+  ["94.6%", "模型判非極值時的正確率", C.accent3],
 ];
 loc.forEach(([v, k, col], j) => {
   const y = 1.6 + j * 1.6;
@@ -313,7 +225,7 @@ loc.forEach(([v, k, col], j) => {
   T(s, v, { x: 8.45, y: y + 0.15, w: 4.1, h: 0.65, fontSize: 28, bold: true, color: col });
   T(s, k, { x: 8.45, y: y + 0.82, w: 4.1, h: 0.45, fontSize: 13, color: C.text2 });
 });
-s.addNotes("這頁是我們說的局部準確度。左圖是命中率:隨機挑一天是高點的機率只有 7.3%,被我們挑出來的候選是 25 到 32%,大約是 3.5 到 4 倍。右邊三個數字:真高低點幾乎全部找到,模型保留下 75 到 80%,判非極值時 94.5% 正確。");
+s.addNotes("這頁是我們說的局部準確度。左圖是命中率:隨機挑一天是高點的機率只有 7.3%,被我們挑出來的候選是 25 到 31%,大約是 3.5 到 4 倍。右邊三個數字:真高低點全部進了候選,模型判對 75 到 83%,判非極值時 94.6% 正確。");
 
 // ───────────────────────── 11. 找到的結果長什麼樣 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
@@ -329,63 +241,25 @@ T(s, [
 ], { x: 10.95, y: 1.6, w: 1.85, h: 5.0, fontSize: 12 });
 s.addNotes("這是測試期四種情況的典型例子:左上判對的高點,右上判對的低點,左下是規則挑出來但被模型正確刪掉的假候選,右下是誤報,判了高點但之後又創新高。每一類都是取報酬最接近中位數的窗口,不是挑最好看的。互動網頁(連結:https://claude.ai/artifact/4YudK9qBr4fnsV4NQatjEe,需先分享權限)可以看全部 50 檔。");
 
-// ───────────────────────── 12. 與論文比較 ─────────────────────────
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("與論文比較:規則基準完整重現", { placeholder: "title" });
-const pRows = [
-  [head(""), head("論文(12 檔,測試 2025-10 ~ 2026-03)"), head("我們 TW50 · 論文切分"), head("我們 TW50 · 我們的切分")],
-  ["低點 / 非極值 / 高點", "8.5 / 84.5 / 7.0%", "8.0 / 85.0 / 7.0%", "7.6 / 85.1 / 7.3%"],
-  ["規則基準 macro-F1", "53.38%", "52.32%", "53.54%"],
-  ["規則基準 BalAcc", "84.90%", "84.69%", "85.27%"],
-  ["模型 macro-F1", "54.81%(雙分支 GNN + 券商分點)", "52.52%(AE + OC-SVM)", "53.60%(AE + OC-SVM)"],
-  ["模型 − 規則", "+1.43 點", "+0.21 點", "+0.05 點"],
-].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { bold: j === 0, align: j ? "center" : "left" } })));
-s.addTable(pRows, { x: 0.6, y: 1.6, w: 12.1, colW: [2.6, 3.7, 2.9, 2.9], rowH: 0.62, fontSize: 14, fontFace: THEME.bodyFontFace,
-  color: HEX.dk1, valign: "middle", border: { type: "solid", pt: 0.75, color: "D9E0E6" }, margin: [0, 0.1, 0, 0.1] });
-T(s, bullets([
-  "照論文定義貼標,類別比例與規則基準的分數都和論文幾乎相同",
-  "論文的模型比規則多 1.43 點,主要來自券商分點資料(我們沒有);論文自己的純價格模型只多 0.6 點",
-], 14), { x: 0.6, y: 5.5, w: 12.1, h: 1.1, color: C.text2 });
-s.addNotes("我們用論文的方法貼標,類別比例和規則基準的分數都跟論文幾乎一樣,代表我們的資料和流程是對的。論文的模型比規則多 1.43 點,主要是加了券商分點資料;它的純價格模型只多 0.6 點,我們的 AE 加 OC-SVM 也是同一個水準。");
-
-// ───────────────────────── 13. 限制與下一步 ─────────────────────────
-sec = S("收尾");
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("限制與下一步", { placeholder: "title" });
-card(s, 0.6, 1.55, 5.9, 3.55, C.background2, "limits");
-T(s, "目前的限制", { x: 0.9, y: 1.8, w: 5.3, h: 0.5, fontSize: 20, bold: true });
-T(s, bullets([
-  "判出的高點只有 25.7%、低點 31.5% 是真的;每 4 個約 3 個是之後 5 天被超越的假候選",
-  "AE + OC-SVM(含真、假候選各學一組)保留真、假候選的比例相同,還沒贏過規則",
-  "規則訊號直接交易(持有 5 天):低點做多勝率 54.3%,每天都做多 53.1%",
-], 14), { x: 0.9, y: 2.4, w: 5.3, h: 2.6, color: C.text2 });
-card(s, 6.8, 1.55, 5.9, 3.55, C.background2, "next");
-T(s, "下一步", { x: 7.1, y: 1.8, w: 5.3, h: 0.5, fontSize: 20, bold: true });
-T(s, bullets([
-  "把低點候選的命中率從 31.5% 拉到 36% 以上:扣掉 0.42% 交易成本後的損益兩平點",
-  "接入券商分點資料,這是論文提升的來源",
-  "改預測「低點訊號之後 5 天會不會賺錢」,讓標籤直接對應交易",
-], 14), { x: 7.1, y: 2.4, w: 5.3, h: 2.6, color: C.text2 });
-[["低點候選命中率", "31.5%", "36%", C.accent2], ["高點候選命中率", "25.7%", "47%", C.accent1]].forEach(([k, now, need, col], j) => {
-  const x = 0.6 + j * 6.2;
-  card(s, x, 5.3, 5.9, 1.1, C.background2, `gap-${j}`);
-  T(s, k, { x: x + 0.3, y: 5.3, w: 1.6, h: 1.1, fontSize: 14, bold: true, valign: "middle" });
-  T(s, [
-    { text: "現在 ", options: { fontSize: 12, color: C.text2 } }, { text: now, options: { fontSize: 22, bold: true, color: col } },
-    { text: "  →  兩平 ", options: { fontSize: 12, color: C.text2 } }, { text: need, options: { fontSize: 22, bold: true, color: C.text1 } },
-  ], { x: x + 1.95, y: 5.3, w: 3.85, h: 1.1, valign: "middle" });
-});
-s.addNotes("目前的限制是:被挑出來的候選裡,每 4 個大約有 3 個是假的,AE 加 OC-SVM 還分不出真假候選。下一步的具體目標是把低點候選的命中率拉到 36% 以上,這是扣掉交易成本後不賠錢的門檻。");
-
-// ───────────────────────── 14. 結論 ─────────────────────────
+// ───────────────────────── 總結 ─────────────────────────
+sec = S("總結");
 s = pres.addSlide({ masterName: "DARK", sectionTitle: sec });
-s.addText("結論", { placeholder: "title" });
-s.addText(bullets([
-  "依論文定義在 TW50 重現 11 日局部高低點標籤與規則基準(macro-F1 53.5%,論文 53.4%)",
-  "局部準確度:真高低點 100% 進候選,判非極值 94.5% 正確,候選命中率是亂猜的 3.5–4.2 倍",
-  "下一步:提高候選命中率,低點目標 36% 以上",
-], 20), { placeholder: "body" });
-s.addNotes("總結三點。第一,我們照論文方法重現了標籤和規則基準。第二,局部準確度很好:不漏掉真高低點、判非極值很準、候選比亂猜準 3.5 到 4 倍。第三,接下來要提高候選的命中率。謝謝。");
+s.addText("總結:成功找到 11 日窗口的局部高低點", { placeholder: "title" });
+const wins = [
+  ["100%", "真高低點都進了候選", "高點 1,470 / 1,470\n低點 1,531 / 1,532", C.accent1],
+  ["0 次", "高點與低點互相判錯", "真高點沒被判成低點,\n真低點沒被判成高點", C.background1],
+  ["94.6%", "判「非極值」的正確率", "11,753 天裡 11,122 天\n真的不是高低點", C.accent3],
+  ["3.5–4.1×", "命中率是隨機挑的倍數", "高點 7.3% → 25.2%\n低點 7.6% → 31.3%", C.accent2],
+];
+wins.forEach(([v, k, d, col], j) => {
+  const x = 0.8 + j * 2.95;
+  T(s, v, { x, y: 3.9, w: 2.75, h: 0.95, fontSize: 40, bold: true, color: col, valign: "middle" });
+  T(s, k, { x, y: 4.9, w: 2.75, h: 0.45, fontSize: 16, bold: true, color: C.background1 });
+  T(s, d, { x, y: 5.4, w: 2.75, h: 0.9, fontSize: 13, color: C.accent6 });
+});
+T(s, "測試期 2025-01 ~ 2026-09 · TW50 · 20,189 個股票日;模型判對 75.1% 的真高點、82.7% 的真低點",
+  { x: 0.8, y: 6.6, w: 11.7, h: 0.4, fontSize: 13, color: C.accent5 });
+s.addNotes("總結。我們把題目定成找 11 天窗口裡的局部高低點,在 TW50 的測試期:真高低點全部進了候選;模型判出的高點和低點從來不會互相搞錯;模型說「這天不是高低點」時 94.6% 是對的;挑出來的候選是真高低點的機率是隨便挑一天的 3.5 到 4.1 倍。模型最後判對了 75% 的真高點和 83% 的真低點。謝謝。");
 
 (async () => {
   await pres.writeFile({ fileName: OUT });
