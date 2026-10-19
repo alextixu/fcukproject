@@ -1,7 +1,7 @@
 """匯出主軸(mainline base:論文標籤 + 規則候選 + AE + OC-SVM nu 0.1,種子 42)的逐日資料,給網頁畫 11 日窗口。
 
 切分 = 我們的切分(訓練 2020–2023、測試 2025-01 ~ 2026-09),TW50。
-量的基準跟主軸一樣(mainline.VOL_MA,目前 10 日均量)。
+量的基準與 AE 結構跟主軸一樣(mainline.VOL_MA、ARCH、LATENT,目前 10 日均量、一層 29 → 16)。
 每檔輸出:日期、還原 O/H/L/C、標籤(0 非極值 / 1 低點 / 2 高點,窗格不完整為 -1)、
           規則候選(0 無 / 1 低點候選 / 2 高點候選)、模型判斷(只有測試期;訓練期為 -1)、t+1 開 → t+5 收報酬(%)
 另輸出摘要:樣本數、類別比例、規則與模型的混淆矩陣
@@ -45,6 +45,7 @@ def main():
     d = ML.split(panel, SPLIT)
     tr, te = d["train"], d["test"]
 
+    ML.setup_ae()
     torch.manual_seed(SEED)
     np.random.seed(SEED)
     args = Namespace(weight="purity", gamma="scale", nu=[NU])

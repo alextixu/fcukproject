@@ -14,8 +14,9 @@
                ctx  5–60 日報酬、距 20 / 60 日高低點、均線乖離、20 日波動、ATR、RSI、量比
                mkt  大盤(0050)1 / 5 / 20 日報酬、距 20 日高點、20 日波動
                chip 三大法人 / 融資券 / 外資持股 40 欄(method_xgb 的 chip_features,整組延後 1 日避免未公布資料)
-  --latent / --epochs   AE 潛在維度 / 訓練輪數(原系統 4 / 60)
-  --arch     AE 結構:orig(原系統,輸入 → 2×輸入 → 8 → latent)/ shallow(輸入 → latent 一層線性,不先升維)
+  --latent / --epochs   AE 潛在維度 / 訓練輪數(預設 16 / 60;原系統 4 / 60)
+  --arch     AE 結構:shallow(預設,2026-10-19 起;輸入 → latent 一層線性,不先升維)
+             / orig(原系統,輸入 → 2×輸入 → 8 → latent)
              / shallow-tanh(同 shallow,潛在層加 tanh)
   --nu       OC-SVM nu,可多個(第一個為主要),--gamma(scale 或數值)
   --weight   OC-SVM 樣本權重:purity(距離 ≤ dist 的相似候選中同為真的比例)/ none
@@ -61,6 +62,7 @@ OUT = os.path.join(HERE, "results")
 LOG = os.path.join(OUT, "experiments.csv")
 POOL = "tw50"
 VOL_MA = 10                                       # 量的基準均量天數(2026-10-19 改為 10,之前為 20)
+ARCH, LATENT = "shallow", 16                      # AE 編碼器 29 → 16 一層(2026-10-19 起;之前為原系統 29 → 58 → 8 → 4)
 CAND = {DOWN: "cand_hi", UP: "cand_lo"}
 N_RANDOM, N_BOOT, BLOCK = 20, 500, 10
 KEEP_RULES = ("s>0", 0.9, 0.7, 0.5, 0.3)          # contrast 模式的保留規則(數字 = 只留分數最高的比例)
@@ -166,6 +168,12 @@ class ShallowAE(torch.nn.Module):
 ARCHS = {"orig": KA.Autoencoder,
          "shallow": lambda d, k: ShallowAE(d, k),
          "shallow-tanh": lambda d, k: ShallowAE(d, k, tanh=True)}
+
+
+def setup_ae(arch=ARCH, latent=LATENT, epochs=60):
+    """設定 kline.autoencoder.train_ae 要建的結構、潛在維度與訓練輪數(train_ae 依模組內的名稱建模型)。"""
+    KA.LATENT_DIM, KA.EPOCHS = latent, epochs
+    KA.Autoencoder = ARCHS[arch]
 
 
 def fit_class(tr, cls, feat_cols, args):
@@ -403,8 +411,8 @@ def main():
     ap.add_argument("--window", type=int, default=6)
     ap.add_argument("--vol-ma", type=int, default=VOL_MA)
     ap.add_argument("--extra", nargs="*", default=[], choices=["pos", "ctx", "mkt", "chip"])
-    ap.add_argument("--latent", type=int, default=4)
-    ap.add_argument("--arch", default="orig", choices=list(ARCHS))
+    ap.add_argument("--latent", type=int, default=LATENT)
+    ap.add_argument("--arch", default=ARCH, choices=list(ARCHS))
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--nu", type=float, nargs="+", default=[0.1, 0.2, 0.3, 0.5])
     ap.add_argument("--gamma", default="scale")
@@ -415,8 +423,7 @@ def main():
     ap.add_argument("--mode", default="oneclass", choices=["oneclass", "contrast"])
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
-    KA.LATENT_DIM, KA.EPOCHS = args.latent, args.epochs
-    KA.Autoencoder = ARCHS[args.arch]                       # train_ae 依名稱建模型,換成指定結構
+    setup_ae(args.arch, args.latent, args.epochs)
     ae_ocsvm.DIST_THRESH = args.dist
     t0 = time.time()
     plt.rcParams["font.family"] = "WenQuanYi Zen Hei"

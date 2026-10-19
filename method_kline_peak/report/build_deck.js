@@ -146,8 +146,8 @@ s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
 s.addText("AE + OC-SVM:學「真高低點」長什麼樣", { placeholder: "title" });
 const boxes = [
   [0.6, "輸入", "29 維\n價 ÷ t 日收盤\n量 ÷ 10 日均量", C.background2, C.text1],
-  [3.0, "AE 編碼器", "29 → 58 → 8 → 4", C.background2, C.text1],
-  [5.4, "潛在向量", "4 維", C.text1, C.background1],
+  [3.0, "AE 編碼器", "29 → 16\n一層,不先升維", C.background2, C.text1],
+  [5.4, "潛在向量", "16 維", C.text1, C.background1],
   [7.8, "OC-SVM", "rbf · nu 0.1\n圈出真候選的範圍", C.background2, C.text1],
   [10.2, "判斷", "範圍內 → 保留\n範圍外 → 非極值", C.background2, C.text1],
 ];
@@ -157,20 +157,20 @@ boxes.forEach(([x, h, d, fill, ink], j) => {
   T(s, d, { x: x + 0.2, y: 2.45, w: 1.7, h: 1.1, fontSize: 13, color: ink, align: "center" });
   if (j < 4) s.addShape(pres.shapes.RIGHT_ARROW, { x: x + 2.13, y: 2.6, w: 0.25, h: 0.3, fill: { color: C.accent6 }, line: { color: C.accent6 }, objectName: `ae-arrow-${j}` });
 });
-T(s, "AE 解碼器 4 → 8 → 58 → 29,把輸入重建回來(MSE,訓練 60 輪);只拿編碼後的 4 維給 OC-SVM。",
+T(s, "AE 解碼器 16 → 29,把輸入重建回來(MSE,訓練 60 輪);只拿編碼後的 16 維給 OC-SVM。",
   { x: 0.6, y: 3.95, w: 12.1, h: 0.45, fontSize: 13, color: C.accent5 });
 T(s, bullets([
   "訓練樣本:訓練期(2020–2023)的規則候選點;高點、低點各訓練一組 AE + OC-SVM",
   "樣本權重:距離 3 以內的相似候選中,同樣是真高(低)點的比例(沿用原系統的「重要性」概念)",
-  "AE 與 OC-SVM 的結構、潛在維度 4、nu 0.1 都直接沿用 method_kline 原系統",
+  "編碼器只有一層 29 → 16(973 個參數);原系統 29 → 58 → 8 → 4 有 4,637 個,兩者結果相同;OC-SVM 的 rbf、nu 0.1 沿用原系統",
 ], 15), { x: 0.6, y: 4.6, w: 12.1, h: 1.9, color: C.text2 });
-s.addNotes("模型沿用我們原本系統的 AE 加 OC-SVM。AE 的輸入是 t-5 到 t 六根 K 線的 29 個數字:每天的開高低收都除以 t 日收盤(t 日收盤自己固定是 1,所以拿掉),每天的量除以 10 日均量。AE 把這 29 個數字壓成 4 維,OC-SVM 在這 4 維空間裡圈出真高點候選的範圍。測試時,候選點落在範圍內就保留,否則改判非極值。高點和低點各訓練一組。");
+s.addNotes("模型沿用我們原本系統的 AE 加 OC-SVM。AE 的輸入是 t-5 到 t 六根 K 線的 29 個數字:每天的開高低收都除以 t 日收盤(t 日收盤自己固定是 1,所以拿掉),每天的量除以 10 日均量。AE 只用一層、不先升維,直接把這 29 個數字壓成 16 維,OC-SVM 在這 16 維空間裡圈出真高點候選的範圍。測試時,候選點落在範圍內就保留,否則改判非極值。高點和低點各訓練一組。");
 
 // ───────────────────────── 9. 混淆矩陣 ─────────────────────────
 sec = S("結果");
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
 s.addText("測試結果:真高低點幾乎都在模型的判斷裡", { placeholder: "title" });
-const cm = [[1267, 265, 0], [2782, 11122, 3283], [0, 366, 1104]];
+const cm = [[1222, 310, 0], [2646, 11414, 3127], [0, 432, 1038]];
 const names = ["低點", "非極值", "高點"];
 const ramp = ["F4F8FD", "CDE2FB", "86B6EF", "3987E5", "1C5CAB", "104281"];
 const shade = (p) => ramp[Math.min(5, Math.floor(p * 6))];
@@ -189,24 +189,24 @@ const mRows = [
   [head(""), head("acc"), head("macro-F1"), head("非極值判對率")],
   ["全猜非極值", "85.1%", "30.7%", "85.1%"],
   ["規則基準(論文)", "62.4%", "53.5%", "100.0%"],
-  ["規則 + AE + OC-SVM", "66.8%", "53.3%", "94.6%"],
+  ["規則 + AE + OC-SVM", "67.7%", "53.3%", "93.9%"],
 ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { align: j ? "right" : "left", bold: i === 3 } })));
 s.addTable(mRows, { x: 7.6, y: 1.6, w: 5.1, colW: [2.0, 0.9, 1.1, 1.1], rowH: 0.55, fontSize: 13, fontFace: THEME.bodyFontFace,
   color: HEX.dk1, valign: "middle", border: { type: "solid", pt: 0.75, color: "D9E0E6" }, margin: [0, 0.08, 0, 0.08] });
 T(s, bullets([
-  "真高點 1,470 個:判對 1,104 個(75.1%),沒有一個被判成低點",
-  "真低點 1,532 個:判對 1,267 個(82.7%),沒有一個被判成高點",
-  "判非極值的 11,753 天中,11,122 天真的不是高低點(94.6%)",
+  "真高點 1,470 個:判對 1,038 個(70.6%),沒有一個被判成低點",
+  "真低點 1,532 個:判對 1,222 個(79.8%),沒有一個被判成高點",
+  "判非極值的 12,156 天中,11,414 天真的不是高低點(93.9%)",
 ], 13), { x: 7.6, y: 3.95, w: 5.1, h: 2.2, color: C.text2 });
-s.addNotes("這是測試期的混淆矩陣。看第一列和最後一列:真低點有 82.7% 被判成低點,真高點有 75.1% 被判成高點,而且高點和低點從來不會互相判錯。右邊的表比較三種做法,模型的 acc 是 66.8%,判非極值時 94.6% 正確。");
+s.addNotes("這是測試期的混淆矩陣。看第一列和最後一列:真低點有 79.8% 被判成低點,真高點有 70.6% 被判成高點,而且高點和低點從來不會互相判錯。右邊的表比較三種做法,模型的 acc 是 67.7%,判非極值時 93.9% 正確。");
 
 // ───────────────────────── 10. 局部準確度 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("局部準確度:挑出的候選比亂猜準 3.5–4.1 倍", { placeholder: "title" });
+s.addText("局部準確度:挑出的候選比亂猜準 3.4–4.2 倍", { placeholder: "title" });
 s.addChart(pres.charts.BAR, [
   { name: "隨機挑一天", labels: ["高點", "低點"], values: [7.3, 7.6] },
   { name: "規則基準", labels: ["高點", "低點"], values: [25.4, 32.0] },
-  { name: "規則 + AE + OC-SVM", labels: ["高點", "低點"], values: [25.2, 31.3] },
+  { name: "規則 + AE + OC-SVM", labels: ["高點", "低點"], values: [24.9, 31.6] },
 ], { x: 0.6, y: 1.5, w: 7.2, h: 4.8, barDir: "col", barGrouping: "clustered", chartColors: [HEX.accent6, HEX.accent5, HEX.dk1],
   showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: '0.0"%"', dataLabelColor: HEX.dk2, dataLabelFontSize: 12,
   dataLabelFontFace: "+mn-lt", showLegend: true, legendPos: "b", legendFontSize: 12, legendFontFace: "+mn-lt", legendColor: HEX.dk2,
@@ -216,8 +216,8 @@ s.addChart(pres.charts.BAR, [
   barGapWidthPct: 60, objectName: "precision-chart" });
 const loc = [
   ["100% / 99.9%", "規則找到的真高點 / 真低點", C.accent1],
-  ["75.1% / 82.7%", "模型判對的真高點 / 真低點", C.accent2],
-  ["94.6%", "模型判非極值時的正確率", C.accent3],
+  ["70.6% / 79.8%", "模型判對的真高點 / 真低點", C.accent2],
+  ["93.9%", "模型判非極值時的正確率", C.accent3],
 ];
 loc.forEach(([v, k, col], j) => {
   const y = 1.6 + j * 1.6;
@@ -225,7 +225,7 @@ loc.forEach(([v, k, col], j) => {
   T(s, v, { x: 8.45, y: y + 0.15, w: 4.1, h: 0.65, fontSize: 28, bold: true, color: col });
   T(s, k, { x: 8.45, y: y + 0.82, w: 4.1, h: 0.45, fontSize: 13, color: C.text2 });
 });
-s.addNotes("這頁是我們說的局部準確度。左圖是命中率:隨機挑一天是高點的機率只有 7.3%,被我們挑出來的候選是 25 到 31%,大約是 3.5 到 4 倍。右邊三個數字:真高低點全部進了候選,模型判對 75 到 83%,判非極值時 94.6% 正確。");
+s.addNotes("這頁是我們說的局部準確度。左圖是命中率:隨機挑一天是高點的機率只有 7.3%,被我們挑出來的候選是 25 到 32%,大約是 3.4 到 4.2 倍。右邊三個數字:真高低點全部進了候選,模型判對 71 到 80%,判非極值時 93.9% 正確。");
 
 // ───────────────────────── 11. 找到的結果長什麼樣 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
@@ -248,8 +248,8 @@ s.addText("總結:成功找到 11 日窗口的局部高低點", { placeholder: "
 const wins = [
   ["100%", "真高低點都進了候選", "高點 1,470 / 1,470\n低點 1,531 / 1,532", C.accent1],
   ["0 次", "高點與低點互相判錯", "真高點沒被判成低點,\n真低點沒被判成高點", C.background1],
-  ["94.6%", "判「非極值」的正確率", "11,753 天裡 11,122 天\n真的不是高低點", C.accent3],
-  ["3.5–4.1×", "命中率是隨機挑的倍數", "高點 7.3% → 25.2%\n低點 7.6% → 31.3%", C.accent2],
+  ["93.9%", "判「非極值」的正確率", "12,156 天裡 11,414 天\n真的不是高低點", C.accent3],
+  ["3.4–4.2×", "命中率是隨機挑的倍數", "高點 7.3% → 24.9%\n低點 7.6% → 31.6%", C.accent2],
 ];
 wins.forEach(([v, k, d, col], j) => {
   const x = 0.8 + j * 2.95;
@@ -257,9 +257,9 @@ wins.forEach(([v, k, d, col], j) => {
   T(s, k, { x, y: 4.9, w: 2.75, h: 0.45, fontSize: 16, bold: true, color: C.background1 });
   T(s, d, { x, y: 5.4, w: 2.75, h: 0.9, fontSize: 13, color: C.accent6 });
 });
-T(s, "測試期 2025-01 ~ 2026-09 · TW50 · 20,189 個股票日;模型判對 75.1% 的真高點、82.7% 的真低點",
+T(s, "測試期 2025-01 ~ 2026-09 · TW50 · 20,189 個股票日;模型判對 70.6% 的真高點、79.8% 的真低點",
   { x: 0.8, y: 6.6, w: 11.7, h: 0.4, fontSize: 13, color: C.accent5 });
-s.addNotes("總結。我們把題目定成找 11 天窗口裡的局部高低點,在 TW50 的測試期:真高低點全部進了候選;模型判出的高點和低點從來不會互相搞錯;模型說「這天不是高低點」時 94.6% 是對的;挑出來的候選是真高低點的機率是隨便挑一天的 3.5 到 4.1 倍。模型最後判對了 75% 的真高點和 83% 的真低點。謝謝。");
+s.addNotes("總結。我們把題目定成找 11 天窗口裡的局部高低點,在 TW50 的測試期:真高低點全部進了候選;模型判出的高點和低點從來不會互相搞錯;模型說「這天不是高低點」時 93.9% 是對的;挑出來的候選是真高低點的機率是隨便挑一天的 3.4 到 4.2 倍。模型最後判對了 71% 的真高點和 80% 的真低點。謝謝。");
 
 (async () => {
   await pres.writeFile({ fileName: OUT });
