@@ -21,7 +21,7 @@
   --nu       OC-SVM nu,可多個(第一個為主要),--gamma(scale 或數值)
   --weight   OC-SVM 樣本權重:purity(距離 ≤ dist 的相似候選中同為真的比例)/ none
   --dist     相似樣本的歐氏距離門檻(原系統 3.0)
-  --splits   paper(論文切分)/ ours(訓練 2020–2023、測試 2025-01 ~ 2026-09)
+  --splits   paper(論文切分)/ ours(訓練 2020–2023、測試 2025-01 ~ 2026-09)/ y2024(訓練 2020–2023、測試 2024)
   --seeds    AE 亂數種子
   --tag      實驗名稱;每次執行在 results/experiments.csv 追加一列,詳細結果存 results/main_<tag>.json
   --mode     oneclass(預設):AE + OC-SVM 只學真候選,候選落在範圍內才保留
@@ -55,6 +55,7 @@ from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 from peak_labels import causal_features  # noqa: E402
 from confusion import ORDER, SURFACE, INK, plt, draw, summarize  # noqa: E402
 from paper_aeocsvm import NAMES, SPLITS, paper_label, rule_pred, mean_metrics  # noqa: E402
+SPLITS = {**SPLITS, "測試 2024": {"train": ("2020-01-01", "2023-12-31"), "test": ("2024-01-01", "2024-12-31")}}
 import ae_ocsvm  # noqa: E402
 import kline.autoencoder as KA  # noqa: E402   (ae_ocsvm 已把 method_kline 加入 sys.path)
 
@@ -418,7 +419,7 @@ def main():
     ap.add_argument("--gamma", default="scale")
     ap.add_argument("--weight", default="purity", choices=["purity", "none"])
     ap.add_argument("--dist", type=float, default=3.0)
-    ap.add_argument("--splits", nargs="+", default=["paper", "ours"], choices=["paper", "ours"])
+    ap.add_argument("--splits", nargs="+", default=["paper", "ours"], choices=["paper", "ours", "y2024"])
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
     ap.add_argument("--mode", default="oneclass", choices=["oneclass", "contrast"])
     ap.add_argument("--plot", action="store_true")
@@ -432,7 +433,7 @@ def main():
     print(f"[{args.tag}] window {args.window}、量基準 {args.vol_ma} 日均量、extra {args.extra or '-'}:{len(feat_cols)} 個特徵,"
           f"AE {args.arch}、latent {args.latent}、epochs {args.epochs}、nu {args.nu}、gamma {args.gamma}、weight {args.weight}、dist {args.dist}"
           f"  ({time.time() - t0:.0f}s)", flush=True)
-    names = {"paper": "論文切分", "ours": "我們的切分"}
+    names = {"paper": "論文切分", "ours": "我們的切分", "y2024": "測試 2024"}
     rng = np.random.default_rng(0)
     out = {"args": vars(args), "features": feat_cols, "results": {}}
     for key in args.splits:
