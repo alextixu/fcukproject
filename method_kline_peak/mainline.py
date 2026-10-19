@@ -8,6 +8,7 @@
      對照 = 規則基準、隨機否決同樣數量(20 次);macro-F1 − 規則基準 的 10 日區塊 bootstrap 95% CI
 可調參數(預設值 = 第 8 節的結果)
   --window   輸入 K 棒數(t−N+1 ~ t 的 O/H/L/C/量),預設 6
+  --vol-ma   量的基準:每天的量 ÷ 到 t 為止的 N 日均量,預設 20
   --extra    額外特徵組,可多選:
                pos  收盤相對前 5 日最高 / 最低的突破幅度、上 / 下影線(ATR 倍數)
                ctx  5–60 日報酬、距 20 / 60 日高低點、均線乖離、20 日波動、ATR、RSI、量比
@@ -68,10 +69,10 @@ GROUPS = {
 }
 
 
-def shape_features(df, n):
+def shape_features(df, n, vol_ma=20):
     O, H, L, C, V = (df[k] for k in ("open", "high", "low", "close", "volume"))
     lc = np.log(C)
-    v20 = V.rolling(20, min_periods=20).mean()
+    vbase = V.rolling(vol_ma, min_periods=vol_ma).mean()          # 6 天的量共用「到 t 為止的 vol_ma 日均量」當分母
     f = {}
     for k in range(n):
         f[f"o{k}"] = np.log(O.shift(k)) - lc
@@ -79,11 +80,11 @@ def shape_features(df, n):
         f[f"l{k}"] = np.log(L.shift(k)) - lc
         if k:
             f[f"c{k}"] = np.log(C.shift(k)) - lc
-        f[f"v{k}"] = np.log(V.shift(k) / v20)
+        f[f"v{k}"] = np.log(V.shift(k) / vbase)
     return pd.DataFrame(f, index=df.index)
 
 
-def build_panel(data, window, extra):
+def build_panel(data, window, extra, vol_ma=20):
     mkt = clean(pd.read_parquet(os.path.join(P.YF_2026_CACHE, "0050.TW.parquet"))) if "mkt" in extra else None
     chips = {}
     if "chip" in extra:
@@ -95,7 +96,7 @@ def build_panel(data, window, extra):
     for tk, df in data.items():
         df = clean(df)
         y, cand_hi, cand_lo = paper_label(df["close"])
-        feats = [shape_features(df, window)]
+        feats = [shape_features(df, window, vol_ma)]
         if set(extra) & {"pos", "ctx", "mkt"}:
             cf = causal_features(df, mkt)
             feats.append(cf[[c for g in extra if g in GROUPS for c in GROUPS[g]]])
@@ -215,7 +216,7 @@ def log_row(args, n_feat, sp_name, res):
     m, kp, ci = main["model"], main["keep_rate"], main["delta_vs_rule_ci"]
     row = {
         "time": time.strftime("%Y-%m-%d %H:%M"), "tag": args.tag, "split": sp_name,
-        "window": args.window, "extra": "+".join(args.extra) or "-", "n_features": n_feat,
+        "window": args.window, "vol_ma": args.vol_ma, "extra": "+".join(args.extra) or "-", "n_features": n_feat,
         "latent": args.latent, "epochs": args.epochs, "nu": args.nu[0], "gamma": args.gamma,
         "weight": args.weight, "dist": args.dist, "seeds": len(args.seeds),
         "rule_macro_f1": round(res["rule"]["macro_f1"] * 100, 2),
@@ -351,7 +352,7 @@ def log_contrast(args, n_feat, sp_name, res):
             m, kp, ci, td = b["model"], b["keep_rate"], b["delta_vs_rule_ci"], b["trade"]
             row = {
                 "time": time.strftime("%Y-%m-%d %H:%M"), "tag": args.tag, "mode": "contrast", "score": sname,
-                "keep_rule": rule, "split": sp_name, "window": args.window, "extra": "+".join(args.extra) or "-",
+                "keep_rule": rule, "split": sp_name, "window": args.window, "vol_ma": args.vol_ma, "extra": "+".join(args.extra) or "-",
                 "n_features": n_feat, "latent": args.latent, "epochs": args.epochs, "nu": args.nu[0],
                 "gamma": args.gamma, "weight": args.weight, "dist": args.dist, "seeds": len(args.seeds),
                 "rule_macro_f1": round(res["rule"]["macro_f1"] * 100, 2),
@@ -375,6 +376,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", required=True)
     ap.add_argument("--window", type=int, default=6)
+    ap.add_argument("--vol-ma", type=int, default=20)
     ap.add_argument("--extra", nargs="*", default=[], choices=["pos", "ctx", "mkt", "chip"])
     ap.add_argument("--latent", type=int, default=4)
     ap.add_argument("--epochs", type=int, default=60)
@@ -392,8 +394,8 @@ def main():
     t0 = time.time()
     plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
 
-    panel, feat_cols = build_panel(load_pool(POOL, START, END), args.window, args.extra)
-    print(f"[{args.tag}] window {args.window}、extra {args.extra or '-'}:{len(feat_cols)} 個特徵,"
+    panel, feat_cols = build_panel(load_pool(POOL, START, END), args.window, args.extra, args.vol_ma)
+    print(f"[{args.tag}] window {args.window}、量基準 {args.vol_ma} 日均量、extra {args.extra or '-'}:{len(feat_cols)} 個特徵,"
           f"latent {args.latent}、epochs {args.epochs}、nu {args.nu}、gamma {args.gamma}、weight {args.weight}、dist {args.dist}"
           f"  ({time.time() - t0:.0f}s)", flush=True)
     names = {"paper": "論文切分", "ours": "我們的切分"}
