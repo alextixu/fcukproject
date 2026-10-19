@@ -88,14 +88,13 @@ s.addNotes("每個樣本是連續 11 個交易日,中間的第 6 天叫 t。t �
 
 // ───────────────────────── 5. 資料量 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("資料量:TW50 · 2016 ~ 2026 · 12.9 萬個股票日", { placeholder: "title" });
+s.addText("資料量:TW50 · 2020 ~ 2026 · 8.1 萬個股票日", { placeholder: "title" });
 const head = (t) => ({ text: t, options: { bold: true, color: HEX.accent5, fontSize: 12 } });
 const dataRows = [
   [head("項目"), head("內容")],
   ["股票", "TW50 成分股 50 檔"],
   ["價格", "yfinance 還原權息日 K(開高低收量)"],
-  ["全部", "2016-01 ~ 2026-09:128,867 個股票日"],
-  ["2016–2019", "47,995 筆:沒用到(訓練從 2020 開始)", true],
+  ["全部", "2020-01 ~ 2026-09:80,872 個股票日"],
   ["訓練", "2020–2023:48,335 筆(剔除 2023 最後 5 天)"],
   ["　其中候選", "高點 13,866(真 3,769)、低點 11,458(真 3,651)"],
   ["測試", "2024 整年:12,098 筆"],
@@ -115,7 +114,7 @@ s.addChart(pres.charts.BAR, [
   titleFontSize: 14, titleColor: HEX.dk1, titleFontFace: "+mn-lt", barGapWidthPct: 50, objectName: "class-share" });
 T(s, "每 100 天只有約 7–8 天是高點、7–8 天是低點,其餘 85 天都不是。所以全猜「非極值」acc 就有 85%。",
   { x: 7.6, y: 5.25, w: 5.1, h: 1.0, fontSize: 13, color: C.text2 });
-s.addNotes("資料是 TW50 的 50 檔股票,2016 到 2026 年 9 月的還原日 K,總共 128,867 個股票日。訓練用 2020 到 2023 年 48,335 筆,測試用 2024 年整年 12,098 筆。2023 年最後 5 個交易日的 250 筆剔除,因為它們的標籤會用到 2024 年的價格,不剔除等於偷看測試期。2016 到 2019 年和 2025 年以後這份報告沒有用到。加起來剛好是 128,867。高點和低點各只佔 7 到 8%,這個不平衡很重要,後面算 acc 時會再提到。");
+s.addNotes("資料是 TW50 的 50 檔股票,2020 到 2026 年 9 月的還原日 K,總共 80,872 個股票日。訓練用 2020 到 2023 年 48,335 筆,測試用 2024 年整年 12,098 筆。2023 年最後 5 個交易日的 250 筆剔除,因為它們的標籤會用到 2024 年的價格,不剔除等於偷看測試期。2025 年以後這份報告沒有用到。加起來剛好是 80,872。高點和低點各只佔 7 到 8%,這個不平衡很重要,後面算 acc 時會再提到。");
 
 // ───────────────────────── 6. 訓練輸入:11 天中的哪幾天、哪些特徵 ─────────────────────────
 sec = S("方法與計分");
@@ -195,6 +194,52 @@ T(s, bullets([
   "編碼器只有一層 29 → 16(973 個參數);原系統 29 → 58 → 8 → 4 有 4,637 個,兩者結果相同;OC-SVM 的 rbf、nu 0.1 沿用原系統",
 ], 15), { x: 0.6, y: 4.6, w: 12.1, h: 1.9, color: C.text2 });
 s.addNotes("模型沿用我們原本系統的 AE 加 OC-SVM。AE 的輸入是 t-5 到 t 六根 K 線的 29 個數字:每天的開高低收都除以 t 日收盤(t 日收盤自己固定是 1,所以拿掉),每天的量除以 10 日均量。AE 只用一層、不先升維,直接把這 29 個數字壓成 16 維,OC-SVM 在這 16 維空間裡圈出真高點候選的範圍。測試時,候選點落在範圍內就保留,否則改判非極值。高點和低點各訓練一組。");
+
+// ───────────────────────── 三分類流程圖 ─────────────────────────
+s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
+s.addText("三分類怎麼來:規則分流,兩個 OC-SVM 各判一種", { placeholder: "title" });
+const ln = (x, y, w, h, arrow, name) => s.addShape(pres.shapes.LINE, { x, y, w, h,
+  line: { color: HEX.accent5, width: 1.25, ...(arrow ? { endArrowType: "triangle" } : {}) }, objectName: name });
+const node = (x, y, w, h, fill, lines, ink, name) => {
+  card(s, x, y, w, h, fill, name);
+  T(s, lines.map(([t, o], i) => ({ text: t, options: { breakLine: i < lines.length - 1, ...o } })),
+    { x, y, w, h, align: "center", valign: "middle", color: ink || C.text1 });
+};
+const YT = 1.9, YM = 3.65, YB = 5.4;                       // 三條分支的中線
+node(0.6, YM - 0.55, 1.9, 1.1, C.background2, [["t 日收盤後", { bold: true, fontSize: 15 }], ["算出 29 個數字", { fontSize: 12, color: C.text2 }]], null, "flow-start");
+ln(2.5, YM, 0.5, 0, true, "flow-a1");
+node(3.0, YM - 0.8, 2.4, 1.6, C.text1, [["規則", { bold: true, fontSize: 16 }], ["t 日收盤在近 6 天", { fontSize: 12 }], ["(t-5 ~ t)是…", { fontSize: 12 }]], C.background1, "flow-rule");
+ln(5.4, YM, 0.3, 0, false, "flow-a2");
+ln(5.7, YT, 0, YB - YT, false, "flow-trunk");
+[YT, YM, YB].forEach((y, j) => ln(5.7, y, 0.3, 0, true, `flow-b${j}`));
+node(6.0, YT - 0.5, 2.2, 1.0, C.background2, [["最高 → 高點候選", { bold: true, color: C.accent1, fontSize: 14 }], ["3,217 天", { fontSize: 12, color: C.text2 }]], null, "cand-high");
+node(6.0, YM - 0.5, 2.2, 1.0, C.background2, [["都不是", { bold: true, fontSize: 14 }], ["5,865 天", { fontSize: 12, color: C.text2 }]], null, "cand-none");
+node(6.0, YB - 0.5, 2.2, 1.0, C.background2, [["最低 → 低點候選", { bold: true, color: C.accent2, fontSize: 14 }], ["3,016 天", { fontSize: 12, color: C.text2 }]], null, "cand-low");
+ln(8.2, YT, 0.4, 0, true, "flow-c1");
+ln(8.2, YB, 0.4, 0, true, "flow-c3");
+node(8.6, YT - 0.5, 1.9, 1.0, C.text1, [["高點 OC-SVM", { bold: true, fontSize: 14 }], ["只學過真高點", { fontSize: 11 }]], C.background1, "ocsvm-high");
+node(8.6, YB - 0.5, 1.9, 1.0, C.text1, [["低點 OC-SVM", { bold: true, fontSize: 14 }], ["只學過真低點", { fontSize: 11 }]], C.background1, "ocsvm-low");
+ln(8.2, YM, 2.65, 0, true, "flow-c2");
+T(s, "不經過模型", { x: 8.6, y: YM - 0.4, w: 1.9, h: 0.3, fontSize: 11, color: C.accent5, align: "center" });
+const chip = (y, fill, ink, text, name) => {
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 10.85, y: y - 0.25, w: 1.88, h: 0.5, fill: { color: fill }, line: { color: fill }, rectRadius: 0.06, objectName: name });
+  T(s, text, { x: 10.85, y: y - 0.25, w: 1.88, h: 0.5, fontSize: 12, bold: true, color: ink, align: "center", valign: "middle" });
+};
+[[YT, C.accent1, "範圍內:高點 2,638"], [YB, C.accent2, "範圍內:低點 2,591"]].forEach(([y, col, inside], j) => {
+  ln(10.5, y, 0.12, 0, false, `fork-${j}`);
+  ln(10.62, y - 0.3, 0, 0.6, false, `fork-v-${j}`);
+  ln(10.62, y - 0.3, 0.23, 0, true, `fork-in-${j}`);
+  ln(10.62, y + 0.3, 0.23, 0, true, `fork-out-${j}`);
+  chip(y - 0.3, col, C.background1, inside, `out-in-${j}`);
+  chip(y + 0.3, C.background2, C.text1, `範圍外:非極值 ${j ? "425" : "579"}`, `out-out-${j}`);
+});
+chip(YM, C.background2, C.text1, "非極值 5,865", "out-none");
+T(s, [
+  { text: "高點候選只會變成高點或非極值,低點候選只會變成低點或非極值,", options: { color: C.text2 } },
+  { text: "所以高低點互相判錯 0 次是流程保證的。", options: { bold: true } },
+  { text: "數字為 2024 測試期 12,098 天(種子 42)。", options: { color: C.accent5 } },
+], { x: 0.6, y: 6.2, w: 12.1, h: 0.55, fontSize: 13, valign: "middle" });
+s.addNotes("這頁回答 OC-SVM 只能分兩類,為什麼我們能做三分類。每個 OC-SVM 只回答一件事:這個樣本落不落在它圈出的範圍裡。三分類是規則加兩個 OC-SVM 組出來的:t 日收盤如果是近 6 天最高,就是高點候選,交給只學過真高點的高點 OC-SVM,範圍內判高點,範圍外判非極值;如果是近 6 天最低,就交給低點 OC-SVM;都不是就直接判非極值,不經過模型。一天不可能同時是近 6 天最高和最低,所以每天最多只問一個模型。2024 年 12,098 天裡,高點候選 3,217 天、低點候選 3,016 天,其餘 5,865 天直接判非極值。");
 
 // ───────────────────────── 9. 混淆矩陣 ─────────────────────────
 sec = S("結果");
