@@ -188,7 +188,7 @@ T(s, "規則 + AE + OC-SVM(主軸,種子 42);格內為天數與該列(實際類�
 const mRows = [
   [head(""), head("acc"), head("macro-F1"), head("非極值判對率")],
   ["全猜非極值", "85.1%", "30.7%", "85.1%"],
-  ["規則基準(論文)", "62.4%", "53.5%", "100.0%"],
+  ["規則基準", "62.4%", "53.5%", "100.0%"],
   ["規則 + AE + OC-SVM", "67.7%", "53.3%", "93.9%"],
 ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { align: j ? "right" : "left", bold: i === 3 } })));
 s.addTable(mRows, { x: 7.6, y: 1.6, w: 5.1, colW: [2.0, 0.9, 1.1, 1.1], rowH: 0.55, fontSize: 13, fontFace: THEME.bodyFontFace,

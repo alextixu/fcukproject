@@ -209,7 +209,7 @@ svg text { fill: var(--muted); font-family: var(--f-data); font-size: 11px; }
   $('metrics').innerHTML = `<thead><tr><th>測試期 2025-01 ~ 2026-09</th><th>acc</th><th>macro-F1</th><th>高點找到率</th><th>低點找到率</th>
     <th>非極值判對率</th><th>判高點命中</th><th>判低點命中</th></tr></thead><tbody>
     <tr><td>全猜非極值</td><td class="num">${pct(M.majority_acc)}</td><td class="num">${pct(2 * dt['非極值'] / (1 + dt['非極值']) / 3, 2)}</td><td class="num">0.0%</td><td class="num">0.0%</td><td class="num">${pct(dt['非極值'])}</td><td class="num">—</td><td class="num">—</td></tr>
-    ${row('規則基準(論文)', R)}${row('規則 + AE + OC-SVM(主軸,種子 42)', M)}</tbody>`;
+    ${row('規則基準', R)}${row('規則 + AE + OC-SVM(主軸,種子 42)', M)}</tbody>`;
   $('metric-note').textContent = `找到率 = 真的高(低)點裡被判出來的比例;判對率 / 命中 = 判成該類的日子裡真的是該類的比例。測試期真高點佔 ${pct(dt['高點'])}、真低點 ${pct(dt['低點'])},所以隨機亂猜的命中只有約 7–8%。`;
 
   // ── 控制 ──
