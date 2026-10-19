@@ -1,12 +1,12 @@
 """匯出主軸(mainline base:論文標籤 + 規則候選 + AE + OC-SVM nu 0.1,種子 42)的逐日資料,給網頁畫 11 日窗口。
 
-切分 = 我們的切分(訓練 2020–2023、測試 2025-01 ~ 2026-09),TW50。
+切分:--split ours(預設,訓練 2020–2023、測試 2025-01 ~ 2026-09)/ y2024(訓練 2020–2023、測試 2024),TW50。
 量的基準與 AE 結構跟主軸一樣(mainline.VOL_MA、ARCH、LATENT,目前 10 日均量、一層 29 → 16)。
 每檔輸出:日期、還原 O/H/L/C、標籤(0 非極值 / 1 低點 / 2 高點,窗格不完整為 -1)、
           規則候選(0 無 / 1 低點候選 / 2 高點候選)、模型判斷(只有測試期;訓練期為 -1)、t+1 開 → t+5 收報酬(%)
 另輸出摘要:樣本數、類別比例、規則與模型的混淆矩陣
 
-用法: python method_kline_peak/export_windows.py --out <資料夾>
+用法: python method_kline_peak/export_windows.py --out <資料夾> [--split y2024]
 輸出: <資料夾>/windows_data.json
 """
 import argparse
@@ -24,10 +24,10 @@ sys.path.insert(0, HERE)
 import mainline as ML  # noqa: E402
 from feasibility import P, START, END, load_pool, clean  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
-from paper_aeocsvm import SPLITS, NAMES, rule_pred  # noqa: E402
+from paper_aeocsvm import NAMES, rule_pred  # noqa: E402
 from confusion import summarize  # noqa: E402
 
-SPLIT = SPLITS["我們的切分"]
+SPLIT_NAMES = {"ours": "我們的切分", "y2024": "測試 2024"}
 SEED, NU = 42, 0.1
 
 
@@ -39,7 +39,9 @@ def ticker_names():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
+    ap.add_argument("--split", default="ours", choices=list(SPLIT_NAMES))
     a = ap.parse_args()
+    SPLIT = ML.SPLITS[SPLIT_NAMES[a.split]]
     data = load_pool("tw50", START, END)
     panel, feat_cols = ML.build_panel(data, 6, [])
     d = ML.split(panel, SPLIT)

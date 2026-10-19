@@ -70,7 +70,7 @@ let sec = S("問題與資料");
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
 s.addText("標籤怎麼貼:第 6 天是不是 11 天的最高或最低", { placeholder: "title" });
 s.addImage({ path: "window_annotated.png", x: 0.6, y: 1.5, w: 7.4, h: 4.01, objectName: "window-example" });
-T(s, "實例:台積電 2026-02-25,t 日收盤 2003 是前後各 5 天裡最高 → 高點", { x: 0.6, y: 5.65, w: 7.4, h: 0.5, fontSize: 12, color: C.accent5 });
+T(s, "實例:台積電 2024-09-26,t 日收盤 989 是前後各 5 天裡最高 → 高點", { x: 0.6, y: 5.65, w: 7.4, h: 0.5, fontSize: 12, color: C.accent5 });
 card(s, 8.4, 1.5, 4.3, 4.65, C.background2, "rules");
 T(s, [
   { text: "窗口", options: { bold: true, breakLine: true } },
@@ -96,17 +96,17 @@ const dataRows = [
   ["價格", "yfinance 還原權息日 K(開高低收量)"],
   ["全部", "2016-01 ~ 2026-09:128,867 個股票日"],
   ["2016–2019", "47,995 筆:沒用到(訓練從 2020 開始)", true],
-  ["訓練", "2020-01 ~ 2023-12:48,585 筆"],
-  ["　其中候選", "高點 13,994(真 3,805)、低點 11,465(真 3,656)"],
-  ["2024", "12,098 筆:沒用到(訓練與測試之間空一年)", true],
-  ["測試", "2025-01 ~ 2026-09:20,189 筆"],
+  ["訓練", "2020–2023:48,335 筆(剔除 2023 最後 5 天)"],
+  ["　其中候選", "高點 13,866(真 3,769)、低點 11,458(真 3,651)"],
+  ["測試", "2024 整年:12,098 筆"],
+  ["2025–2026", "20,189 筆:這份報告沒用到", true],
 ].map((r, i) => i === 0 ? r : [{ text: r[0], options: { bold: true, color: r[2] ? HEX.accent5 : HEX.dk1 } },
   { text: r[1], options: { color: r[2] ? HEX.accent5 : HEX.dk2 } }]);
 s.addTable(dataRows, { x: 0.6, y: 1.55, w: 6.6, colW: [1.5, 5.1], fontSize: 14, fontFace: THEME.bodyFontFace, color: HEX.dk1,
   border: { type: "solid", pt: 0.75, color: "D9E0E6" }, rowH: 0.5, valign: "middle", margin: [0, 0.1, 0, 0.1] });
 s.addChart(pres.charts.BAR, [
-  { name: "訓練 2020–2023", labels: ["低點", "非極值", "高點"], values: [7.5, 84.6, 7.8] },
-  { name: "測試 2025–2026", labels: ["低點", "非極值", "高點"], values: [7.6, 85.1, 7.3] },
+  { name: "訓練 2020–2023", labels: ["低點", "非極值", "高點"], values: [7.6, 84.6, 7.8] },
+  { name: "測試 2024", labels: ["低點", "非極值", "高點"], values: [7.5, 85.0, 7.4] },
 ], { x: 7.6, y: 1.5, w: 5.1, h: 3.6, barDir: "col", barGrouping: "clustered", chartColors: [HEX.accent5, HEX.dk1],
   showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: '0.0"%"', dataLabelColor: HEX.dk2, dataLabelFontSize: 12,
   dataLabelFontFace: "+mn-lt", showLegend: true, legendPos: "b", legendFontSize: 12, legendFontFace: "+mn-lt", legendColor: HEX.dk2,
@@ -115,7 +115,7 @@ s.addChart(pres.charts.BAR, [
   titleFontSize: 14, titleColor: HEX.dk1, titleFontFace: "+mn-lt", barGapWidthPct: 50, objectName: "class-share" });
 T(s, "每 100 天只有約 7–8 天是高點、7–8 天是低點,其餘 85 天都不是。所以全猜「非極值」acc 就有 85%。",
   { x: 7.6, y: 5.25, w: 5.1, h: 1.0, fontSize: 13, color: C.text2 });
-s.addNotes("資料是 TW50 的 50 檔股票,2016 到 2026 年 9 月的還原日 K,總共 128,867 個股票日。訓練用 2020 到 2023 年 48,585 筆,測試用 2025 年到 2026 年 9 月 20,189 筆;2016 到 2019 年和 2024 年沒有用到,其中 2024 年刻意空下來,讓訓練和測試隔開。四段加起來剛好是 128,867。高點和低點各只佔 7 到 8%,這個不平衡很重要,後面算 acc 時會再提到。");
+s.addNotes("資料是 TW50 的 50 檔股票,2016 到 2026 年 9 月的還原日 K,總共 128,867 個股票日。訓練用 2020 到 2023 年 48,335 筆,測試用 2024 年整年 12,098 筆。2023 年最後 5 個交易日的 250 筆剔除,因為它們的標籤會用到 2024 年的價格,不剔除等於偷看測試期。2016 到 2019 年和 2025 年以後這份報告沒有用到。加起來剛好是 128,867。高點和低點各只佔 7 到 8%,這個不平衡很重要,後面算 acc 時會再提到。");
 
 // ───────────────────────── 6. 訓練輸入:11 天中的哪幾天、哪些特徵 ─────────────────────────
 sec = S("方法與計分");
@@ -136,12 +136,12 @@ s.addShape(pres.shapes.LINE, { x: 7.26, y: 2.4, w: 5.44, h: 0, line: { color: HE
 T(s, "丟進模型:t 日收盤時都已經知道", { x: 0.6, y: 2.48, w: 6.55, h: 0.35, fontSize: 13, bold: true, align: "center" });
 T(s, "不丟進模型:只用來貼標籤(看第 6 天是不是 11 天最高 / 最低)", { x: 7.26, y: 2.48, w: 5.44, h: 0.35, fontSize: 13, color: C.accent5, align: "center" });
 
-// 特徵表:5 個特徵 × 6 天,附台積電 2026-02-25 的實際數字
+// 特徵表:5 個特徵 × 6 天,附台積電 2024-09-26 的實際數字
 const days = ["t-5", "t-4", "t-3", "t-2", "t-1", "t"];
 const ex = {
-  開: [-9.2, -8.4, -6.7, -5.7, -5.0, -1.0], 高: [-8.9, -6.7, -4.5, -4.0, -2.0, 0.5],
-  低: [-9.9, -8.7, -6.9, -5.7, -5.0, -1.0], 收: [-9.9, -6.7, -5.0, -5.7, -2.5, null],
-  量: [0.95, 1.09, 1.06, 1.82, 1.07, 1.06],
+  開: [-7.4, -3.3, -4.3, -3.8, -1.5, -0.5], 高: [-5.4, -3.3, -3.7, -2.8, -1.0, 0.0],
+  低: [-7.8, -4.3, -4.3, -4.3, -1.7, -1.0], 收: [-5.4, -4.1, -3.7, -2.8, -1.0, null],
+  量: [1.03, 1.89, 0.45, 0.84, 1.24, 1.20],
 };
 const how = { 開: "開盤 ÷ t 日收盤", 高: "最高 ÷ t 日收盤", 低: "最低 ÷ t 日收盤", 收: "收盤 ÷ t 日收盤", 量: "成交量 ÷ 10 日均量" };
 const fmt = (k, v) => v === null ? "拿掉" : k === "量" ? `${v.toFixed(2)}×` : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}%`;
@@ -153,7 +153,7 @@ Object.keys(ex).forEach(k => fRows.push([
 ]));
 s.addTable(fRows, { x: 0.6, y: 3.05, w: 8.1, colW: [0.7, 2.3, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85], rowH: 0.4, fontSize: 13,
   fontFace: THEME.bodyFontFace, color: HEX.dk1, valign: "middle", border: { type: "solid", pt: 0.75, color: "D9E0E6" }, margin: [0, 0.08, 0, 0.08] });
-T(s, "例:台積電 2026-02-25(第 1 頁的高點)。價格以 % 顯示,模型實際用 ln 值;量的 10 日均量算到 t 日為止。",
+T(s, "例:台積電 2024-09-26(第 1 頁的高點)。價格以 % 顯示,模型實際用 ln 值;量的 10 日均量算到 t 日為止。",
   { x: 0.6, y: 5.5, w: 8.1, h: 0.35, fontSize: 11, color: C.accent5 });
 
 card(s, 9.0, 3.05, 3.7, 2.8, C.background2, "count-29");
@@ -167,9 +167,9 @@ T(s, bullets([
 card(s, 0.6, 6.0, 12.1, 0.75, C.background2, "train-samples");
 T(s, [
   { text: "訓練樣本:", options: { bold: true } },
-  { text: "50 檔放在一起,不是每檔一個模型。2020–2023 的候選日裡,真高點 3,805 天訓練一組 AE + OC-SVM、真低點 3,656 天訓練另一組,共 2 組。", options: { color: C.text2 } },
+  { text: "50 檔放在一起,不是每檔一個模型。2020–2023 的候選日裡,真高點 3,769 天訓練一組 AE + OC-SVM、真低點 3,651 天訓練另一組,共 2 組。", options: { color: C.text2 } },
 ], { x: 0.85, y: 6.0, w: 11.6, h: 0.75, fontSize: 13, valign: "middle" });
-s.addNotes("這頁說明我們丟進模型的是什麼。一個樣本是 11 個交易日,第 6 天是 t。模型只看前 6 天,也就是 t-5 到 t,這些在 t 日收盤時都已經知道;後 5 天只用來貼標籤,模型看不到。每天取 5 個特徵:開、高、低、收都除以 t 日收盤,量除以 10 日均量。t 日收盤除以自己永遠是 1,所以拿掉,總共 29 個數字。表上是台積電 2026-02-25 的實際數字:前 5 天的價格都在 t 日收盤下方,代表一路往上收到 t 日。訓練時 50 檔股票放在一起,不是每檔一個模型:候選日裡真的是高點的 3,805 天訓練高點模型,真的是低點的 3,656 天訓練低點模型,總共只有 2 組。模型不知道樣本是哪一檔股票,因為價格都除以 t 日收盤、量都除以 10 日均量,不同股票可以放在一起比。");
+s.addNotes("這頁說明我們丟進模型的是什麼。一個樣本是 11 個交易日,第 6 天是 t。模型只看前 6 天,也就是 t-5 到 t,這些在 t 日收盤時都已經知道;後 5 天只用來貼標籤,模型看不到。每天取 5 個特徵:開、高、低、收都除以 t 日收盤,量除以 10 日均量。t 日收盤除以自己永遠是 1,所以拿掉,總共 29 個數字。表上是台積電 2024-09-26 的實際數字:前 5 天的價格都在 t 日收盤下方,代表一路往上收到 t 日。訓練時 50 檔股票放在一起,不是每檔一個模型:候選日裡真的是高點的 3,769 天訓練高點模型,真的是低點的 3,651 天訓練低點模型,總共只有 2 組。模型不知道樣本是哪一檔股票,因為價格都除以 t 日收盤、量都除以 10 日均量,不同股票可以放在一起比。");
 
 // ───────────────────────── 7. AE + OC-SVM ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
@@ -190,7 +190,7 @@ boxes.forEach(([x, h, d, fill, ink], j) => {
 T(s, "AE 解碼器 16 → 29,把輸入重建回來(MSE,訓練 60 輪);只拿編碼後的 16 維給 OC-SVM。",
   { x: 0.6, y: 3.95, w: 12.1, h: 0.45, fontSize: 13, color: C.accent5 });
 T(s, bullets([
-  "訓練樣本:50 檔合在一起,2020–2023 候選中的真高點 3,805 天、真低點 3,656 天;高點、低點各一組 AE + OC-SVM",
+  "訓練樣本:50 檔合在一起,2020–2023 候選中的真高點 3,769 天、真低點 3,651 天;高點、低點各一組 AE + OC-SVM",
   "樣本權重:距離 3 以內的相似候選中,同樣是真高(低)點的比例(沿用原系統的「重要性」概念)",
   "編碼器只有一層 29 → 16(973 個參數);原系統 29 → 58 → 8 → 4 有 4,637 個,兩者結果相同;OC-SVM 的 rbf、nu 0.1 沿用原系統",
 ], 15), { x: 0.6, y: 4.6, w: 12.1, h: 1.9, color: C.text2 });
@@ -200,7 +200,7 @@ s.addNotes("模型沿用我們原本系統的 AE 加 OC-SVM。AE 的輸入是 t-
 sec = S("結果");
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
 s.addText("測試結果:真高低點幾乎都在模型的判斷裡", { placeholder: "title" });
-const cm = [[1222, 310, 0], [2646, 11414, 3127], [0, 432, 1038]];
+const cm = [[771, 142, 0], [1820, 6562, 1907], [0, 165, 731]];
 const names = ["低點", "非極值", "高點"];
 const ramp = ["F4F8FD", "CDE2FB", "86B6EF", "3987E5", "1C5CAB", "104281"];
 const shade = (p) => ramp[Math.min(5, Math.floor(p * 6))];
@@ -217,26 +217,26 @@ s.addTable(cmRows, { x: 0.6, y: 1.6, w: 6.6, colW: [1.5, 1.7, 1.7, 1.7], rowH: [
 T(s, "規則 + AE + OC-SVM(主軸,種子 42);格內為天數與該列(實際類別)的比例", { x: 0.6, y: 5.15, w: 6.6, h: 0.5, fontSize: 12, color: C.accent5 });
 const mRows = [
   [head(""), head("acc"), head("macro-F1"), head("非極值判對率")],
-  ["全猜非極值", "85.1%", "30.7%", "85.1%"],
-  ["規則基準", "62.4%", "53.5%", "100.0%"],
-  ["規則 + AE + OC-SVM", "67.7%", "53.3%", "93.9%"],
+  ["全猜非極值", "85.0%", "30.6%", "85.0%"],
+  ["規則基準", "63.4%", "54.2%", "100.0%"],
+  ["規則 + AE + OC-SVM", "66.7%", "54.0%", "95.5%"],
 ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { align: j ? "right" : "left", bold: i === 3 } })));
 s.addTable(mRows, { x: 7.6, y: 1.6, w: 5.1, colW: [2.0, 0.9, 1.1, 1.1], rowH: 0.55, fontSize: 13, fontFace: THEME.bodyFontFace,
   color: HEX.dk1, valign: "middle", border: { type: "solid", pt: 0.75, color: "D9E0E6" }, margin: [0, 0.08, 0, 0.08] });
 T(s, bullets([
-  "真高點 1,470 個:判對 1,038 個(70.6%),沒有一個被判成低點",
-  "真低點 1,532 個:判對 1,222 個(79.8%),沒有一個被判成高點",
-  "判非極值的 12,156 天中,11,414 天真的不是高低點(93.9%)",
+  "真高點 896 個:判對 731 個(81.6%),沒有一個被判成低點",
+  "真低點 913 個:判對 771 個(84.4%),沒有一個被判成高點",
+  "判非極值的 6,869 天中,6,562 天真的不是高低點(95.5%)",
 ], 13), { x: 7.6, y: 3.95, w: 5.1, h: 2.2, color: C.text2 });
-s.addNotes("這是測試期的混淆矩陣。看第一列和最後一列:真低點有 79.8% 被判成低點,真高點有 70.6% 被判成高點,而且高點和低點從來不會互相判錯。右邊的表比較三種做法,模型的 acc 是 67.7%,判非極值時 93.9% 正確。");
+s.addNotes("這是 2024 年測試期的混淆矩陣。看第一列和最後一列:真低點有 84.4% 被判成低點,真高點有 81.6% 被判成高點,而且高點和低點從來不會互相判錯。右邊的表比較三種做法,模型的 acc 是 66.7%,判非極值時 95.5% 正確。");
 
 // ───────────────────────── 10. 局部準確度 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
-s.addText("局部準確度:挑出的候選比亂猜準 3.4–4.2 倍", { placeholder: "title" });
+s.addText("局部準確度:挑出的候選比亂猜準 3.7–3.9 倍", { placeholder: "title" });
 s.addChart(pres.charts.BAR, [
-  { name: "隨機挑一天", labels: ["高點", "低點"], values: [7.3, 7.6] },
-  { name: "規則基準", labels: ["高點", "低點"], values: [25.4, 32.0] },
-  { name: "規則 + AE + OC-SVM", labels: ["高點", "低點"], values: [24.9, 31.6] },
+  { name: "隨機挑一天", labels: ["高點", "低點"], values: [7.4, 7.5] },
+  { name: "規則基準", labels: ["高點", "低點"], values: [27.8, 30.3] },
+  { name: "規則 + AE + OC-SVM", labels: ["高點", "低點"], values: [27.7, 29.8] },
 ], { x: 0.6, y: 1.5, w: 7.2, h: 4.8, barDir: "col", barGrouping: "clustered", chartColors: [HEX.accent6, HEX.accent5, HEX.dk1],
   showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: '0.0"%"', dataLabelColor: HEX.dk2, dataLabelFontSize: 12,
   dataLabelFontFace: "+mn-lt", showLegend: true, legendPos: "b", legendFontSize: 12, legendFontFace: "+mn-lt", legendColor: HEX.dk2,
@@ -245,9 +245,9 @@ s.addChart(pres.charts.BAR, [
   title: "命中率:判成高(低)點的日子中真的是高(低)點", titleFontSize: 14, titleColor: HEX.dk1, titleFontFace: "+mn-lt",
   barGapWidthPct: 60, objectName: "precision-chart" });
 const loc = [
-  ["100% / 99.9%", "規則找到的真高點 / 真低點", C.accent1],
-  ["70.6% / 79.8%", "模型判對的真高點 / 真低點", C.accent2],
-  ["93.9%", "模型判非極值時的正確率", C.accent3],
+  ["99.9% / 100%", "規則找到的真高點 / 真低點", C.accent1],
+  ["81.6% / 84.4%", "模型判對的真高點 / 真低點", C.accent2],
+  ["95.5%", "模型判非極值時的正確率", C.accent3],
 ];
 loc.forEach(([v, k, col], j) => {
   const y = 1.6 + j * 1.6;
@@ -255,7 +255,7 @@ loc.forEach(([v, k, col], j) => {
   T(s, v, { x: 8.45, y: y + 0.15, w: 4.1, h: 0.65, fontSize: 28, bold: true, color: col });
   T(s, k, { x: 8.45, y: y + 0.82, w: 4.1, h: 0.45, fontSize: 13, color: C.text2 });
 });
-s.addNotes("這頁是我們說的局部準確度。左圖是命中率:隨機挑一天是高點的機率只有 7.3%,被我們挑出來的候選是 25 到 32%,大約是 3.4 到 4.2 倍。右邊三個數字:真高低點全部進了候選,模型判對 71 到 80%,判非極值時 93.9% 正確。");
+s.addNotes("這頁是我們說的局部準確度。左圖是命中率:隨機挑一天是高點的機率只有 7.4%,被我們挑出來的候選是 28 到 30%,大約是 3.7 到 3.9 倍。右邊三個數字:真高低點 1,809 個只有 1 個沒進候選,模型判對 82 到 84%,判非極值時 95.5% 正確。");
 
 // ───────────────────────── 11. 找到的結果長什麼樣 ─────────────────────────
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: sec });
@@ -276,10 +276,10 @@ sec = S("總結");
 s = pres.addSlide({ masterName: "DARK", sectionTitle: sec });
 s.addText("總結:成功找到 11 日窗口的局部高低點", { placeholder: "title" });
 const wins = [
-  ["100%", "真高低點都進了候選", "高點 1,470 / 1,470\n低點 1,531 / 1,532", C.accent1],
+  ["99.9%", "真高低點進了候選", "高點 895 / 896\n低點 913 / 913", C.accent1],
   ["0 次", "高點與低點互相判錯", "真高點沒被判成低點,\n真低點沒被判成高點", C.background1],
-  ["93.9%", "判「非極值」的正確率", "12,156 天裡 11,414 天\n真的不是高低點", C.accent3],
-  ["3.4–4.2×", "命中率是隨機挑的倍數", "高點 7.3% → 24.9%\n低點 7.6% → 31.6%", C.accent2],
+  ["95.5%", "判「非極值」的正確率", "6,869 天裡 6,562 天\n真的不是高低點", C.accent3],
+  ["3.7–3.9×", "命中率是隨機挑的倍數", "高點 7.4% → 27.7%\n低點 7.5% → 29.8%", C.accent2],
 ];
 wins.forEach(([v, k, d, col], j) => {
   const x = 0.8 + j * 2.95;
@@ -287,9 +287,9 @@ wins.forEach(([v, k, d, col], j) => {
   T(s, k, { x, y: 4.9, w: 2.75, h: 0.45, fontSize: 16, bold: true, color: C.background1 });
   T(s, d, { x, y: 5.4, w: 2.75, h: 0.9, fontSize: 13, color: C.accent6 });
 });
-T(s, "測試期 2025-01 ~ 2026-09 · TW50 · 20,189 個股票日;模型判對 70.6% 的真高點、79.8% 的真低點",
+T(s, "測試期 2024-01 ~ 2024-12 · TW50 · 12,098 個股票日;模型判對 81.6% 的真高點、84.4% 的真低點",
   { x: 0.8, y: 6.6, w: 11.7, h: 0.4, fontSize: 13, color: C.accent5 });
-s.addNotes("總結。我們把題目定成找 11 天窗口裡的局部高低點,在 TW50 的測試期:真高低點全部進了候選;模型判出的高點和低點從來不會互相搞錯;模型說「這天不是高低點」時 93.9% 是對的;挑出來的候選是真高低點的機率是隨便挑一天的 3.4 到 4.2 倍。模型最後判對了 71% 的真高點和 80% 的真低點。謝謝。");
+s.addNotes("總結。我們把題目定成找 11 天窗口裡的局部高低點,在 TW50 的 2024 年測試期:真高低點 1,809 個只有 1 個沒進候選;模型判出的高點和低點從來不會互相搞錯;模型說「這天不是高低點」時 95.5% 是對的;挑出來的候選是真高低點的機率是隨便挑一天的 3.7 到 3.9 倍。模型最後判對了 82% 的真高點和 84% 的真低點。謝謝。");
 
 (async () => {
   await pres.writeFile({ fileName: OUT });

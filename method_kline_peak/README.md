@@ -383,5 +383,5 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | **`mainline.py`** | **目前主軸**:同上框架,參數化(輸入窗格、特徵組、AE / OC-SVM 參數、權重、切分),bootstrap CI,自動寫 `results/experiments.csv` |
 | `export_windows.py` | 匯出主軸(種子 42、nu 0.1、我們的切分)每檔訓練 / 測試期的 K 線、標籤、規則候選、模型判斷 |
 | `web/window_viewer.html` | 互動網頁:逐檔 K 線 + 真實標籤 / 規則候選 / 模型判斷,點任一天看 11 日窗口,分類範例畫廊 |
-| `report/` | 專題進度簡報 `TW50_局部高低點_專題進度.pptx`(8 頁:標籤、資料量、訓練輸入(11 天中的哪幾天、哪些特徵)、AE + OC-SVM、混淆矩陣、局部準確度、例子、總結;10 日量基準、編碼器 29 → 16)與產生它的 `figs.py`、`build_deck.js` |
+| `report/` | 專題進度簡報 `TW50_局部高低點_專題進度.pptx`(8 頁:標籤、資料量、訓練輸入(11 天中的哪幾天、哪些特徵)、AE + OC-SVM、混淆矩陣、局部準確度、例子、總結;10 日量基準、編碼器 29 → 16、測試期 2024,資料來自 `export_windows.py --split y2024`)與產生它的 `figs.py`、`build_deck.js` |
 | `results/feasibility_<pool>.json`、`results/diagnose_<pool>.json` | 全部數字 |

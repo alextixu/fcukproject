@@ -59,7 +59,8 @@ for s_ in stocks:
     if s_["ticker"] != "2330.TW": continue
     p = s_["test"]
     for i_ in range(5, len(p["d"]) - 5):
-        if p["y"][i_] == 2 and p["pred"][i_] == 2: cands.append((rng_window(p, i_), i_))
+        strict = all(p["c"][k] < p["c"][i_] for k in range(i_ - 5, i_ + 6) if k != i_)   # 不挑並列的例子,比較好講
+        if p["y"][i_] == 2 and p["pred"][i_] == 2 and strict: cands.append((rng_window(p, i_), i_))
 cands.sort(reverse=True)
 s = next(x for x in stocks if x["ticker"] == "2330.TW"); i = cands[0][1]; p = s["test"]
 fig, ax = plt.subplots(figsize=(7.2, 3.9), dpi=200)
