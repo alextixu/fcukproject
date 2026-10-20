@@ -54,19 +54,15 @@ def rng_window(p, i):
 
 # 1) 標註用的單一窗口:台積電判對的高點中,窗口振幅最大的一個
 s, i = find(lambda p, i: p["y"][i] == 2 and p["pred"][i] == 2 and s_is(p), lambda p, i: rng_window(p, i)) if False else (None, None)
-cands = []
-for s_ in stocks:
-    if s_["ticker"] != "2330.TW": continue
-    p = s_["test"]
-    for i_ in range(5, len(p["d"]) - 5):
-        strict = all(p["c"][k] < p["c"][i_] for k in range(i_ - 5, i_ + 6) if k != i_)   # 不挑並列的例子,比較好講
-        if p["y"][i_] == 2 and p["pred"][i_] == 2 and strict: cands.append((rng_window(p, i_), i_))
-cands.sort(reverse=True)
-s = next(x for x in stocks if x["ticker"] == "2330.TW"); i = cands[0][1]; p = s["test"]
+# 標註用的窗口:漲上去、再跌下來的典型轉折(∧ 形),模型也判對
+ANN = ("2382.TW", "2024-11-08")
+s = next(x for x in stocks if x["ticker"] == ANN[0]); p = s["test"]; i = p["d"].index(ANN[1])
+assert p["y"][i] == 2 and p["pred"][i] == 2
 fig, ax = plt.subplots(figsize=(7.2, 3.9), dpi=200)
 window(ax, p, i)
-ax.annotate(f"t 日收盤 {p['c'][i]:.0f}\n= 11 天最高 → 高點", xy=(4.7, p["c"][i]), xytext=(0.3, p["c"][i] - (p['c'][i] - min(p['l'][i-5:i+6])) * 0.05), ha="left",
-            fontsize=10.5, color=HI, fontweight="bold", arrowprops=dict(arrowstyle="->", color=HI, lw=1.2))
+top = ax.get_ylim()[1]; ty = p["c"][i] + (top - p["c"][i]) * 0.45
+ax.annotate(f"t 日收盤 {p['c'][i]:.0f} = 11 天最高 → 高點", xy=(4.75, p["c"][i]), xytext=(-0.4, ty), ha="left", va="center",
+            fontsize=10.5, color=HI, fontweight="bold", arrowprops=dict(arrowstyle="->", color=HI, lw=1.2, connectionstyle="arc3,rad=-0.15"))
 y0 = ax.get_ylim()[0]
 ax.text(2.5, ax.get_ylim()[0], "t 日收盤時看得到(t-5 ~ t)", ha="center", va="bottom", fontsize=9.5, color=INK2)
 ax.text(8, ax.get_ylim()[0], "未來 5 天:只用來貼標籤", ha="center", va="bottom", fontsize=9.5, color=INK2)
