@@ -67,7 +67,15 @@ def pytest_runtest_makereport(item, call):
     if call.when == "call":
         doc = (item.function.__doc__ or "").strip()
         doc = " ".join(line.strip() for line in doc.splitlines() if line.strip())
-        param = f"[{item.callspec.id}] " if hasattr(item, "callspec") else ""
+        param = ""
+        if hasattr(item, "callspec"):
+            name = item.callspec.id.encode().decode("unicode_escape")          # pytest 會把中文 id 轉成 \u 編碼
+            p = item.callspec.params
+            if "closes" in p:                                                   # 標籤案例:直接列出這個案例的輸入與預期
+                lab = {DOWN: "高點", UP: "低點", FLAT: "非極值"}[p["y"]]
+                cand = "高點候選" if p["cand_hi"] else "低點候選" if p["cand_lo"] else "不是候選"
+                doc = f"Given 收盤 {p['closes']}(t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = {lab},規則 = {cand}"
+            param = f"[{name}] "
         level = next((v for k, v in LEVEL.items() if item.name.startswith(f"test_{k}")), "-")
         _rows.append((level, item.name.split("[")[0], param + doc, "通過" if call.excinfo is None else "失敗"))
 

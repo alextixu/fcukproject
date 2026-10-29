@@ -380,6 +380,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
+python -m pytest method_kline_peak/tests -q                  # 主軸行為測試 20 項(約 15 秒),報告寫到 tests/REPORT.md
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)
 # 網頁:把 windows_data.json 的內容填進 web/window_viewer.html 的 __DATA__
 # 簡報:report/figs.py <windows_data.json> 產生圖,report/build_deck.js 產生 .pptx(需要 pptxgenjs)
