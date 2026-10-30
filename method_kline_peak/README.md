@@ -47,6 +47,29 @@ python method_kline_peak/mainline.py --tag z16 --latent 16 --epochs 100 --nu 0.0
 - 同樣在 t 日收盤判斷、收盤價標籤的設定下,監督式的 LightGBM 也沒贏過規則(第 2 節:54.6% vs 55.3%)。
   這表示目前的價格、技術指標、籌碼特徵裡,本來就沒有分辨真假候選的資訊,不只是 AE + OC-SVM 的問題。
 
+### 逐年 walk-forward 回測(`walkforward.py`、`backtest_years.py`;2026-10-30 與使用者確認的規則)
+
+每個測試年 Y 用 Y-4 ~ Y-1 重新訓練主軸(剔除最後 5 個交易日),預測 Y 年每天的訊號,再用投資組合回測:
+只做多(低點訊號 t+1 開盤買、t+5 收盤賣,高點訊號不交易)、每年 100 萬獨立結算、最多 10 檔各 1/10、
+訊號多於空位照 OC-SVM 分數取、不加碼、開盤漲停放棄、成本 0.585%(買 0.1425%、賣 0.1425% + 稅 0.3%)、年底結清。
+
+| 年 | 主軸 | 主軸扣成本前 | 最大回撤 | 筆數 | 勝率 | 規則訊號 | 隨機(20 次平均) | 0050 買進持有 | TW50 等權 | 主軸 macro-F1 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2020 | -15.1% | +7.7% | -20.6% | 407 | 40.0% | -4.0% | -7.6% | +30.2% | +35.3% | 55.01% |
+| 2021 | -15.6% | +7.9% | -18.8% | 420 | 43.1% | -17.0% | -11.3% | +21.3% | +41.9% | 54.92% |
+| 2022 | -35.7% | -16.0% | -37.6% | 459 | 39.4% | -33.2% | -28.8% | -21.9% | -12.1% | 53.57% |
+| 2023 | +2.4% | +31.4% | -10.0% | 428 | 45.1% | -1.9% | -3.4% | +27.5% | +30.6% | 55.40% |
+| 2024 | -19.2% | +6.0% | -21.1% | 465 | 42.6% | -19.5% | -17.8% | +47.6% | +9.5% | 53.96% |
+| 2025 | -28.5% | -6.9% | -30.1% | 453 | 41.3% | -18.7% | -21.8% | +36.1% | +16.0% | 53.01% |
+| 2026(1–9 月) | +9.4% | +30.6% | -6.4% | 302 | 47.7% | +16.1% | +25.3% | +68.5% | +64.5% | 53.63% |
+
+- 7 年都輸給 0050 買進持有,6 年是負報酬;2022 空頭年也比 0050 多賠。
+- **成本吃掉約 21–29 個百分點 / 年**:每年約 450 筆、每筆 1/10 資金,一年周轉約 45 次 × 0.585%。
+- **扣成本前也沒有優勢**:主軸只有 2023 贏過隨機挑股(+31.5% 對 +25.0%),其他 6 年都輸;
+  照 OC-SVM 分數挑的報酬,6 / 7 年比規則訊號隨機挑還差。
+- 分類指標每年都很穩定(macro-F1 53–55%,和規則相差 ±0.9 點),所以「抓得到轉折」成立,但照低點訊號短線做多不賺錢。
+- 結果存在 `results/backtest_years.json`(含每日資產曲線、每筆放棄原因)。
+
 ### Stacking(老師建議:拿掉規則,兩模型的輸出再訓練第三個模型;`stacking.py`)
 
 切分:A 2020–2022 訓練兩組 AE + OC-SVM(只學真高 / 真低點)→ B 2023 用兩模型的分數訓練元學習器 → C 2024 測試;每段之間剔除 5 個交易日。
@@ -380,7 +403,8 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸行為測試 20 項(約 15 秒),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸 + 回測行為測試 42 項(約 1 分鐘),報告寫到 tests/REPORT.md
+python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)
 # 網頁:把 windows_data.json 的內容填進 web/window_viewer.html 的 __DATA__
 # 簡報:report/figs.py <windows_data.json> 產生圖,report/build_deck.js 產生 .pptx(需要 pptxgenjs)
@@ -402,6 +426,8 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | `rule_trading.py` | 論文規則訊號直接交易:勝率、報酬、真 / 假候選拆解、不重疊持倉、損益兩平命中率 |
 | **`mainline.py`** | **目前主軸**:同上框架,參數化(輸入窗格、特徵組、AE / OC-SVM 參數、權重、切分),bootstrap CI,自動寫 `results/experiments.csv` |
 | `stacking.py` | Stacking:拿掉規則,兩組 AE + OC-SVM 的分數(A 2020–22)→ 元學習器(B 2023)→ 測試 2024;邏輯迴歸 / 決策樹 / 梯度提升 / SVM |
+| `walkforward.py` | 逐年 walk-forward:SignalSource 介面(主軸 / 規則),訓練 Y-4 ~ Y-1 → 預測 Y |
+| `backtest_years.py` | 投資組合回測引擎(只做多、10 格、0.585% 成本)、逐年報表與基準(0050、TW50 等權、隨機) |
 | `export_windows.py` | 匯出主軸(種子 42、nu 0.1、我們的切分)每檔訓練 / 測試期的 K 線、標籤、規則候選、模型判斷 |
 | `web/window_viewer.html` | 互動網頁:逐檔 K 線 + 真實標籤 / 規則候選 / 模型判斷,點任一天看 11 日窗口,分類範例畫廊 |
 | `report/` | 專題進度簡報 `TW50_局部高低點_專題進度.pptx`(9 頁:標籤、資料量、訓練輸入(11 天中的哪幾天、哪些特徵)、AE + OC-SVM、三分類流程圖、混淆矩陣、局部準確度、例子、總結;10 日量基準、編碼器 29 → 16、測試期 2024,資料來自 `export_windows.py --split y2024`)與產生它的 `figs.py`、`build_deck.js` |
