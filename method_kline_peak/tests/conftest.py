@@ -77,14 +77,15 @@ def pytest_runtest_makereport(item, call):
                 doc = f"Given 收盤 {p['closes']}(t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = {lab},規則 = {cand}"
             param = f"[{name}] "
         level = next((v for k, v in LEVEL.items() if item.name.startswith(f"test_{k}")), "-")
-        _rows.append((level, item.name.split("[")[0], param + doc, "通過" if call.excinfo is None else "失敗"))
+        res = "通過" if call.excinfo is None else "跳過" if call.excinfo.errisinstance(pytest.skip.Exception) else "失敗"
+        _rows.append((level, item.name.split("[")[0], param + doc, res))
 
 
 def pytest_sessionfinish(session, exitstatus):
     if not _rows:
         return
-    passed = sum(r[3] == "通過" for r in _rows)
-    lines = ["# 主軸測試報告(自動產生)", "", f"結果:{passed} / {len(_rows)} 通過", "",
+    passed, skipped = sum(r[3] == "通過" for r in _rows), sum(r[3] == "跳過" for r in _rows)
+    lines = ["# 主軸測試報告(自動產生)", "", f"結果:{passed} / {len(_rows)} 通過" + (f",{skipped} 項刻意跳過(條件不適用)" if skipped else ""), "",
              "| # | 層級 | 測試 | 情境(Given / When / Then) | 結果 |", "|---|---|---|---|---|"]
     for i, (lv, name, doc, res) in enumerate(_rows, 1):
         lines.append(f"| {i} | {lv} | `{name}` | {doc} | {res} |")

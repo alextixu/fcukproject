@@ -73,21 +73,25 @@ python method_kline_peak/mainline.py --tag z16 --latent 16 --epochs 100 --nu 0.0
 ### Stacking(老師建議:拿掉規則,兩模型的輸出再訓練第三個模型;`stacking.py`)
 
 切分:A 2020–2022 訓練兩組 AE + OC-SVM(只學真高 / 真低點)→ B 2023 用兩模型的分數訓練元學習器 → C 2024 測試;每段之間剔除 5 個交易日。
-基底模型同主軸(29 個特徵、量 ÷ 10 日均量、29 → 16、nu 0.1),但沒有規則:OC-SVM 對每一天都給分數。3 種子平均:
+基底模型同主軸(29 個特徵、量 ÷ 10 日均量、29 → 16、nu 0.1),但沒有規則:OC-SVM 對每一天都給分數。
+程式結構(2026-11 重構):`BaseScorers`(基底層)、`MetaLearner`(元學習器)、`StackingSource`(`SignalSource` 實作,可放進逐年回測)。
+重構前後同一組合的結果逐一相同(`tests/test_stacking.py`)。
 
-| 元學習器的輸入 | 邏輯迴歸 | 決策樹 | 梯度提升樹 | 多類別 SVM |
-|---|---|---|---|---|
-| 兩個 OC-SVM 分數 | 48.84% | 47.18% | 48.15% | 48.12% |
-| + 兩個 AE 重建誤差 | **49.40%** | 46.85% | 48.76% | 48.52% |
-| + 位置特徵(t 收盤距 6 日最高 / 最低,等於把規則當特徵放回去) | 53.83% | 54.09% | 54.41% ± 0.31 | 52.19% |
-| 對照:規則 54.20%;主軸(規則 + AE + OC-SVM,訓練 2020–2023)54.09%;先驗隨機 32.91% | | | | |
+測試 2024 的 macro-F1(3 種子平均;對照:規則 54.20%、主軸 54.09%、先驗隨機 32.91%):
 
-- 拿掉規則後掉 5 點:種子 42 的邏輯迴歸只找到 41% 的真高點、52% 的真低點(規則 99.9% / 100%),命中率也降到 25%。
+| 元學習器的輸入 | 邏輯迴歸 L2 | L1 | Elastic Net | 多項式 2 次 | 多項式 3 次 | 決策樹 | 梯度提升 | SVM |
+|---|---|---|---|---|---|---|---|---|
+| 兩個 OC-SVM 分數(老師的版本) | 48.84% | 48.84% | 48.85% | 48.31% | 48.53% | 47.18% | 48.15% | 48.12% |
+| + 兩個 AE 重建誤差 | 49.40% | 49.39% | 49.39% | 49.84% | 49.67% | 46.85% | 48.76% | 48.52% |
+| + 位置特徵(= 把規則當特徵放回去) | 53.83% | 54.48% | 53.96% | 54.11% | 54.18% | 54.09% | 54.41% | 52.19% |
+
+- 線性回歸、Ridge / Lasso / Elastic Net 回歸、多項式回歸輸出連續數字,不能直接做三分類,所以只取它們的正則化與多項式特徵,放進多類別邏輯迴歸。
+- 老師的版本(只用分數)換哪種邏輯迴歸都在 48.3–48.9%:L1、Elastic Net 和 L2 幾乎一樣,多項式特徵也沒有幫助;加重建誤差最好 49.84%(多項式 2 次)。都比規則低約 4.4–5.9 點。
 - 原因(測試期分數的 AUC,3 種子平均):OC-SVM 分數分辨「候選 vs 一般日子」只有 0.90 / 0.93(高 / 低),
-  一般日子有 21% / 20% 也落在範圍內;規則是用收盤比大小,分得一清二楚。
-  候選內「真 vs 假」的 AUC 只有 0.49 / 0.46,和之前的結論一樣分不出來。
-- 把位置特徵放回去(論文的做法)就回到規則的水準(52–54%),但仍沒有明顯超過規則。
-- 判反(真高判低點 / 真低判高點):純分數版 0 次;加位置特徵版 0–1 次。
+  一般日子有 22% / 20% 也落在範圍內;規則用收盤比大小,分得一清二楚。候選內「真 vs 假」的 AUC 只有 0.49 / 0.46。
+- 加上位置特徵就回到規則的水準(52.2–54.5%)。最高的 L1 邏輯迴歸(54.48%)把兩個分數的權重幾乎壓成 0,
+  只剩位置特徵(高點 +31、低點 −41),等於自己學回規則。
+- 判反(真高判低點 / 真低判高點):0–2 次。
 
 ### 測試 2024(`--splits y2024`;同一個主軸設定,訓練 2020–2023,剔除 2023 年最後 5 個交易日)
 
@@ -403,7 +407,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸 + 回測行為測試 42 項(約 1 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 61 項(約 1 分鐘),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)
 # 網頁:把 windows_data.json 的內容填進 web/window_viewer.html 的 __DATA__
@@ -425,7 +429,7 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | `paper_rule_aeocsvm.py` | 論文的規則基準框架:規則挑候選、AE + OC-SVM(只用候選點訓練)否決假候選;nu 掃描與隨機否決對照 |
 | `rule_trading.py` | 論文規則訊號直接交易:勝率、報酬、真 / 假候選拆解、不重疊持倉、損益兩平命中率 |
 | **`mainline.py`** | **目前主軸**:同上框架,參數化(輸入窗格、特徵組、AE / OC-SVM 參數、權重、切分),bootstrap CI,自動寫 `results/experiments.csv` |
-| `stacking.py` | Stacking:拿掉規則,兩組 AE + OC-SVM 的分數(A 2020–22)→ 元學習器(B 2023)→ 測試 2024;邏輯迴歸 / 決策樹 / 梯度提升 / SVM |
+| `stacking.py` | Stacking:拿掉規則,`BaseScorers`(兩組 AE + OC-SVM)→ `MetaLearner`(邏輯迴歸 L2 / L1 / Elastic Net / 多項式、決策樹、梯度提升、SVM);`StackingSource` 實作 `SignalSource` |
 | `walkforward.py` | 逐年 walk-forward:SignalSource 介面(主軸 / 規則),訓練 Y-4 ~ Y-1 → 預測 Y |
 | `backtest_years.py` | 投資組合回測引擎(只做多、10 格、0.585% 成本)、逐年報表與基準(0050、TW50 等權、隨機) |
 | `export_windows.py` | 匯出主軸(種子 42、nu 0.1、我們的切分)每檔訓練 / 測試期的 K 線、標籤、規則候選、模型判斷 |

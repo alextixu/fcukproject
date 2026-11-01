@@ -1,27 +1,37 @@
-"""Stacking(Blending):拿掉規則,兩組 AE + OC-SVM 的輸出分數 → 在新資料上訓練第三個模型(元學習器)做三分類。
+"""Stacking(Blending):拿掉規則,兩組 AE + OC-SVM 的輸出 → 在新資料上訓練第三個模型(元學習器)做三分類。
 
 老師的建議:不用規則挑候選;高點、低點各一組 AE + OC-SVM 先訓練好,再用「兩模型都沒看過的新資料」訓練第三個模型。
 
-切分(TW50,全域日曆,每段之間剔除 5 個交易日,因為標籤用到 t+5)
-  A 基底模型   2020-01 ~ 2022-12:真高點 → 高點 AE + OC-SVM;真低點 → 低點 AE + OC-SVM
-  B 元學習器   2023-01 ~ 2023-12:每天的兩個分數 + 11 日標籤 → 訓練第三個模型
+結構(新增元學習器 = LEARNERS 多一行;新增輸入組合 = INPUTS 多一行)
+  BaseScorers     基底層:高點、低點兩組 AE + OC-SVM(設定同主軸:29 個特徵、量 ÷ 10 日均量、29 → 16、
+                  OC-SVM rbf nu 0.1、相似度權重)。沒有規則,所以標準化與相似度權重用 A 期的全部日子,
+                  OC-SVM 只用真高(低)點訓練,對每一天都給分數
+  MetaLearner     元學習器:一種輸入組合 + 一種分類器;類別權重 = 訓練頻率倒數的平方根(同論文)
+  StackingSource  walkforward.SignalSource 的實作:訓練期最後 1 年給元學習器(B),其餘給基底層(A),
+                  中間剔除 5 個交易日。可以直接放進逐年回測
+
+測試 2024 的切分(= year_split(2024) 的訓練期再切一次)
+  A 基底層     2020-01 ~ 2022-12(最後 5 個交易日剔除)
+  B 元學習器   2023-01 ~ 2023-12(最後 5 個交易日剔除)
   C 測試       2024-01 ~ 2024-12
 
-基底模型與主軸相同(29 個特徵、量 ÷ 10 日均量、編碼器一層 29 → 16、OC-SVM rbf nu 0.1、相似度權重),
-差別只在:沒有規則,所以標準化與相似度權重用 A 的「全部日子」,OC-SVM 對每一天都給分數。
+元學習器的輸入(INPUTS)
+  score        兩個 OC-SVM 的 decision_function(> 0 = 範圍內)
+  score+recon  再加兩個 AE 的重建誤差
+  score+pos    再加位置特徵(t 收盤距近 6 日最高 / 最低),等於把規則的資訊當特徵放回去
+元學習器(LEARNERS)
+  lr        多類別邏輯迴歸,L2(sklearn 預設;主方法)
+  lr-l1     多類別邏輯迴歸,L1(Lasso 式懲罰)
+  lr-enet   多類別邏輯迴歸,Elastic Net(L1 : L2 = 1 : 1)
+  lr-poly2  2 次多項式特徵(平方、交乘)+ 邏輯迴歸 L2
+  lr-poly3  3 次多項式特徵 + 邏輯迴歸 L2
+  tree      決策樹(深度 3)
+  hgb       梯度提升樹
+  svm       多類別 SVM(rbf)
+線性回歸、Ridge / Lasso / Elastic Net 回歸、多項式回歸輸出連續數字,不是三分類,所以只取它們的正則化與多項式特徵,
+放進多類別邏輯迴歸。
 
-元學習器的輸入
-  score:兩個 OC-SVM 的 decision_function(連續分數,> 0 = 範圍內)
-  score+recon:再加兩個 AE 的重建誤差
-  score+pos:分數 + 論文式位置特徵(t 收盤距近 6 日最高 / 最低,由 c1..c5 算出)。
-            這等於把規則的資訊當特徵放回去,用來看「拿掉規則」少了什麼
-元學習器(類別權重 = 訓練頻率倒數的平方根,同論文)
-  lr   多類別邏輯迴歸(主方法)
-  tree 決策樹(深度 3)
-  hgb  梯度提升樹
-  svm  多類別 SVM(rbf)
-
-對照:規則基準、主軸(規則 + AE + OC-SVM,訓練 2020–2023)、隨機。
+對照:規則基準、先驗隨機。
 用法: python method_kline_peak/stacking.py [--seeds 42 43 44]
 輸出: results/stacking_2024.json,並在 results/experiments.csv 追加 mode = stack 的列
 """
@@ -32,11 +42,13 @@ import sys
 import time
 
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.svm import OneClassSVM, SVC
 from sklearn.tree import DecisionTreeClassifier
 
@@ -44,32 +56,54 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import mainline as ML  # noqa: E402
 import ae_ocsvm  # noqa: E402
+import walkforward as WF  # noqa: E402
 from feasibility import START, END, load_pool  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 from paper_aeocsvm import NAMES, rule_pred  # noqa: E402
 from confusion import summarize  # noqa: E402
 
 OUT = os.path.join(ML.OUT, "stacking_2024.json")
-PERIODS = {"A": ("2020-01-01", "2022-12-31"), "B": ("2023-01-01", "2023-12-31"), "C": ("2024-01-01", "2024-12-31")}
-HALF, NU = 5, 0.1
-INPUTS = ("score", "score+recon", "score+pos")
-LEARNERS = ("lr", "tree", "hgb", "svm")
+TEST_YEAR, HALF, NU, SEED = 2024, 5, 0.1, 42
+INPUTS = {
+    "score": ["s_high", "s_low"],
+    "score+recon": ["s_high", "s_low", "e_high", "e_low"],
+    "score+pos": ["s_high", "s_low", "pos_hi", "pos_lo"],
+}
 
 
-def split3(panel):
-    """A / B / C 三段;每段最後 5 個交易日剔除(它們的標籤會用到下一段的價格)。"""
-    cal = np.sort(panel["date"].unique())
-    out = {}
-    for k, (a, b) in PERIODS.items():
-        d = panel[panel["date"].between(a, b)]
-        nxt = {"A": "B", "B": "C"}.get(k)
-        if nxt:
-            i = np.searchsorted(cal, np.datetime64(PERIODS[nxt][0]))
-            d = d[~d["date"].isin(cal[i - HALF:i])]
-        out[k] = d.reset_index(drop=True)
-    return out
+def _lr(cw, **kw):
+    return LogisticRegression(class_weight=cw, **kw)
 
 
+def _poly(degree):
+    return lambda cw: make_pipeline(PolynomialFeatures(degree, include_bias=False), StandardScaler(), _lr(cw, max_iter=5000))
+
+
+LEARNERS = {
+    "lr": lambda cw: _lr(cw, max_iter=2000),
+    "lr-l1": lambda cw: _lr(cw, l1_ratio=1.0, solver="saga", max_iter=5000),
+    "lr-enet": lambda cw: _lr(cw, l1_ratio=0.5, solver="saga", max_iter=5000),
+    "lr-poly2": _poly(2),
+    "lr-poly3": _poly(3),
+    "tree": lambda cw: DecisionTreeClassifier(max_depth=3, class_weight=cw, random_state=0),
+    "hgb": lambda cw: HistGradientBoostingClassifier(max_depth=3, max_iter=200, learning_rate=0.05, class_weight=cw, random_state=0),
+    "svm": lambda cw: SVC(kernel="rbf", C=1.0, gamma="scale", class_weight=cw),
+}
+
+
+# ─────────────────────────── 切分 ───────────────────────────
+def split_base_meta(train, meta_years=1, half=HALF):
+    """訓練期最後 meta_years 年 → B(元學習器);之前 → A(基底層),A 最後 half 個交易日剔除(標籤會用到 B 的價格)。"""
+    first_meta = train["date"].dt.year.max() - meta_years + 1
+    start = pd.Timestamp(f"{first_meta}-01-01")
+    cal = np.sort(train["date"].unique())
+    i = np.searchsorted(cal, np.datetime64(start))
+    A = train[(train["date"] < start) & ~train["date"].isin(cal[max(0, i - half):i])]
+    B = train[train["date"] >= start]
+    return A.reset_index(drop=True), B.reset_index(drop=True)
+
+
+# ─────────────────────────── 基底層 ───────────────────────────
 def fit_base(Xa, ya, cls):
     """一組 AE + OC-SVM:只用 A 期的真高(低)點訓練,權重 = 相似日子中同為真高(低)點的比例。"""
     seeds, w = ae_ocsvm.neighbor_purity(Xa, ya, cls)
@@ -82,20 +116,44 @@ def fit_base(Xa, ya, cls):
     return ae, oc
 
 
-def base_outputs(ae, oc, X):
-    with torch.no_grad():
-        t = torch.FloatTensor(X)
-        recon, z = ae(t)
-        err = ((recon - t) ** 2).mean(dim=1).numpy()
-    return oc.decision_function(z.numpy()), err
-
-
 def position(df):
     """t 收盤距近 6 日最高(≤ 0)與最低(≥ 0);等於 0 就是規則的高點 / 低點候選。"""
     cm = df[[f"c{k}" for k in range(1, 6)]].to_numpy()
     return np.column_stack([-np.maximum(0, cm.max(1)), -np.minimum(0, cm.min(1))])
 
 
+class BaseScorers:
+    """高點、低點兩組 AE + OC-SVM;transform 對任何日子輸出分數、重建誤差與位置特徵。"""
+
+    def __init__(self, seed=SEED):
+        self.seed = seed
+
+    def _prep(self, df):
+        return np.clip(self.sc.transform(df[self.fc].fillna(self.med)), -5, 5).astype(np.float32)
+
+    def fit(self, A, feat_cols):
+        ML.setup_ae()
+        self.fc, self.med = feat_cols, A[feat_cols].median()
+        self.sc = StandardScaler().fit(A[feat_cols].fillna(self.med))
+        Xa, ya = self._prep(A), A["y"].to_numpy()
+        torch.manual_seed(self.seed)
+        np.random.seed(self.seed)
+        self.models = {cls: fit_base(Xa, ya, cls) for cls in (DOWN, UP)}      # 先高後低
+        return self
+
+    def transform(self, df):
+        X, out = torch.FloatTensor(self._prep(df)), {}
+        for cls, tag in ((DOWN, "high"), (UP, "low")):
+            ae, oc = self.models[cls]
+            with torch.no_grad():
+                recon, z = ae(X)
+                out[f"e_{tag}"] = ((recon - X) ** 2).mean(dim=1).numpy()
+            out[f"s_{tag}"] = oc.decision_function(z.numpy())
+        out["pos_hi"], out["pos_lo"] = position(df).T
+        return pd.DataFrame(out, index=df.index)
+
+
+# ─────────────────────────── 元學習器 ───────────────────────────
 def class_weight(y):
     freq = {c: (y == c).mean() for c in (UP, FLAT, DOWN)}
     w = {c: 1 / np.sqrt(f) for c, f in freq.items()}
@@ -103,16 +161,51 @@ def class_weight(y):
     return {c: v / m for c, v in w.items()}
 
 
-def make_learner(name, cw):
-    if name == "lr":
-        return LogisticRegression(class_weight=cw, max_iter=2000)
-    if name == "tree":
-        return DecisionTreeClassifier(max_depth=3, class_weight=cw, random_state=0)
-    if name == "hgb":
-        return HistGradientBoostingClassifier(max_depth=3, max_iter=200, learning_rate=0.05, class_weight=cw, random_state=0)
-    return SVC(kernel="rbf", C=1.0, gamma="scale", class_weight=cw)
+class MetaLearner:
+    """一種輸入組合 + 一種分類器;predict 回傳 (三分類判斷, 判斷那一類的機率;沒有機率的分類器為 0)。"""
+
+    def __init__(self, learner="lr", inputs="score"):
+        self.learner, self.inputs = learner, inputs
+
+    def fit(self, F, y):
+        X = F[INPUTS[self.inputs]].to_numpy()
+        self.fsc = StandardScaler().fit(X)
+        self.model = LEARNERS[self.learner](class_weight(y)).fit(self.fsc.transform(X), y)
+        return self
+
+    def predict(self, F):
+        X = self.fsc.transform(F[INPUTS[self.inputs]].to_numpy())
+        pred = self.model.predict(X)
+        score = self.model.predict_proba(X).max(axis=1) if hasattr(self.model, "predict_proba") else np.zeros(len(X))
+        return pred, score
+
+    def coef(self):
+        lr = self.model[-1] if hasattr(self.model, "steps") else self.model
+        if not isinstance(lr, LogisticRegression) or hasattr(self.model, "steps"):
+            return None
+        return {NAMES[c]: dict(zip(INPUTS[self.inputs], np.round(w, 3).tolist())) for c, w in zip(lr.classes_, lr.coef_)}
 
 
+# ─────────────────────────── 訊號來源 ───────────────────────────
+class StackingSource(WF.SignalSource):
+    """拿掉規則:基底層 + 元學習器。判斷不保證落在規則候選內(gated = False)。"""
+    name = "Stacking"
+    gated = False
+
+    def __init__(self, learner="lr", inputs="score", seed=SEED, meta_years=1):
+        self.learner, self.inputs, self.seed, self.meta_years = learner, inputs, seed, meta_years
+
+    def fit(self, train, feat_cols):
+        A, B = split_base_meta(train, self.meta_years)
+        self.base = BaseScorers(self.seed).fit(A, feat_cols)
+        self.meta = MetaLearner(self.learner, self.inputs).fit(self.base.transform(B), B["y"].to_numpy())
+
+    def predict(self, test):
+        pred, score = self.meta.predict(self.base.transform(test))
+        return self._frame(test, pred, score)
+
+
+# ─────────────────────────── 實驗:測試 2024,全部輸入 × 全部元學習器 ───────────────────────────
 def extra(y, pred, te):
     cm = np.array(summarize(y, pred, NAMES)["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"])
     hi, lo = pred == DOWN, pred == UP
@@ -126,66 +219,51 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
     args = ap.parse_args()
     t0 = time.time()
-    ML.setup_ae()
     panel, fc = ML.build_panel(load_pool(ML.POOL, START, END), 6, [])
-    d = split3(panel)
-    A, B, C = d["A"], d["B"], d["C"]
+    d = WF.year_split(panel, TEST_YEAR)
+    A, B = split_base_meta(d["train"])
+    C = d["test"]
+    yb, yc = B["y"].to_numpy(), C["y"].to_numpy()
     print(f"A {len(A):,}(真高 {(A.y == DOWN).sum():,}、真低 {(A.y == UP).sum():,})/ B {len(B):,} / C {len(C):,}  ({time.time() - t0:.0f}s)", flush=True)
 
-    med = A[fc].median()
-    sc = StandardScaler().fit(A[fc].fillna(med))
-    prep = lambda df: np.clip(sc.transform(df[fc].fillna(med)), -5, 5).astype(np.float32)
-    Xa, Xb, Xc = prep(A), prep(B), prep(C)
-    ya, yb, yc = A.y.to_numpy(), B.y.to_numpy(), C.y.to_numpy()
-    cw = class_weight(yb)
-
-    res = {"periods": PERIODS, "n": {"A": len(A), "B": len(B), "C": len(C)},
+    res = {"periods": {"A": [str(A.date.min().date()), str(A.date.max().date())], "B": [str(B.date.min().date()), str(B.date.max().date())],
+                       "C": [str(C.date.min().date()), str(C.date.max().date())]},
+           "n": {"A": len(A), "B": len(B), "C": len(C)},
            "rule": {**summarize(yc, rule_pred(C), NAMES), **extra(yc, rule_pred(C), C)}, "runs": {}}
     rng = np.random.default_rng(0)
     rand = rng.choice([UP, FLAT, DOWN], size=len(yc), p=[(yb == c).mean() for c in (UP, FLAT, DOWN)])
     res["prior_random"] = summarize(yc, rand, NAMES)
     for seed in args.seeds:
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-        feats = {}
-        for cls, tag in ((DOWN, "high"), (UP, "low")):
-            ae, oc = fit_base(Xa, ya, cls)
-            for part, X in (("B", Xb), ("C", Xc)):
-                s, e = base_outputs(ae, oc, X)
-                feats[(part, f"s_{tag}")], feats[(part, f"e_{tag}")] = s, e
-            s, cand = feats[("C", f"s_{tag}")], C[ML.CAND[cls]].to_numpy()
-            res.setdefault("score_auc", {}).setdefault(tag, {})[seed] = {      # 測試期分數的分辨力
+        base = BaseScorers(seed).fit(A, fc)
+        FB, FC = base.transform(B), base.transform(C)
+        for cls, tag in ((DOWN, "high"), (UP, "low")):                  # 測試期分數的分辨力
+            s, cand = FC[f"s_{tag}"].to_numpy(), C[ML.CAND[cls]].to_numpy()
+            res.setdefault("score_auc", {}).setdefault(tag, {})[seed] = {
                 "true_vs_rest": float(roc_auc_score(yc == cls, s)),
                 "cand_vs_ordinary": float(roc_auc_score(cand, s)),
                 "true_vs_false_within_cand": float(roc_auc_score(yc[cand] == cls, s[cand])),
                 "inside_rate_cand": float((s[cand] > 0).mean()), "inside_rate_ordinary": float((s[~cand] > 0).mean())}
-        for part, df in (("B", B), ("C", C)):
-            feats[(part, "pos_hi")], feats[(part, "pos_lo")] = position(df).T
         for inp in INPUTS:
-            cols = ["s_high", "s_low"] + {"score+recon": ["e_high", "e_low"], "score+pos": ["pos_hi", "pos_lo"]}.get(inp, [])
-            Fb = np.column_stack([feats[("B", c)] for c in cols])
-            Fc = np.column_stack([feats[("C", c)] for c in cols])
-            fsc = StandardScaler().fit(Fb)
             for ln in LEARNERS:
-                m = make_learner(ln, cw).fit(fsc.transform(Fb), yb)
-                pred = m.predict(fsc.transform(Fc))
+                meta = MetaLearner(ln, inp).fit(FB, yb)
+                pred, _ = meta.predict(FC)
                 r = {**summarize(yc, pred, NAMES), **extra(yc, pred, C)}
-                if ln == "lr":
-                    r["coef"] = {NAMES[c]: dict(zip(cols, np.round(w, 3).tolist())) for c, w in zip(m.classes_, m.coef_)}
+                if meta.coef():
+                    r["coef"] = meta.coef()
                 res["runs"].setdefault(f"{inp}|{ln}", {})[seed] = r
         print(f"  種子 {seed} 完成  ({time.time() - t0:.0f}s)", flush=True)
 
     rule = res["rule"]
     print(f"\n測試 2024({len(C):,} 天):規則 macro-F1 {rule['macro_f1']:.2%};先驗隨機 {res['prior_random']['macro_f1']:.2%}")
-    print(f"{'輸入|元學習器':<20}{'macro-F1(3 種子)':>18}{'找到 高/低':>14}{'命中 高/低':>14}{'判非極值正確':>10}{'判反':>6}{'判高在規則候選內':>14}")
+    print(f"{'輸入|元學習器':<22}{'macro-F1(3 種子)':>18}{'找到 高/低':>14}{'命中 高/低':>14}{'判非極值正確':>10}{'判反':>6}{'判高在規則候選內':>14}")
     summary = {}
     for key, runs in res["runs"].items():
         mf = [r["macro_f1"] for r in runs.values()]
         r0 = runs[args.seeds[0]]
         summary[key] = {"macro_f1_mean": float(np.mean(mf)), "macro_f1_sd": float(np.std(mf))}
-        print(f"{key:<20}{np.mean(mf) * 100:>11.2f} ± {np.std(mf) * 100:.2f}"
+        print(f"{key:<22}{np.mean(mf) * 100:>11.2f} ± {np.std(mf) * 100:.2f}"
               f"{r0['recall']['高點'] * 100:>8.1f}/{r0['recall']['低點'] * 100:.1f}%"
-              f"{r0['precision']['高點'] * 100:>8.1f}/{(r0['precision']['低點'] or 0) * 100:.1f}%"
+              f"{(r0['precision']['高點'] or 0) * 100:>8.1f}/{(r0['precision']['低點'] or 0) * 100:.1f}%"
               f"{(r0['precision']['非極值'] or 0) * 100:>9.1f}%{r0['cross_errors']:>6}"
               f"{(r0['pred_high_in_rule_cand'] or 0) * 100:>12.1f}%")
         ML.write_log({"time": time.strftime("%Y-%m-%d %H:%M"), "tag": f"stack-{key}", "split": "測試 2024(A 2020–22 / B 2023)",

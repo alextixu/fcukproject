@@ -11,6 +11,7 @@ import pytest
 
 import mainline as ML
 import walkforward as WF
+from stacking import StackingSource
 from backtest_years import TradeRule, simulate
 from feasibility import clean
 from learn5_trade6 import FLAT, UP, DOWN
@@ -20,17 +21,20 @@ NET = (1 - RULE.sell_fee - RULE.tax) / (1 + RULE.buy_fee)       # 買賣一輪�
 
 
 # ─────────────────────────── Module:SignalSource 契約 ───────────────────────────
-@pytest.fixture(scope="module", params=list(WF.SOURCES), ids=list(WF.SOURCES))
+ALL_SOURCES = {**WF.SOURCES, "Stacking": StackingSource}       # 契約測試跑過所有實作;新增實作只要在這裡多一項
+
+
+@pytest.fixture(scope="module", params=list(ALL_SOURCES), ids=list(ALL_SOURCES))
 def fitted(request, panel):
     df, fc = panel
     d = WF.year_split(df, 2024)
-    src = WF.SOURCES[request.param]()
+    src = ALL_SOURCES[request.param]()
     src.fit(d["train"], fc)
     return src, d["test"]
 
 
 def test_module_source_contract_schema(fitted):
-    """Given 任一訊號來源(主軸 / 規則)用 2020–2023 訓練好 / When 預測 2024 / Then 回傳 date、ticker、pred、score 四欄,
+    """Given 任一訊號來源(主軸 / 規則 / Stacking)用 2020–2023 訓練好 / When 預測 2024 / Then 回傳 date、ticker、pred、score 四欄,
     一列對一個測試股票日、順序和輸入相同,pred 只會是低點 / 非極值 / 高點,score 是有限數字"""
     src, te = fitted
     out = src.predict(te.drop(columns="y"))
@@ -40,8 +44,11 @@ def test_module_source_contract_schema(fitted):
 
 
 def test_module_source_contract_structure(fitted):
-    """Given 任一訊號來源 / When 預測 2024 / Then 判低點的一定是低點候選、判高點的一定是高點候選(高低點不會判反)"""
+    """Given 任一訊號來源 / When 預測 2024 / Then 有規則把關的來源(gated:主軸、規則),判低點的一定是低點候選、
+    判高點的一定是高點候選;拿掉規則的 Stacking 不保證這點,跳過"""
     src, te = fitted
+    if not src.gated:
+        pytest.skip(f"{src.name} 沒有規則把關,判斷不保證落在候選內")
     out = src.predict(te.drop(columns="y"))
     assert te.cand_lo.to_numpy()[out.pred == UP].all() and te.cand_hi.to_numpy()[out.pred == DOWN].all()
 

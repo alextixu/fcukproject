@@ -4,6 +4,7 @@
   RuleSource      規則:t 收盤為近 6 日最低 → 低點、最高 → 高點,其餘非極值(不用訓練)
   MainlineSource  主軸:規則候選 + 高點、低點各一組 AE + OC-SVM(設定同 mainline.py:29 個特徵、
                   量 ÷ 10 日均量、29 → 16、nu 0.1、相似度權重、種子 42)
+  StackingSource  拿掉規則:兩組 AE + OC-SVM 的分數 → 元學習器(在 stacking.py,不在 SOURCES 預設清單)
 新增訊號來源 = 新增一個 SignalSource 子類,並加進 SOURCES。
 
 介面契約(tests/test_backtest.py 對每個實作跑同一組):
@@ -11,6 +12,7 @@
   predict(test)          回傳 DataFrame[date, ticker, pred, score],一列對一個測試股票日,順序同 test;
                          pred ∈ {低點 UP, 非極值 FLAT, 高點 DOWN};score 越大越有把握(只在同類訊號間比大小);
                          不可讀 test 的標籤 y
+  gated                  True = 判高點 / 低點一定落在規則的高點 / 低點候選內(主軸、規則);拿掉規則的來源(Stacking)為 False
 切分:訓練 Y-4 ~ Y-1、測試 Y;測試年第一天前 5 個交易日剔除(它們的標籤會用到 Y 年的價格)。
 """
 from abc import ABC, abstractmethod
@@ -37,6 +39,7 @@ def year_split(panel, year, train_years=TRAIN_YEARS):
 
 class SignalSource(ABC):
     name = "abstract"
+    gated = False
 
     @abstractmethod
     def fit(self, train, feat_cols):
@@ -53,6 +56,7 @@ class SignalSource(ABC):
 
 class RuleSource(SignalSource):
     name = "規則"
+    gated = True
 
     def fit(self, train, feat_cols):
         pass
@@ -63,6 +67,7 @@ class RuleSource(SignalSource):
 
 class MainlineSource(SignalSource):
     name = "主軸"
+    gated = True
 
     def __init__(self, seed=SEED):
         self.seed = seed
