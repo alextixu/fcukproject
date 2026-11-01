@@ -21,7 +21,8 @@ NET = (1 - RULE.sell_fee - RULE.tax) / (1 + RULE.buy_fee)       # 買賣一輪�
 
 
 # ─────────────────────────── Module:SignalSource 契約 ───────────────────────────
-ALL_SOURCES = {**WF.SOURCES, "Stacking": StackingSource}       # 契約測試跑過所有實作;新增實作只要在這裡多一項
+ALL_SOURCES = {**WF.SOURCES, "Stacking": StackingSource,        # 契約測試跑過所有實作;新增實作只要在這裡多一項
+               "Stacking 門檻": lambda: StackingSource("threshold", "score")}
 
 
 @pytest.fixture(scope="module", params=list(ALL_SOURCES), ids=list(ALL_SOURCES))

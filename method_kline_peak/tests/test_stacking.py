@@ -49,14 +49,18 @@ def test_component_split_base_meta(data, abc):
 @pytest.mark.parametrize("learner", list(S.LEARNERS))
 def test_component_meta_learner_three_classes(learner):
     """Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 /
-    Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現,分數是 0 ~ 1 的機率(沒有機率的 SVM 為 0)"""
+    Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1
+    (門檻法是超過門檻的幅度,SVM 為 0)"""
     rng = np.random.default_rng(0)
     n = 900
     y = rng.choice([UP, FLAT, DOWN], size=n, p=[0.2, 0.6, 0.2])
     F = pd.DataFrame({"s_high": rng.normal(0, 1, n) + 3 * (y == DOWN), "s_low": rng.normal(0, 1, n) + 3 * (y == UP)})
-    pred, score = S.MetaLearner(learner, "score").fit(F, y).predict(F)
+    meta = S.MetaLearner(learner, "score").fit(F, y)
+    pred, score = meta.predict(F)
     assert set(np.unique(pred)) == {UP, FLAT, DOWN}
-    assert np.isfinite(score).all() and ((score >= 0) & (score <= 1)).all()
+    assert np.isfinite(score).all()
+    if hasattr(meta.model, "predict_proba") and not hasattr(meta.model, "confidence"):
+        assert ((score >= 0) & (score <= 1)).all()
 
 
 @pytest.mark.parametrize("key", list(BEFORE))

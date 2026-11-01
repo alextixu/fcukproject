@@ -11,8 +11,10 @@
 另列「扣成本前」報酬(同規則、成本設 0),用來分開「訊號好不好」與「成本吃掉多少」
 訓練:每年用前 4 年重新訓練(walkforward.py),同時列出當年的分類指標
 
-用法: python method_kline_peak/backtest_years.py [--years 2020 ... 2026] [--random-reps 20]
-輸出: results/backtest_years.json
+訊號來源(--sources,預設 主軸、規則):主軸、規則、Stacking 邏輯迴歸、Stacking 門檻(後兩者在 stacking.py)。
+每個來源都用前 4 年訓練(Stacking:前 3 年基底層 + 第 4 年元學習器),訓練長度相同。
+用法: python method_kline_peak/backtest_years.py [--years 2020 ... 2026] [--random-reps 20] [--sources ...] [--out 檔名]
+輸出: results/backtest_years.json(或 --out 指定的檔名)
 """
 import argparse
 import json
@@ -26,6 +28,7 @@ import pandas as pd
 
 import mainline as ML
 import walkforward as WF
+import stacking as S
 from feasibility import P, START, END, load_pool, clean
 from learn5_trade6 import UP, DOWN
 from paper_aeocsvm import NAMES
@@ -33,6 +36,12 @@ from confusion import summarize
 
 OUT = os.path.join(ML.OUT, "backtest_years.json")
 NO_COST = dict(buy_fee=0.0, sell_fee=0.0, tax=0.0)
+SOURCE_FACTORIES = {
+    "主軸": WF.MainlineSource,
+    "規則": WF.RuleSource,
+    "Stacking 邏輯迴歸": lambda: S.StackingSource("lr", "score"),
+    "Stacking 門檻": lambda: S.StackingSource("threshold", "score"),
+}
 DAYS_PER_YEAR = 246
 
 
@@ -142,19 +151,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--years", type=int, nargs="+", default=list(WF.YEARS))
     ap.add_argument("--random-reps", type=int, default=20)
+    ap.add_argument("--sources", nargs="+", default=list(WF.SOURCES), choices=list(SOURCE_FACTORIES))
+    ap.add_argument("--out", default=os.path.basename(OUT))
     args = ap.parse_args()
+    out_path = os.path.join(ML.OUT, args.out)
     t0 = time.time()
     data = load_pool(ML.POOL, START, END)
     panel, fc = ML.build_panel(data, 6, [])
     prices = {tk: clean(df)[["open", "close"]] for tk, df in data.items()}
     etf = clean(pd.read_parquet(os.path.join(P.YF_2026_CACHE, "0050.TW.parquet")))[["open", "close"]]
     rule = TradeRule()
-    res = {"rule": asdict(rule), "years": {}}
+    res = {"rule": asdict(rule), "sources": args.sources, "years": {}}
     for y in args.years:
         start, end = f"{y}-01-01", min(f"{y}-12-31", END)
         yr = {"period": [start, end]}
-        for name, cls in WF.SOURCES.items():
-            sig, n_train = WF.run_year(panel, fc, y, cls())
+        for name in args.sources:
+            sig, n_train = WF.run_year(panel, fc, y, SOURCE_FACTORIES[name]())
             cm = summarize(sig.y.to_numpy(), sig.pred.to_numpy(), NAMES)
             buys = sig[sig.pred == UP][["date", "ticker", "score"]]
             sim = simulate(prices, buys, start, end, rule)
@@ -164,29 +176,30 @@ def main():
                         "recall_pct": {k: round(cm["recall"][k] * 100, 1) for k in ("高點", "低點")},
                         "precision_pct": {k: round((cm["precision"][k] or 0) * 100, 1) for k in ("高點", "低點")},
                         "curve": {d.strftime("%Y-%m-%d"): round(v / rule.init_cash * 100 - 100, 2) for d, v in sim["equity"].items()}}
-            if name == "主軸":
-                main_sig = buys
+            if name == args.sources[0]:
+                ref_name, ref_sig = name, buys                          # 隨機對照:每天買的檔數跟第一個來源一樣
         rng = np.random.default_rng(y)
         rand, rand0 = [], []
         for _ in range(args.random_reps):
-            rb = random_buys(main_sig, prices, rng)
+            rb = random_buys(ref_sig, prices, rng)
             rand.append(stats(simulate(prices, rb, start, end, rule)["equity"])["total_return_pct"])
             rand0.append(stats(simulate(prices, rb, start, end, TradeRule(**NO_COST))["equity"])["total_return_pct"])
         yr["隨機"] = {"mean_return_pct": round(float(np.mean(rand)), 2), "sd": round(float(np.std(rand)), 2),
                      "gross_mean_return_pct": round(float(np.mean(rand0)), 2),
-                     "主軸贏過的比例": round(float(np.mean([yr["主軸"]["total_return_pct"] > x for x in rand])), 2)}
+                     "對照來源": ref_name, "對照來源贏過的比例": round(float(np.mean([yr[ref_name]["total_return_pct"] > x for x in rand])), 2)}
         yr["0050 買進持有"] = stats(buy_and_hold({"0050.TW": etf}, start, end, rule))
         yr["TW50 等權買進持有"] = stats(buy_and_hold(prices, start, end, rule))
         res["years"][str(y)] = yr
-        m, r = yr["主軸"], yr["規則"]
-        print(f"{y}  主軸 {m['total_return_pct']:+7.2f}%(回撤 {m['max_dd_pct']:6.2f}%,{m['n_trades']} 筆,勝 {m['win_rate_pct']}%)"
-              f"  規則 {r['total_return_pct']:+7.2f}%  隨機 {yr['隨機']['mean_return_pct']:+7.2f}%"
-              f"  0050 {yr['0050 買進持有']['total_return_pct']:+7.2f}%  TW50 等權 {yr['TW50 等權買進持有']['total_return_pct']:+7.2f}%"
-              f"  | 扣成本前 主軸 {m['gross_return_pct']:+.2f}% 隨機 {yr['隨機']['gross_mean_return_pct']:+.2f}%"
-              f"  | macro-F1 主軸 {m['macro_f1_pct']:.2f} / 規則 {r['macro_f1_pct']:.2f}  ({time.time() - t0:.0f}s)", flush=True)
-    with open(OUT, "w", encoding="utf-8") as f:
+        print(f"{y}({time.time() - t0:.0f}s)  隨機 {yr['隨機']['mean_return_pct']:+.2f}%(扣成本前 {yr['隨機']['gross_mean_return_pct']:+.2f}%)"
+              f"  0050 {yr['0050 買進持有']['total_return_pct']:+.2f}%  TW50 等權 {yr['TW50 等權買進持有']['total_return_pct']:+.2f}%", flush=True)
+        for name in args.sources:
+            m = yr[name]
+            print(f"   {name:<14} 報酬 {m['total_return_pct']:+7.2f}%(扣成本前 {m['gross_return_pct']:+7.2f}%,回撤 {m['max_dd_pct']:6.2f}%,"
+                  f"{m['n_trades']} 筆,勝 {m['win_rate_pct']}%)  macro-F1 {m['macro_f1_pct']:.2f}  找到 高 / 低 {m['recall_pct']['高點']} / {m['recall_pct']['低點']}"
+                  f"  命中 高 / 低 {m['precision_pct']['高點']} / {m['precision_pct']['低點']}", flush=True)
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)
-    print(f"記錄於 {OUT}")
+    print(f"記錄於 {out_path}")
 
 
 if __name__ == "__main__":
