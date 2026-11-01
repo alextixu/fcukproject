@@ -1,6 +1,6 @@
 """Stacking 基底層兩個 OC-SVM 的混淆矩陣(種子 42)。
 
-左上 / 右上:高點、低點 OC-SVM 各自的判斷(範圍內 +1 / 範圍外 −1),依真實標籤分列:同方向的真點、非極值、反方向的真點
+左上 / 右上:高點、低點 OC-SVM 各自的標準 2 × 2 混淆矩陣(真高點 / 不是高點 × 範圍內 +1 / 範圍外 −1)
 左下:兩個 OC-SVM 直接組合成三分類(不接第三個模型;兩個都 +1 時看分數大的)
 右下:接第三個模型(多類別邏輯迴歸,只用兩個分數 = 老師的版本)
 切分:2024 → A 2020–2022、B 2023;2025 → A 2020–2022、B 2023–2024(起點同為 2020)
@@ -33,8 +33,8 @@ LABELS = ["低點", "非極值", "高點"]
 
 
 def binary_table(y, inside, cls):
-    me, other = ("高", "低") if cls == DOWN else ("低", "高")
-    groups = [(f"真{me}點", y == cls), ("非極值", y == FLAT), (f"真{other}點(反方向)", y == (UP if cls == DOWN else DOWN))]
+    me = "高" if cls == DOWN else "低"
+    groups = [(f"真{me}點", y == cls), (f"不是{me}點", y != cls)]
     rows = [[int((inside & g).sum()), int((~inside & g).sum())] for _, g in groups]
     return [n for n, _ in groups], np.array(rows)
 
@@ -76,7 +76,7 @@ def main():
     base = S.BaseScorers(42).fit(A, fc)
     FB, FC = base.transform(B), base.transform(C)
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 11), dpi=170, gridspec_kw={"height_ratios": [3, 3]})
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10), dpi=170, gridspec_kw={"height_ratios": [2, 3]})
     inside = {}
     for ax, cls, col, name in ((axes[0, 0], DOWN, "s_high", "高點"), (axes[0, 1], UP, "s_low", "低點")):
         s = FC[col].to_numpy()
