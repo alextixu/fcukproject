@@ -4,8 +4,10 @@
 下排:拿掉規則(老師的版本:只用兩個 OC-SVM 的分數)
   2024:資料 results/main_test2024.json、results/stacking_2024.json
   2025:資料 results/stacking_2025_A2020-2022_B2023-2024.json(含主軸對照)、results/stacking_2025_A2020-2023_B2024-2024.json
-用法: python method_kline_peak/report/confusion_compare.py [--year 2024 | 2025]
-輸出: results/confusion_<年>_stacking.png
+--methods:三個方法並排(列 = 2024、2025;欄 = 規則、主軸、Stacking 邏輯迴歸、Stacking 門檻),訓練都是前 4 年
+  資料 results/stacking_2024.json、results/stacking_2025_A2021-2023_B2024-2024.json
+用法: python method_kline_peak/report/confusion_compare.py [--year 2024 | 2025] [--methods]
+輸出: results/confusion_<年>_stacking.png;--methods → results/confusion_methods_2024_2025.png
 """
 import argparse
 import json
@@ -91,10 +93,36 @@ def panel(ax, title, cm):
         s.set_visible(False)
 
 
+def methods_figure():
+    files = {2024: "stacking_2024.json", 2025: "stacking_2025_A2021-2023_B2024-2024.json"}
+    train = {2024: ("2020–2023", "A 2020–2022、B 2023"), 2025: ("2021–2024", "A 2021–2023、B 2024")}
+    fig, axes = plt.subplots(2, 4, figsize=(21, 10.6), dpi=160)
+    for r, (year, f) in enumerate(files.items()):
+        st = _json(f)
+        run = lambda k: st["runs"][k]["42"][KEY]
+        items = [("規則(不用訓練)", st["rule"][KEY]),
+                 (f"① 主軸(訓練 {train[year][0]})", st["mainline"]["42"][KEY]),
+                 (f"② Stacking 邏輯迴歸({train[year][1]})", run("score|lr")),
+                 (f"③ Stacking 門檻({train[year][1]})", run("score|threshold"))]
+        for ax, (title, cm) in zip(axes[r], items):
+            panel(ax, title, cm)
+        fig.text(0.005, 0.74 - r * 0.47, f"測試 {year}", rotation=90, va="center", fontsize=14, color=INK, fontweight="bold")
+    fig.suptitle("三個方法的混淆矩陣(種子 42;每個方法都用前 4 年訓練;顏色 = 每列比例)", fontsize=15, color=INK, x=0.02, ha="left", y=0.995)
+    fig.text(0.02, 0.004, "列 = 真實標籤、欄 = 判斷;橘框 = 高低點判反。測試 2024 共 12,098 天、2025 共 12,089 天。", fontsize=10.5, color=MUTED)
+    fig.tight_layout(rect=(0.015, 0.02, 1, 0.97), h_pad=3.0, w_pad=2.2)
+    out = os.path.join(RES, "confusion_methods_2024_2025.png")
+    fig.savefig(out, facecolor="white")
+    print(out)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--year", type=int, default=2024, choices=[2024, 2025])
-    year = ap.parse_args().year
+    ap.add_argument("--methods", action="store_true")
+    a = ap.parse_args()
+    if a.methods:
+        return methods_figure()
+    year = a.year
     items, n_days, note = {2024: load_2024, 2025: load_2025}[year]()
     fig, axes = plt.subplots(2, 3, figsize=(15, 10.4), dpi=170)
     for ax, (title, cm) in zip(axes.ravel(), items):
