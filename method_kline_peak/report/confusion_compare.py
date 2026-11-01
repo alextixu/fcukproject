@@ -1,11 +1,13 @@
-"""2024 測試期的混淆矩陣:規則、主軸、Stacking(拿掉規則)各版本並排(種子 42)。
+"""測試期的混淆矩陣:規則、主軸、Stacking(拿掉規則)各版本並排(種子 42)。
 
 上排:有規則的資訊(規則本身、主軸、Stacking + 位置特徵)
-下排:拿掉規則(老師的版本:只用兩個 OC-SVM 的分數,換不同元學習器)
-資料:results/main_test2024.json(主軸)、results/stacking_2024.json(規則與 Stacking)
-用法: python method_kline_peak/report/confusion_compare.py
-輸出: results/confusion_2024_stacking.png
+下排:拿掉規則(老師的版本:只用兩個 OC-SVM 的分數)
+  2024:資料 results/main_test2024.json、results/stacking_2024.json
+  2025:資料 results/stacking_2025_A2020-2022_B2023-2024.json(含主軸對照)、results/stacking_2025_A2020-2023_B2024-2024.json
+用法: python method_kline_peak/report/confusion_compare.py [--year 2024 | 2025]
+輸出: results/confusion_<年>_stacking.png
 """
+import argparse
 import json
 import os
 
@@ -25,11 +27,15 @@ plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
 plt.rcParams["axes.unicode_minus"] = False
 
 
-def load():
-    main = json.load(open(os.path.join(RES, "main_test2024.json"), encoding="utf-8"))["results"]["測試 2024"]["seed0_main"]
-    st = json.load(open(os.path.join(RES, "stacking_2024.json"), encoding="utf-8"))
+def _json(name):
+    return json.load(open(os.path.join(RES, name), encoding="utf-8"))
+
+
+def load_2024():
+    main = _json("main_test2024.json")["results"]["測試 2024"]["seed0_main"]
+    st = _json("stacking_2024.json")
     run = lambda k: st["runs"][k]["42"][KEY]
-    return [
+    panels = [
         ("規則(不用訓練)", st["rule"][KEY]),
         ("主軸:規則 + 兩個 OC-SVM", main[KEY]),
         ("Stacking:分數 + 位置特徵 → 邏輯迴歸 L1", run("score+pos|lr-l1")),
@@ -37,6 +43,22 @@ def load():
         ("Stacking:分數 → 邏輯迴歸 L1", run("score|lr-l1")),
         ("Stacking:分數 + 重建誤差 → 多項式 2 次", run("score+recon|lr-poly2")),
     ]
+    return panels, 12098, "訓練 2020–2023;Stacking 的基底層用 2020–2022、元學習器用 2023。"
+
+
+def load_2025():
+    b2 = _json("stacking_2025_A2020-2022_B2023-2024.json")
+    b1 = _json("stacking_2025_A2020-2023_B2024-2024.json")
+    run = lambda st, k: st["runs"][k]["42"][KEY]
+    panels = [
+        ("規則(不用訓練)", b2["rule"][KEY]),
+        ("主軸:規則 + 兩個 OC-SVM(訓練 2020–2024)", b2["mainline"]["42"][KEY]),
+        ("Stacking:分數 + 位置特徵 → 梯度提升樹(B 2023–24)", run(b2, "score+pos|hgb")),
+        ("Stacking:分數 → 邏輯迴歸(老師的版本,B 2023–24)", run(b2, "score|lr")),
+        ("Stacking:分數 → 邏輯迴歸(B 只有 2024)", run(b1, "score|lr")),
+        ("Stacking:分數 → SVM(B 2023–24)", run(b2, "score|svm")),
+    ]
+    return panels, 12089, "Stacking:基底層 A 2020–2022、元學習器 B 2023–2024;對照組 A 2020–2023、B 2024。"
 
 
 def metrics(cm):
@@ -70,17 +92,19 @@ def panel(ax, title, cm):
 
 
 def main():
-    items = load()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--year", type=int, default=2024, choices=[2024, 2025])
+    year = ap.parse_args().year
+    items, n_days, note = {2024: load_2024, 2025: load_2025}[year]()
     fig, axes = plt.subplots(2, 3, figsize=(15, 10.4), dpi=170)
     for ax, (title, cm) in zip(axes.ravel(), items):
         panel(ax, title, cm)
     fig.text(0.01, 0.73, "有規則的資訊", rotation=90, va="center", fontsize=13, color=INK, fontweight="bold")
     fig.text(0.01, 0.29, "拿掉規則", rotation=90, va="center", fontsize=13, color=INK, fontweight="bold")
-    fig.suptitle("2024 測試期混淆矩陣(12,098 個股票日,種子 42;顏色 = 每列比例)", fontsize=14, color=INK, x=0.03, ha="left", y=0.995)
-    fig.text(0.03, 0.005, "列 = 真實標籤、欄 = 判斷;橘框 = 高低點判反。訓練 2020–2023;Stacking 的基底層用 2020–2022、元學習器用 2023。",
-             fontsize=10, color=MUTED)
+    fig.suptitle(f"{year} 測試期混淆矩陣({n_days:,} 個股票日,種子 42;顏色 = 每列比例)", fontsize=14, color=INK, x=0.03, ha="left", y=0.995)
+    fig.text(0.03, 0.005, f"列 = 真實標籤、欄 = 判斷;橘框 = 高低點判反。{note}", fontsize=10, color=MUTED)
     fig.tight_layout(rect=(0.025, 0.02, 1, 0.97), h_pad=3.0, w_pad=2.5)
-    out = os.path.join(RES, "confusion_2024_stacking.png")
+    out = os.path.join(RES, f"confusion_{year}_stacking.png")
     fig.savefig(out, facecolor="white")
     print(out)
 
