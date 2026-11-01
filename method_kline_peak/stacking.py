@@ -31,9 +31,11 @@
 線性回歸、Ridge / Lasso / Elastic Net 回歸、多項式回歸輸出連續數字,不是三分類,所以只取它們的正則化與多項式特徵,
 放進多類別邏輯迴歸。
 
-對照:規則基準、先驗隨機。
-用法: python method_kline_peak/stacking.py [--seeds 42 43 44]
-輸出: results/stacking_2024.json,並在 results/experiments.csv 追加 mode = stack 的列
+對照:規則基準、主軸(同一段訓練期,規則 + 兩個 OC-SVM)、先驗隨機。
+用法: python method_kline_peak/stacking.py [--seeds 42 43 44] [--test-year 2024] [--train-years 4] [--meta-years 1]
+      例:測試 2025、訓練 2020–2024、B = 2023–2024 → --test-year 2025 --train-years 5 --meta-years 2
+輸出: results/stacking_2024.json(預設設定)或 results/stacking_<測試年>_A<起>-<迄>_B<起>-<迄>.json,
+      並在 results/experiments.csv 追加 mode = stack 的列
 """
 import argparse
 import json
@@ -64,6 +66,7 @@ from confusion import summarize  # noqa: E402
 
 OUT = os.path.join(ML.OUT, "stacking_2024.json")
 TEST_YEAR, HALF, NU, SEED = 2024, 5, 0.1, 42
+DEFAULT = (TEST_YEAR, WF.TRAIN_YEARS, 1)          # 預設:測試 2024、訓練 4 年、B 1 年 → 寫回 stacking_2024.json
 INPUTS = {
     "score": ["s_high", "s_low"],
     "score+recon": ["s_high", "s_low", "e_high", "e_low"],
@@ -217,12 +220,19 @@ def extra(y, pred, te):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
+    ap.add_argument("--test-year", type=int, default=TEST_YEAR)
+    ap.add_argument("--train-years", type=int, default=WF.TRAIN_YEARS)
+    ap.add_argument("--meta-years", type=int, default=1)
     args = ap.parse_args()
     t0 = time.time()
     panel, fc = ML.build_panel(load_pool(ML.POOL, START, END), 6, [])
-    d = WF.year_split(panel, TEST_YEAR)
-    A, B = split_base_meta(d["train"])
+    d = WF.year_split(panel, args.test_year, args.train_years)
+    A, B = split_base_meta(d["train"], args.meta_years)
     C = d["test"]
+    yA, yB = (A.date.dt.year.min(), A.date.dt.year.max()), (B.date.dt.year.min(), B.date.dt.year.max())
+    split_tag = f"測試 {args.test_year}(A {yA[0]}–{yA[1]} / B {yB[0]}–{yB[1]})"
+    out_path = OUT if (args.test_year, args.train_years, args.meta_years) == DEFAULT else \
+        os.path.join(ML.OUT, f"stacking_{args.test_year}_A{yA[0]}-{yA[1]}_B{yB[0]}-{yB[1]}.json")
     yb, yc = B["y"].to_numpy(), C["y"].to_numpy()
     print(f"A {len(A):,}(真高 {(A.y == DOWN).sum():,}、真低 {(A.y == UP).sum():,})/ B {len(B):,} / C {len(C):,}  ({time.time() - t0:.0f}s)", flush=True)
 
@@ -233,6 +243,12 @@ def main():
     rng = np.random.default_rng(0)
     rand = rng.choice([UP, FLAT, DOWN], size=len(yc), p=[(yb == c).mean() for c in (UP, FLAT, DOWN)])
     res["prior_random"] = summarize(yc, rand, NAMES)
+    res["mainline"] = {}                                                # 對照:主軸用整段訓練期(A + B)
+    for seed in args.seeds:
+        src = WF.MainlineSource(seed)
+        src.fit(d["train"], fc)
+        res["mainline"][seed] = summarize(yc, src.predict(C.drop(columns="y")).pred.to_numpy(), NAMES)
+    print(f"主軸(訓練 {d['train'].date.dt.year.min()}–{d['train'].date.dt.year.max()},{len(d['train']):,} 筆)完成  ({time.time() - t0:.0f}s)", flush=True)
     for seed in args.seeds:
         base = BaseScorers(seed).fit(A, fc)
         FB, FC = base.transform(B), base.transform(C)
@@ -254,7 +270,11 @@ def main():
         print(f"  種子 {seed} 完成  ({time.time() - t0:.0f}s)", flush=True)
 
     rule = res["rule"]
-    print(f"\n測試 2024({len(C):,} 天):規則 macro-F1 {rule['macro_f1']:.2%};先驗隨機 {res['prior_random']['macro_f1']:.2%}")
+    mm = [r["macro_f1"] for r in res["mainline"].values()]
+    m0 = res["mainline"][args.seeds[0]]
+    print(f"\n{split_tag},{len(C):,} 天:規則 macro-F1 {rule['macro_f1']:.2%};先驗隨機 {res['prior_random']['macro_f1']:.2%};"
+          f"主軸 {np.mean(mm):.2%} ± {np.std(mm):.2%}(種子 {args.seeds[0]}:找到 高 {m0['recall']['高點']:.1%} / 低 {m0['recall']['低點']:.1%},"
+          f"命中 高 {m0['precision']['高點']:.1%} / 低 {m0['precision']['低點']:.1%})")
     print(f"{'輸入|元學習器':<22}{'macro-F1(3 種子)':>18}{'找到 高/低':>14}{'命中 高/低':>14}{'判非極值正確':>10}{'判反':>6}{'判高在規則候選內':>14}")
     summary = {}
     for key, runs in res["runs"].items():
@@ -266,7 +286,7 @@ def main():
               f"{(r0['precision']['高點'] or 0) * 100:>8.1f}/{(r0['precision']['低點'] or 0) * 100:.1f}%"
               f"{(r0['precision']['非極值'] or 0) * 100:>9.1f}%{r0['cross_errors']:>6}"
               f"{(r0['pred_high_in_rule_cand'] or 0) * 100:>12.1f}%")
-        ML.write_log({"time": time.strftime("%Y-%m-%d %H:%M"), "tag": f"stack-{key}", "split": "測試 2024(A 2020–22 / B 2023)",
+        ML.write_log({"time": time.strftime("%Y-%m-%d %H:%M"), "tag": f"stack-{key}", "split": split_tag,
                       "mode": "stack", "window": 6, "vol_ma": ML.VOL_MA, "arch": ML.ARCH, "latent": ML.LATENT, "nu": NU,
                       "seeds": len(args.seeds), "rule_macro_f1": round(rule["macro_f1"] * 100, 2),
                       "model_macro_f1": round(np.mean(mf) * 100, 2), "model_sd": round(np.std(mf) * 100, 2),
@@ -274,9 +294,11 @@ def main():
                       "acc": round(r0["acc"] * 100, 2), "bal_acc": round(r0["bal_acc"] * 100, 2),
                       "prec_high": round((r0["precision"]["高點"] or 0) * 100, 2), "prec_low": round((r0["precision"]["低點"] or 0) * 100, 2)})
     res["summary"] = summary
-    with open(OUT, "w", encoding="utf-8") as f:
+    res["mainline_summary"] = {"macro_f1_mean": float(np.mean(mm)), "macro_f1_sd": float(np.std(mm)),
+                               "train": [str(d["train"].date.min().date()), str(d["train"].date.max().date())], "n_train": len(d["train"])}
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1, default=str)
-    print(f"\n記錄於 {OUT}  ({time.time() - t0:.0f}s)")
+    print(f"\n記錄於 {out_path}  ({time.time() - t0:.0f}s)")
 
 
 if __name__ == "__main__":
