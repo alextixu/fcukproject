@@ -150,6 +150,46 @@ def test_module_engine_too_expensive_skip():
     assert out["trades"].empty and out["skipped"]["錢不夠一股"] == 1
 
 
+# 遇到低點買、遇到判高點賣(2026-11-02 使用者要求):沒有最長持有,高點訊號隔天開盤賣
+HX = TradeRule(slots=3, hold=None, exit_on_high=True)
+
+
+def test_module_engine_exit_on_high_next_open():
+    """Given A 股第 0 天判低點、第 3 天判高點,開盤價每天 100、101、…  / When 用「判高點才賣、沒有最長持有」回測 /
+    Then 第 1 天開盤(101)買,第 4 天開盤(104)賣,出場方式是高點出場,報酬 = 104 / 101 × 扣成本 − 1"""
+    p = {"A": px([100 + k for k in range(12)], [100.5 + k for k in range(12)])}
+    out = simulate(p, buys((0, "A", 1.0)), DAYS[0], DAYS[11], HX, sells=buys((3, "A", 1.0)))
+    tr = out["trades"]
+    assert len(tr) == 1 and tr.entry[0] == DAYS[1] and tr.exit[0] == DAYS[4] and tr.how[0] == "高點出場"
+    assert tr.buy_px[0] == 101 and tr.sell_px[0] == 104 and tr.net_ret[0] == pytest.approx(104 / 101 * NET - 1)
+
+
+def test_module_engine_no_high_holds_to_year_end():
+    """Given 買進後一直沒有判高點 / When 用「判高點才賣、沒有最長持有」回測 / Then 持有到期末最後一天收盤才賣(出場方式 = 期末),
+    不會在第 5 天賣"""
+    p = {"A": px([100] * 12)}
+    out = simulate(p, buys((0, "A", 1.0)), DAYS[0], DAYS[11], HX, sells=buys())
+    tr = out["trades"]
+    assert len(tr) == 1 and tr.exit[0] == DAYS[11] and tr.how[0] == "期末"
+
+
+def test_module_engine_high_before_entry_ignored():
+    """Given A 股第 0 天判高點、第 1 天判低點(第 2 天開盤才買進) / When 回測 / Then 買進前的高點訊號不會讓它賣掉,持有到期末"""
+    p = {"A": px([100] * 12)}
+    out = simulate(p, buys((1, "A", 1.0)), DAYS[0], DAYS[11], HX, sells=buys((0, "A", 1.0)))
+    tr = out["trades"]
+    assert len(tr) == 1 and tr.entry[0] == DAYS[2] and tr.how[0] == "期末"
+
+
+def test_module_engine_sells_ignored_by_default():
+    """Given 預設規則(持有 5 天、不看高點)但傳入高點訊號 / When 回測 / Then 結果和沒傳高點訊號完全相同"""
+    p = {"A": px([100 + k for k in range(12)])}
+    a = simulate(p, buys((0, "A", 1.0)), DAYS[0], DAYS[11], RULE, sells=buys((2, "A", 1.0)))
+    b = simulate(p, buys((0, "A", 1.0)), DAYS[0], DAYS[11], RULE)
+    pd.testing.assert_series_equal(a["equity"], b["equity"])
+    assert list(a["trades"].how) == ["到期"]
+
+
 # 做多前 3 檔 + 做空前 3 檔(2026-11-02 使用者要求)
 LS = TradeRule(slots=3, short_slots=3)
 

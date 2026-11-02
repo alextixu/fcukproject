@@ -68,22 +68,17 @@ macro-F1(找到 高 / 低,命中 高 / 低,%):
 | ② Stacking 邏輯迴歸,門檻 0% | 48.54(找到 47 / 56,命中 24 / 23) | 49.43(找到 35 / 45,命中 25 / 28) | 49.45(找到 41 / 51,命中 21 / 30) |
 | ② Stacking 邏輯迴歸,門檻 8% | 38.79(找到 7 / 9,命中 32 / 28) | 40.61(找到 11 / 10,命中 27 / 32) | 45.13(找到 25 / 22,命中 20 / 31) |
 
-### 改善方法 A–E,只測 2025(`fixes_2025.py`;2026-11-02 使用者要求)
+### 判低點買、判高點賣:只交易瑞昱 2025(`lohi_single.py`;2026-11-02 使用者要求)
 
-34 檔、訓練 2021–2024、訓練門檻 0%;只做多前 3 檔;混淆矩陣對原本的標籤(圖 `results/fixes_2025_confusion.png`)。
-A 判低點那天要收紅 K;B 連續判低點只留最後一天 k,第 k+2 天開盤買;C 收盤 > 60 日均線;
-D 加 ctx 15 + mkt 5 個特徵(共 49 個)重新訓練;E 另訓練 t+1 開盤 → t+5 收盤報酬的迴歸,預測 > 成本才買、用預測報酬排序。
+模型同目前設定(34 檔一起訓練、訓練門檻 0%、訓練 2021–2024),只取 2379 瑞昱的判斷交易:沒持有時判低點 → 隔天開盤全部資金買進;
+持有中判高點 → 隔天開盤全部賣出;沒有最長持有,年底結清;成本 0.585%。引擎:`simulate(..., TradeRule(slots=1, hold=None, exit_on_high=True), sells=高點訊號)`。
 
-| 方法 | 原本 | A 止跌確認 | B 等訊號停下來 | C 趨勢過濾 | D 加長期特徵 | E 預測報酬 |
+| 方法 | 扣成本 | 沒扣成本 | 筆數 | 勝率 | 最大回撤 | 判低點 / 判高點天數 |
 |---|---|---|---|---|---|---|
-| ① 主軸 扣成本(沒扣) | -34.9%(-14.5%) | -14.9%(-2.5%) | -26.1%(-4.0%) | **-11.6%(+11.9%)** | -41.5%(-24.5%) | -0.1%(+0.3%) |
-| ① 主軸 筆數 / macro-F1 | 140 / 53.14 | 70 / 44.85 | 134 / 62.76 | 121 / 50.70 | 131 / 52.49 | 2 / 41.44 |
-| ② Stacking 扣成本(沒扣) | -11.9%(+13.9%) | **+4.6%(+14.2%)** | -16.3%(+7.5%) | -17.6%(-0.3%) | -10.8%(+11.8%) | +7.1%(+10.3%) |
-| ② Stacking 筆數 / macro-F1 | 132 / 49.43 | 45 / 40.52 | 128 / 53.04 | 98 / 45.70 | 116 / 47.60 | 15 / 39.27 |
+| ① 主軸 | -11.6% | -1.8% | 18 | 44.4% | -19.7% | 54 / 58 |
+| ② Stacking 邏輯迴歸 | -10.7% | -6.9% | 7 | 14.3% | -20.9% | 27 / 18 |
 
-- B 的 macro-F1 變高是因為「每段最後一天」要看到下一天才知道(交易在第 k+2 天才進場),不能和其他欄直接比。
-- E 預測的報酬很少超過成本:主軸整年只有 2 筆、Stacking 15 筆,幾乎沒交易,結果沒有代表性。
-- 只看 2025 一年、每種只試一組參數,沒有驗證期。結果:`results/fixes_2025.json`。
+每筆交易:`results/lohi_2379_2025.json`;圖:`results/lohi_2379_2025.png`。
 
 ### 做法 2:每邊至少 3 天對方向訓練(`--train-min-side 3`;2026-11-02 使用者要求)
 
@@ -683,7 +678,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 79 項(約 1 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 83 項(約 1 分鐘),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/backtest_top3.py                    # 只做多前 3 檔,兩個方法 × 2024–2026(約 1 分鐘;--short-slots 3 加做空)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)
@@ -714,7 +709,7 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | `report/one_window.py` | 單一天的 11 天 K 線,標出每天收盤漲跌與是否對方向(`python report/one_window.py 2379.TW 2023-05-29`) |
 | `report/equity_curves.py` | backtest_top3 結果檔的資產曲線(方法 × 年;實線扣成本、虛線沒扣成本) |
 | `report/stock_outputs.py` | 一檔股票一整年每天的模型輸出(真實標籤、主軸與 Stacking 的判斷、前 3 檔回測裡的買進;圖 + 每天一列的 csv) |
-| `fixes_2025.py` | 改善方法 A–E(止跌確認、等訊號停下來、趨勢過濾、加長期特徵、預測報酬),兩個方法 × 2025,回測與混淆矩陣 |
+| `lohi_single.py` | 單一股票「判低點買、判高點賣」回測:兩個方法 × 一年,每筆交易、資產曲線(`python lohi_single.py 2379.TW 2025`) |
 | `report/confusion_2024_2026.py` | 2024–2026 混淆矩陣:規則、主軸、Stacking 邏輯迴歸,訓練門檻 0% 與 `--amp`(預設 8%) |
 | `amp_sweep.py` | 訓練門檻每次 +1%:6 個平均沒提升就停(預設),或 `--grid` 每個方法跑到訓練點不夠為止(圖 + json) |
 | `amp_train_eval.py` | 用幅度門檻訓練(`--min-amp`,預設 3%)、用原本的標籤對答案,兩個方法 × 2024–2026,對照 0% |

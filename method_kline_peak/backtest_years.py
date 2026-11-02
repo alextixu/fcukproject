@@ -46,7 +46,8 @@ DAYS_PER_YEAR = 246
 
 @dataclass(frozen=True)
 class TradeRule:
-    hold: int = 5                 # t+1 開盤進場 → t+hold 收盤出場
+    hold: int = 5                 # t+1 開盤進場 → t+hold 收盤出場;None = 沒有最長持有(到期末為止)
+    exit_on_high: bool = False    # True:持有中該股出現高點訊號(sells,t 日收盤)→ t+1 開盤賣(只對做多)
     slots: int = 10               # 做多(低點訊號)最多同時幾檔
     short_slots: int = 0          # 做空(高點訊號)最多同時幾檔;0 = 不做空。每檔資金 = 前一天總資產 / (slots + short_slots)
     init_cash: float = 1_000_000.0
@@ -55,12 +56,14 @@ class TradeRule:
     tax: float = 0.003
 
 
-def simulate(prices, buys, start, end, rule=TradeRule(), seed=0, shorts=None):
+def simulate(prices, buys, start, end, rule=TradeRule(), seed=0, shorts=None, sells=None):
     """prices: {ticker: DataFrame[open, close]};buys / shorts: DataFrame[date(訊號日 t), ticker, score]。
     shorts(高點訊號)只在 rule.short_slots > 0 時使用:t+1 開盤放空、t+hold 收盤回補;
     放空時付賣出手續費 + 證交稅、回補時付買進手續費,保證金 = 股數 × 放空價(不加槓桿,不計借券費)。
     同一檔股票同時只會有一個部位(做多或做空)。
-    回傳 {"equity": 每日收盤總資產 Series, "trades": 成交明細(side = 做多 / 做空), "skipped": 放棄原因計數}。"""
+    sells(高點訊號)只在 rule.exit_on_high 時使用:做多持有中該股 t 日收盤判高點 → t+1 開盤賣。
+    回傳 {"equity": 每日收盤總資產 Series, "trades": 成交明細(side = 做多 / 做空;how = 到期 / 高點出場 / 期末),
+          "skipped": 放棄原因計數}。"""
     start, end = pd.Timestamp(start), pd.Timestamp(end)
     cal = sorted({d for df in prices.values() for d in df.index if start <= d <= end})
     if not cal:
@@ -76,8 +79,15 @@ def simulate(prices, buys, start, end, rule=TradeRule(), seed=0, shorts=None):
             if i + 1 >= len(idx) or idx[i] != r.date or idx[i + 1] > last_day:
                 skipped["跨到下一年"] += 1
                 continue
-            exit_d = idx[min(i + rule.hold, len(idx) - 1)]
+            exit_d = last_day if rule.hold is None else idx[min(i + rule.hold, len(idx) - 1)]
             orders.setdefault((idx[i + 1], side), []).append((r.score, rng.random(), r.ticker, r.date, min(exit_d, last_day)))
+    early = set()                                             # (股票, 高點訊號的下一個交易日) → 該天開盤賣
+    if rule.exit_on_high and sells is not None:
+        for r in sells.itertuples(index=False):
+            idx = prices[r.ticker].index
+            i = idx.searchsorted(r.date)
+            if i + 1 < len(idx) and idx[i] == r.date:
+                early.add((r.ticker, idx[i + 1]))
     cap = {"做多": rule.slots, "做空": rule.short_slots}
     per_slot = rule.slots + rule.short_slots
 
@@ -88,6 +98,18 @@ def simulate(prices, buys, start, end, rule=TradeRule(), seed=0, shorts=None):
         sub = df.loc[start:end]
         for d, o, c in zip(sub.index, sub["open"].to_numpy(), sub["close"].to_numpy()):
             by_day.setdefault(d, {})[tk] = {"open": o, "close": c}
+    def close_out(tk, d, px, how):
+        nonlocal cash
+        h = held.pop(tk)
+        if h["side"] == "做多":
+            proceeds = h["shares"] * px * (1 - rule.sell_fee - rule.tax)
+        else:
+            proceeds = h["cost"] + h["shares"] * (h["buy_px"] * (1 - rule.sell_fee - rule.tax) - px * (1 + rule.buy_fee))
+        cash += proceeds
+        trades.append({"ticker": tk, "signal": h["signal"], "entry": h["entry"], "exit": d, "shares": h["shares"],
+                       "buy_px": h["buy_px"], "sell_px": px, "net_ret": proceeds / h["cost"] - 1, "pnl": proceeds - h["cost"],
+                       "side": h["side"], "how": how})
+
     def value(tk, h):                                         # 收盤市值:做多 = 股數 × 收盤;做空 = 保證金 + 放空淨收入 − 股數 × 收盤
         if h["side"] == "做多":
             return h["shares"] * last_close[tk]
@@ -95,6 +117,8 @@ def simulate(prices, buys, start, end, rule=TradeRule(), seed=0, shorts=None):
 
     for d in cal:
         today = by_day[d]
+        for tk in [k for k, h in held.items() if h["side"] == "做多" and (k, d) in early and h["entry"] < d and k in today]:
+            close_out(tk, d, today[tk]["open"], "高點出場")                                     # 開盤:高點訊號出場
         for side in ("做多", "做空"):                          # 開盤:先做多、再做空,各自照 score 由高到低
             for score, _, tk, t, exit_d in sorted(orders.get((d, side), []), key=lambda o: (-o[0], o[1])):
                 o = today[tk]["open"]
@@ -114,17 +138,8 @@ def simulate(prices, buys, start, end, rule=TradeRule(), seed=0, shorts=None):
                 held[tk] = {"shares": sh, "cost": cost, "entry": d, "signal": t, "exit": exit_d, "buy_px": o, "side": side}
         for tk, c in today.items():
             last_close[tk] = c["close"]
-        for tk in [k for k, h in held.items() if h["exit"] == d or d == last_day]:                # 收盤:出場
-            h = held.pop(tk)
-            px = last_close[tk]
-            if h["side"] == "做多":
-                proceeds = h["shares"] * px * (1 - rule.sell_fee - rule.tax)
-            else:
-                proceeds = h["cost"] + h["shares"] * (h["buy_px"] * (1 - rule.sell_fee - rule.tax) - px * (1 + rule.buy_fee))
-            cash += proceeds
-            trades.append({"ticker": tk, "signal": h["signal"], "entry": h["entry"], "exit": d, "shares": h["shares"],
-                           "buy_px": h["buy_px"], "sell_px": px, "net_ret": proceeds / h["cost"] - 1, "pnl": proceeds - h["cost"],
-                           "side": h["side"]})
+        for tk in [k for k, h in held.items() if h["exit"] == d or d == last_day]:                # 收盤:到期或期末
+            close_out(tk, d, last_close[tk], "期末" if d == last_day else "到期")
         prev_equity = cash + sum(value(tk, h) for tk, h in held.items())
         equity[d] = prev_equity
     return {"equity": pd.Series(equity), "trades": pd.DataFrame(trades), "skipped": skipped}
