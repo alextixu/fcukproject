@@ -1,0 +1,246 @@
+{
+ "period": [
+  "2016-02-01",
+  "2026-09-03"
+ ],
+ "cost_pct": 0.584,
+ "sigma_median_pct": 1.25,
+ "低點": {
+  "n": 9989,
+  "all": {
+   "net_mean_pct": 2.21,
+   "win_pct": 78.4
+  },
+  "≥ 1%": {
+   "kept_pct": 84.8,
+   "kept_n": 8473,
+   "kept_net_mean_pct": 2.53,
+   "kept_win_pct": 83.4,
+   "dropped_net_mean_pct": 0.42,
+   "dropped_win_pct": 50.9
+  },
+  "≥ 1.5%": {
+   "kept_pct": 69.7,
+   "kept_n": 6963,
+   "kept_net_mean_pct": 2.89,
+   "kept_win_pct": 86.4,
+   "dropped_net_mean_pct": 0.64,
+   "dropped_win_pct": 60.0
+  },
+  "≥ 2%": {
+   "kept_pct": 55.8,
+   "kept_n": 5570,
+   "kept_net_mean_pct": 3.29,
+   "kept_win_pct": 88.7,
+   "dropped_net_mean_pct": 0.85,
+   "dropped_win_pct": 65.6
+  },
+  "≥ 3%": {
+   "kept_pct": 33.7,
+   "kept_n": 3363,
+   "kept_net_mean_pct": 4.18,
+   "kept_win_pct": 91.2,
+   "dropped_net_mean_pct": 1.21,
+   "dropped_win_pct": 72.0
+  },
+  "≥ 5%": {
+   "kept_pct": 12.5,
+   "kept_n": 1247,
+   "kept_net_mean_pct": 6.32,
+   "kept_win_pct": 93.9,
+   "dropped_net_mean_pct": 1.62,
+   "dropped_win_pct": 76.2
+  },
+  "≥ 0.5σ": {
+   "kept_pct": 98.4,
+   "kept_n": 9832,
+   "kept_net_mean_pct": 2.23,
+   "kept_win_pct": 79.0,
+   "dropped_net_mean_pct": 0.87,
+   "dropped_win_pct": 45.2
+  },
+  "≥ 1σ": {
+   "kept_pct": 85.8,
+   "kept_n": 8572,
+   "kept_net_mean_pct": 2.39,
+   "kept_win_pct": 81.9,
+   "dropped_net_mean_pct": 1.1,
+   "dropped_win_pct": 57.4
+  },
+  "≥ 1.5σ": {
+   "kept_pct": 64.3,
+   "kept_n": 6420,
+   "kept_net_mean_pct": 2.73,
+   "kept_win_pct": 85.7,
+   "dropped_net_mean_pct": 1.27,
+   "dropped_win_pct": 65.3
+  },
+  "≥ 2σ": {
+   "kept_pct": 40.5,
+   "kept_n": 4050,
+   "kept_net_mean_pct": 3.24,
+   "kept_win_pct": 89.6,
+   "dropped_net_mean_pct": 1.51,
+   "dropped_win_pct": 70.8
+  },
+  "≥ 3σ": {
+   "kept_pct": 13.2,
+   "kept_n": 1317,
+   "kept_net_mean_pct": 4.39,
+   "kept_win_pct": 94.5,
+   "dropped_net_mean_pct": 1.88,
+   "dropped_win_pct": 76.0
+  },
+  "by_amp_bin": {
+   "< 1%": {
+    "n": 1516,
+    "net_mean_pct": 0.42,
+    "win_pct": 50.9
+   },
+   "1–1.5%": {
+    "n": 1510,
+    "net_mean_pct": 0.86,
+    "win_pct": 69.3
+   },
+   "1.5–2%": {
+    "n": 1393,
+    "net_mean_pct": 1.3,
+    "win_pct": 77.5
+   },
+   "2–3%": {
+    "n": 2207,
+    "net_mean_pct": 1.93,
+    "win_pct": 84.8
+   },
+   "3–5%": {
+    "n": 2116,
+    "net_mean_pct": 2.92,
+    "win_pct": 89.6
+   },
+   "≥ 5%": {
+    "n": 1247,
+    "net_mean_pct": 6.32,
+    "win_pct": 93.9
+   }
+  }
+ },
+ "高點": {
+  "n": 10196,
+  "all": {
+   "net_mean_pct": 1.87,
+   "win_pct": 75.9
+  },
+  "≥ 1%": {
+   "kept_pct": 84.2,
+   "kept_n": 8589,
+   "kept_net_mean_pct": 2.18,
+   "kept_win_pct": 82.2,
+   "dropped_net_mean_pct": 0.2,
+   "dropped_win_pct": 42.4
+  },
+  "≥ 1.5%": {
+   "kept_pct": 69.0,
+   "kept_n": 7035,
+   "kept_net_mean_pct": 2.53,
+   "kept_win_pct": 85.7,
+   "dropped_net_mean_pct": 0.41,
+   "dropped_win_pct": 54.2
+  },
+  "≥ 2%": {
+   "kept_pct": 54.0,
+   "kept_n": 5505,
+   "kept_net_mean_pct": 2.94,
+   "kept_win_pct": 88.5,
+   "dropped_net_mean_pct": 0.62,
+   "dropped_win_pct": 61.1
+  },
+  "≥ 3%": {
+   "kept_pct": 31.3,
+   "kept_n": 3187,
+   "kept_net_mean_pct": 3.93,
+   "kept_win_pct": 91.7,
+   "dropped_net_mean_pct": 0.93,
+   "dropped_win_pct": 68.7
+  },
+  "≥ 5%": {
+   "kept_pct": 11.5,
+   "kept_n": 1168,
+   "kept_net_mean_pct": 5.99,
+   "kept_win_pct": 94.9,
+   "dropped_net_mean_pct": 1.34,
+   "dropped_win_pct": 73.4
+  },
+  "≥ 0.5σ": {
+   "kept_pct": 98.0,
+   "kept_n": 9993,
+   "kept_net_mean_pct": 1.9,
+   "kept_win_pct": 76.6,
+   "dropped_net_mean_pct": 0.29,
+   "dropped_win_pct": 43.3
+  },
+  "≥ 1σ": {
+   "kept_pct": 84.2,
+   "kept_n": 8586,
+   "kept_net_mean_pct": 2.09,
+   "kept_win_pct": 79.7,
+   "dropped_net_mean_pct": 0.7,
+   "dropped_win_pct": 55.4
+  },
+  "≥ 1.5σ": {
+   "kept_pct": 61.4,
+   "kept_n": 6264,
+   "kept_net_mean_pct": 2.45,
+   "kept_win_pct": 84.0,
+   "dropped_net_mean_pct": 0.95,
+   "dropped_win_pct": 63.0
+  },
+  "≥ 2σ": {
+   "kept_pct": 38.0,
+   "kept_n": 3871,
+   "kept_net_mean_pct": 2.97,
+   "kept_win_pct": 87.8,
+   "dropped_net_mean_pct": 1.2,
+   "dropped_win_pct": 68.6
+  },
+  "≥ 3σ": {
+   "kept_pct": 11.2,
+   "kept_n": 1147,
+   "kept_net_mean_pct": 4.29,
+   "kept_win_pct": 94.2,
+   "dropped_net_mean_pct": 1.56,
+   "dropped_win_pct": 73.6
+  },
+  "by_amp_bin": {
+   "< 1%": {
+    "n": 1607,
+    "net_mean_pct": 0.2,
+    "win_pct": 42.4
+   },
+   "1–1.5%": {
+    "n": 1554,
+    "net_mean_pct": 0.62,
+    "win_pct": 66.3
+   },
+   "1.5–2%": {
+    "n": 1530,
+    "net_mean_pct": 1.06,
+    "win_pct": 75.5
+   },
+   "2–3%": {
+    "n": 2318,
+    "net_mean_pct": 1.57,
+    "win_pct": 84.1
+   },
+   "3–5%": {
+    "n": 2019,
+    "net_mean_pct": 2.74,
+    "win_pct": 89.8
+   },
+   "≥ 5%": {
+    "n": 1168,
+    "net_mean_pct": 5.99,
+    "win_pct": 94.9
+   }
+  }
+ }
+}
