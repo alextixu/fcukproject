@@ -1,14 +1,14 @@
-"""訓練時的幅度門檻(2026-11-02 使用者要求:用 3% 訓練,對答案仍用原本的標籤)。
+"""訓練時的幅度門檻與形狀門檻(2026-11-02 使用者要求:對答案仍用原本的標籤)。
 
-Module:幅度計算可手算、門檻只改訓練標籤、幅度不是特徵
-System:2020–2023 達 3% 的點數、加門檻後測試期的答案與規則訊號不變
+Module:幅度、每邊對方向天數可手算,門檻只改訓練標籤,這些欄位都不是特徵
+System:2020–2023 達門檻的點數、加門檻後測試期的答案與規則訊號不變
 """
 import numpy as np
 import pandas as pd
 import pytest
 
 import walkforward as WF
-from paper_aeocsvm import paper_label, label_amp
+from paper_aeocsvm import paper_label, label_amp, label_side
 from learn5_trade6 import FLAT, UP, DOWN
 
 
@@ -44,9 +44,36 @@ def test_module_relabel_only_small_points():
 
 
 def test_module_amp_is_not_a_feature(panel):
-    """Given 主軸的資料表 / When 取特徵欄 / Then 標籤幅度(會用到未來 5 天)不在特徵裡"""
+    """Given 主軸的資料表 / When 取特徵欄 / Then 標籤幅度、每邊對方向天數(都會用到未來 5 天)不在特徵裡,特徵仍是 29 個"""
     _, fc = panel
-    assert "amp" not in fc and len(fc) == 29
+    assert not {"amp", "side_l", "side_r"} & set(fc) and len(fc) == 29
+
+
+def test_module_label_side_high_hand_computed():
+    """Given 收盤 100、101、100.5、101.5、102、105(第 6 天,最高)、104、104.5、103、102、101 / When 算每邊對方向的天數 /
+    Then 前 5 天漲了 4 天(只有 101 → 100.5 是跌)、後 5 天跌了 4 天(只有 104 → 104.5 是漲);其他天沒有計數"""
+    C = _series([100, 101, 100.5, 101.5, 102, 105, 104, 104.5, 103, 102, 101])
+    y, _, _ = paper_label(C)
+    left, right = label_side(C, y)
+    assert y.iloc[5] == DOWN and (left.iloc[5], right.iloc[5]) == (4, 4)
+    assert left.drop(C.index[5]).isna().all() and right.drop(C.index[5]).isna().all()
+
+
+def test_module_label_side_low_flat_not_counted():
+    """Given 收盤 110、109、109、108、107、100(第 6 天,最低)、101、101、102、103、104 / When 算每邊對方向的天數 /
+    Then 前 5 天跌了 4 天、後 5 天漲了 4 天:平盤(109 → 109、101 → 101)不算對方向"""
+    C = _series([110, 109, 109, 108, 107, 100, 101, 101, 102, 103, 104])
+    y, _, _ = paper_label(C)
+    left, right = label_side(C, y)
+    assert y.iloc[5] == UP and (left.iloc[5], right.iloc[5]) == (4, 4)
+
+
+def test_module_relabel_side_filter():
+    """Given 高點每邊對方向 3+3、2+5、5+2 天,低點 4+3 天,一個非極值 / When 用每邊至少 3 天改訓練標籤 /
+    Then 3+3 與 4+3 保留,2+5、5+2 變非極值(任一邊不夠就刪),非極值不變"""
+    tr = pd.DataFrame({"y": [DOWN, DOWN, DOWN, UP, FLAT], "amp": [5.0] * 4 + [np.nan],
+                       "side_l": [3, 2, 5, 4, np.nan], "side_r": [3, 5, 2, 3, np.nan]})
+    assert list(WF.relabel(tr, 0, 3).y) == [DOWN, FLAT, FLAT, UP, FLAT]
 
 
 def test_system_train_counts_2020_2023(panel):
@@ -57,6 +84,13 @@ def test_system_train_counts_2020_2023(panel):
     r = WF.relabel(tr, 3)
     assert ((tr.y == DOWN).sum(), (tr.y == UP).sum()) == (3771, 3652)
     assert ((r.y == DOWN).sum(), (r.y == UP).sum()) == (1254, 1312) and len(r) == len(tr)
+
+
+def test_system_side_filter_counts_2020_2023(panel):
+    """Given 2024 的訓練期 2020–2023(完整 TW50) / When 用每邊至少 3 天改訓練標籤 / Then 高點從 3,771 剩 2,309、低點從 3,652 剩 2,264"""
+    df, _ = panel
+    r = WF.relabel(WF.year_split(df, 2024)["train"], 0, 3)
+    assert ((r.y == DOWN).sum(), (r.y == UP).sum()) == (2309, 2264)
 
 
 def test_system_scoring_uses_original_labels(panel):

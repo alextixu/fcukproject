@@ -99,20 +99,26 @@ class MainlineSource(SignalSource):
 SOURCES = {"主軸": MainlineSource, "規則": RuleSource}
 
 
-def relabel(train, min_amp):
-    """訓練用標籤:兩邊幅度未達 min_amp(%)的高點 / 低點改成非極值;min_amp = 0 不改。"""
-    if not min_amp:
+def relabel(train, min_amp, min_side=0):
+    """訓練用標籤:兩邊幅度未達 min_amp(%),或某一邊對方向的天數少於 min_side 天的高點 / 低點,改成非極值;都是 0 不改。"""
+    if not min_amp and not min_side:
         return train
-    small = (train["y"] != FLAT) & ~(train["amp"] >= min_amp)
-    return train.assign(y=train["y"].where(~small, FLAT))
+    bad = pd.Series(False, index=train.index)
+    if min_amp:
+        bad |= ~(train["amp"] >= min_amp)
+    if min_side:
+        bad |= ~(np.minimum(train["side_l"], train["side_r"]) >= min_side)
+    drop = (train["y"] != FLAT) & bad
+    return train.assign(y=train["y"].where(~drop, FLAT))
 
 
-def run_year(panel, feat_cols, year, source, train_min_amp=0.0):
+def run_year(panel, feat_cols, year, source, train_min_amp=0.0, train_min_side=0):
     """訓練 Y-4 ~ Y-1 → 預測 Y;回傳 (訊號表含標籤 y, 訓練樣本數)。
-    train_min_amp > 0:訓練時只把兩邊幅度 ≥ train_min_amp% 的點當高點 / 低點;對答案用的 y 永遠是原本的標籤。"""
+    train_min_amp > 0:訓練時只把兩邊幅度 ≥ train_min_amp% 的點當高點 / 低點;
+    train_min_side > 0:訓練時只把每邊對方向 ≥ train_min_side 天的點當高點 / 低點;對答案用的 y 永遠是原本的標籤。"""
     d = year_split(panel, year)
-    tr, te = relabel(d["train"], train_min_amp), d["test"]
+    tr, te = relabel(d["train"], train_min_amp, train_min_side), d["test"]
     source.fit(tr, feat_cols)
-    sig = source.predict(te.drop(columns=["y", "amp"], errors="ignore"))
+    sig = source.predict(te.drop(columns=["y", "amp", "side_l", "side_r"], errors="ignore"))
     sig["y"] = te["y"].to_numpy()
     return sig, len(tr)

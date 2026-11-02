@@ -68,6 +68,29 @@ macro-F1(找到 高 / 低,命中 高 / 低,%):
 | ② Stacking 邏輯迴歸,門檻 0% | 48.54(找到 47 / 56,命中 24 / 23) | 49.43(找到 35 / 45,命中 25 / 28) | 49.45(找到 41 / 51,命中 21 / 30) |
 | ② Stacking 邏輯迴歸,門檻 8% | 38.79(找到 7 / 9,命中 32 / 28) | 40.61(找到 11 / 10,命中 27 / 32) | 45.13(找到 25 / 22,命中 20 / 31) |
 
+### 做法 2:每邊至少 3 天對方向訓練(`--train-min-side 3`;2026-11-02 使用者要求)
+
+訓練時只把「前 5 天至少 3 天往對的方向、後 5 天也至少 3 天」的點當高點 / 低點(高點 = 前漲後跌,低點反之;平盤不算),
+其餘改成非極值;對答案仍用原本的標籤。34 檔、訓練門檻(幅度)0%。2020–2023 訓練期高點 2,446 → 1,628、低點 2,353 → 1,588。
+
+分類(`python report/confusion_2024_2026.py --side 3`,圖 `results/confusion_2024_2026_side3.png`),macro-F1:不加 → 每邊 ≥ 3 天
+
+| 方法 | 2024 | 2025 | 2026(1–9 月) |
+|---|---|---|---|
+| 規則 | 52.10 | 53.30 | 54.22 |
+| ① 主軸 | 51.95 → 51.97 | 53.14 → 53.18 | 52.93 → 53.07 |
+| ② Stacking 邏輯迴歸 | 48.54 → 47.65 | 49.43 → 48.40 | 49.45 → 49.02 |
+
+只做多前 3 檔(`python backtest_top3.py --train-min-side 3`),扣成本:不加 → 每邊 ≥ 3 天(括號為每邊 ≥ 3 天沒扣成本、筆數)
+
+| 方法 | 2024 | 2025 | 2026(1–9 月) | 3 年平均 |
+|---|---|---|---|---|
+| ① 主軸 | -24.8% → **-28.9%**(-6.3%,142 筆) | -34.9% → **-45.9%**(-29.2%,138 筆) | +0.1% → **+6.0%**(+27.2%,94 筆) | -19.9% → -22.9% |
+| ② Stacking 邏輯迴歸 | -45.0% → **-32.2%**(-12.1%,134 筆) | -11.9% → **-19.5%**(+1.6%,119 筆) | +0.5% → **-5.5%**(+11.7%,86 筆) | -18.8% → -19.1% |
+
+- 主軸的判斷幾乎沒變(macro-F1 差 0.0–0.1 點),Stacking 降 0.4–1.0 點;6 個回測 2 個變好、4 個變差,平均 -19.3% → -21.0%。
+- 結果:`results/backtest_long_only_side3.json`、`results/confusion_2024_2026_side3.json`。
+
 ### 股票池剔除 16 檔低波動股(`mainline.EXCLUDE`、`mainline.load_data()`;2026-11-02 使用者要求)
 
 剔除 2020-01 ~ 2026-09 每日漲跌幅中位數最低的 16 檔(0.43% ~ 0.72%,標籤多是小起伏):中華電、台灣大、合庫金、台灣高鐵、
@@ -643,7 +666,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 75 項(約 1 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 79 項(約 1 分鐘),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/backtest_top3.py                    # 只做多前 3 檔,兩個方法 × 2024–2026(約 1 分鐘;--short-slots 3 加做空)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)

@@ -54,7 +54,7 @@ from feasibility import P, START, END, COST, load_pool, clean  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 from peak_labels import causal_features  # noqa: E402
 from confusion import ORDER, SURFACE, INK, plt, draw, summarize  # noqa: E402
-from paper_aeocsvm import NAMES, SPLITS, paper_label, label_amp, rule_pred, mean_metrics  # noqa: E402
+from paper_aeocsvm import NAMES, SPLITS, paper_label, label_amp, label_side, rule_pred, mean_metrics  # noqa: E402
 SPLITS = {**SPLITS, "測試 2024": {"train": ("2020-01-01", "2023-12-31"), "test": ("2024-01-01", "2024-12-31")}}
 import ae_ocsvm  # noqa: E402
 import kline.autoencoder as KA  # noqa: E402   (ae_ocsvm 已把 method_kline 加入 sys.path)
@@ -68,6 +68,7 @@ EXCLUDE = ("2412.TW", "3045.TW", "5880.TW", "2633.TW", "2892.TW", "4904.TW", "28
 VOL_MA = 10                                       # 量的基準均量天數(2026-10-19 改為 10,之前為 20)
 ARCH, LATENT = "shallow", 16                      # AE 編碼器 29 → 16 一層(2026-10-19 起;之前為原系統 29 → 58 → 8 → 4)
 CAND = {DOWN: "cand_hi", UP: "cand_lo"}
+LABEL_COLS = ("date", "y", "cand_hi", "cand_lo", "ticker", "r5", "amp", "side_l", "side_r")   # 不是特徵的欄(含只能當標籤用的未來資訊)
 N_RANDOM, N_BOOT, BLOCK = 20, 500, 10
 KEEP_RULES = ("s>0", 0.9, 0.7, 0.5, 0.3)          # contrast 模式的保留規則(數字 = 只留分數最高的比例)
 GROUPS = {
@@ -115,6 +116,7 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
         part = pd.concat(feats, axis=1).replace([np.inf, -np.inf], np.nan)
         part["y"], part["cand_hi"], part["cand_lo"], part["ticker"] = y, cand_hi, cand_lo, tk
         part["amp"] = label_amp(df["close"], y)                          # 標籤幅度,只用於訓練時的幅度門檻,不進特徵
+        part["side_l"], part["side_r"] = label_side(df["close"], y)      # 每邊對方向的天數,只用於訓練時的形狀門檻,不進特徵
         part["r5"] = df["close"].shift(-5) / df["open"].shift(-1) - 1   # 只用於交易評估,不進特徵
         part.index.name = "date"
         parts.append(part.reset_index())
@@ -122,7 +124,7 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
     shape_cols = list(feats[0].columns)
     panel = panel[panel["y"].notna() & panel[shape_cols].notna().all(axis=1) & (panel["date"] >= START)]
     panel["y"] = panel["y"].astype(int)
-    feat_cols = [c for c in panel.columns if c not in ("date", "y", "cand_hi", "cand_lo", "ticker", "r5", "amp")]
+    feat_cols = [c for c in panel.columns if c not in LABEL_COLS]
     return panel.reset_index(drop=True), feat_cols
 
 

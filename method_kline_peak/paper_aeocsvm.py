@@ -60,6 +60,19 @@ def label_amp(C, y):
     return hi.where(y == DOWN, lo.where(y == UP))
 
 
+def label_side(C, y):
+    """每邊對方向的天數(做法 2):高點 = 前 5 天裡收盤比前一天高的天數、後 5 天裡收盤比前一天低的天數;低點反之;
+    平盤不算;非極值為 NaN。回傳 (左邊, 右邊)。會用到未來 5 天,只能當標籤用。"""
+    d = np.sign(C.diff())
+    up_l = sum((d.shift(k) == 1).astype(float) for k in range(HALF))        # t-4、…、t 的漲跌(t-5→t-4 … t-1→t)
+    dn_l = sum((d.shift(k) == -1).astype(float) for k in range(HALF))
+    up_r = sum((d.shift(-k) == 1).astype(float) for k in range(1, HALF + 1))  # t+1、…、t+5 的漲跌
+    dn_r = sum((d.shift(-k) == -1).astype(float) for k in range(1, HALF + 1))
+    left = up_l.where(y == DOWN, dn_l.where(y == UP))
+    right = dn_r.where(y == DOWN, up_r.where(y == UP))
+    return left, right
+
+
 def paper_label(C):
     lmax, rmax = side_extreme(C, HALF, False, "max"), side_extreme(C, HALF, True, "max")
     lmin, rmin = side_extreme(C, HALF, False, "min"), side_extreme(C, HALF, True, "min")

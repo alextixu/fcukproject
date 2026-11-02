@@ -1,6 +1,6 @@
 # 主軸測試報告(自動產生)
 
-結果:74 / 75 通過,1 項刻意跳過(條件不適用)
+結果:78 / 79 通過,1 項刻意跳過(條件不適用)
 
 | # | 層級 | 測試 | 情境(Given / When / Then) | 結果 |
 |---|---|---|---|---|
@@ -38,44 +38,48 @@
 | 32 | Module | `test_module_label_amp_high_hand_computed` | Given 收盤 100 → 104 慢慢漲、第 6 天 110,之後 5 天最低 104 / When 算標籤幅度 / Then 第 6 天是高點,左邊 110 / 100 − 1 = 10%、右邊 1 − 104 / 110 = 5.45%,幅度取較小的 5.45%;其他天沒有幅度 | 通過 |
 | 33 | Module | `test_module_label_amp_low_hand_computed` | Given 收盤從 110 跌到第 6 天 100,之後 5 天最高 106 / When 算標籤幅度 / Then 第 6 天是低點,左邊 1 − 100 / 110 = 9.09%、右邊 106 / 100 − 1 = 6%,幅度取較小的 6% | 通過 |
 | 34 | Module | `test_module_relabel_only_small_points` | Given 高點幅度 2% 與 4%、低點幅度 3%、一個非極值 / When 用 3% 門檻改訓練標籤 / Then 2% 的高點變非極值,4% 的高點和剛好 3% 的低點保留,非極值不變;門檻 0 時完全不改 | 通過 |
-| 35 | Module | `test_module_amp_is_not_a_feature` | Given 主軸的資料表 / When 取特徵欄 / Then 標籤幅度(會用到未來 5 天)不在特徵裡 | 通過 |
-| 36 | System | `test_system_train_counts_2020_2023` | Given 2024 的訓練期 2020–2023 / When 用 3% 門檻改訓練標籤 / Then 高點從 3,771 剩 1,254、低點從 3,652 剩 1,312, 其餘都變成非極值,總天數不變 | 通過 |
-| 37 | System | `test_system_scoring_uses_original_labels` | Given 用 3% 門檻訓練 / When 預測 2024 / Then 對答案的 y 仍是原本的標籤(和 0% 時完全相同); 不看標籤的規則訊號也完全不變 | 通過 |
-| 38 | Component | `test_component_label_and_rule` | [嚴格最高] Given 收盤 [10, 11, 12, 13, 14, 20, 15, 14, 13, 12, 11](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 高點,規則 = 高點候選 | 通過 |
-| 39 | Component | `test_component_label_and_rule` | [與之後同價並列最高] Given 收盤 [10, 11, 12, 13, 14, 20, 15, 20, 13, 12, 11](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 高點,規則 = 高點候選 | 通過 |
-| 40 | Component | `test_component_label_and_rule` | [之後被超越=假候選] Given 收盤 [10, 11, 12, 13, 14, 20, 21, 14, 13, 12, 11](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 高點候選 | 通過 |
-| 41 | Component | `test_component_label_and_rule` | [嚴格最低] Given 收盤 [20, 19, 18, 17, 16, 10, 15, 16, 17, 18, 19](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 低點,規則 = 低點候選 | 通過 |
-| 42 | Component | `test_component_label_and_rule` | [之後更低=假低點候選] Given 收盤 [20, 19, 18, 17, 16, 10, 15, 9, 17, 18, 19](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 低點候選 | 通過 |
-| 43 | Component | `test_component_label_and_rule` | [盤整中間=一般日子] Given 收盤 [10, 12, 11, 13, 12, 12, 13, 11, 12, 10, 13](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 不是候選 | 通過 |
-| 44 | Component | `test_component_label_and_rule` | [11 天全部同價] Given 收盤 [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 不是候選 | 通過 |
-| 45 | Component | `test_component_label_and_rule` | [左邊 6 天同價後下跌] Given 收盤 [10, 10, 10, 10, 10, 10, 9, 8, 7, 6, 5](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 高點,規則 = 不是候選 | 通過 |
-| 46 | Component | `test_component_incomplete_window_is_unlabeled` | Given 一串收盤 / When 貼標籤 / Then 前 5 天與最後 5 天(11 日窗口不完整)沒有標籤,不會進入訓練或測試 | 通過 |
-| 47 | Component | `test_component_rule_never_misses_except_flat_left` | Given TW50 2016~2026 全部股票日 / When 比對規則候選與真標籤 / Then 高、低點候選互斥; 沒被規則挑到的真高(低)點,全部都是「t-5 ~ t 收盤同價」的特例 | 通過 |
-| 48 | Component | `test_component_feature_columns` | Given 主軸的特徵設定(6 根 K、量 ÷ 10 日均量) / When 建立面板 / Then 剛好 29 個特徵:開高低收 × 6 天 − t 日收盤 + 量 × 6 天; 標籤、候選、股票代號與交易報酬 r5 都不在特徵裡 | 通過 |
-| 49 | Component | `test_component_features_do_not_peek_future` | Given 廣達的日 K / When 把 2024-11-08 之後的開高低收量全部亂改 / Then 2024-11-08 以前每一天的 29 個特徵完全不變(不偷看未來) | 通過 |
-| 50 | Component | `test_component_features_scale_invariant` | Given 廣達的日 K / When 價格全部 × 3、成交量全部 × 7 / Then 29 個特徵不變(只看形狀,不看股價高低與成交量大小) | 通過 |
-| 51 | Module | `test_module_split_no_label_leak` | [測試 2024] Given 主軸切分(訓練 2020–2023;測試 2024 或 2025–26) / When 切出訓練與測試 / Then 每一檔股票、每一個訓練樣本, 它的 t+5(該股票自己的第 5 個交易日)都早於測試期第一天,而且訓練與測試的日期沒有重疊 | 通過 |
-| 52 | Module | `test_module_split_no_label_leak` | [我們的切分] Given 主軸切分(訓練 2020–2023;測試 2024 或 2025–26) / When 切出訓練與測試 / Then 每一檔股票、每一個訓練樣本, 它的 t+5(該股票自己的第 5 個交易日)都早於測試期第一天,而且訓練與測試的日期沒有重疊 | 通過 |
-| 53 | Module | `test_module_fit_uses_only_train_true_class` | Given 2024 切分的訓練期 / When 訓練高點、低點各一組 AE + OC-SVM / Then 標準化只用訓練期的該類候選; OC-SVM 只用訓練期候選中的真高(低)點,一筆測試資料都沒用 | 通過 |
-| 54 | Module | `test_module_prediction_structure` | Given 2024 測試期的判斷 / When 對照規則候選 / Then 判高點的一定是高點候選、判低點的一定是低點候選、 不是候選的一律判非極值;所以真高點不會被判成低點,真低點也不會被判成高點 | 通過 |
-| 55 | System | `test_system_reproducible` | Given 同一份資料與種子 42 / When 把高點模型從頭再訓練一次 / Then 2024 每一天的高點判斷完全一樣(結果可重現) | 通過 |
-| 56 | System | `test_system_metrics_match_report` | Given 2024 測試期的判斷 / When 計算混淆矩陣與 macro-F1 / Then 混淆矩陣加總 = 12,098 天、macro-F1 與 sklearn 一致; 規則 54.20%、模型(種子 42)53.96%,與簡報和 README 的數字相同 | 通過 |
-| 57 | System | `test_system_data_quality` | Given TW50 50 檔還原日 K / When 清理後檢查 / Then 沒有零量日、最高 ≥ 開收、最低 ≤ 開收; 每年「開盤 ÷ 前日收盤」中位數在 0.98 ~ 1.02(開盤和收盤用同一套還原,沒有錯位) | 通過 |
-| 58 | Module | `test_module_pool_excludes_low_vol` | Given 完整 TW50 50 檔與使用者剔除的 16 檔 / When 讀主軸的股票池 / Then 剩 34 檔,剔除的一檔都不在,其餘都是 TW50 成分股 | 通過 |
-| 59 | Module | `test_module_excluded_are_lowest_volatility` | Given 2020-01 以後每檔的每日漲跌幅(絕對值)中位數 / When 由低到高排序 / Then 剔除的 16 檔正好是最低的 16 檔(中華電 ~ 中信金) | 通過 |
-| 60 | Component | `test_component_split_base_meta` | Given 2024 的訓練期(2020–2023) / When 切成基底層 A 與元學習器 B / Then A 只有 2020–2022、B 只有 2023; A 的每一筆標籤(該股自己的 t+5)都早於 2023 年第一天,所以元學習器看到的分數來自基底層沒看過的資料 | 通過 |
-| 61 | Component | `test_component_meta_learner_three_classes` | [lr] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 62 | Component | `test_component_meta_learner_three_classes` | [lr-l1] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 63 | Component | `test_component_meta_learner_three_classes` | [lr-enet] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 64 | Component | `test_component_meta_learner_three_classes` | [lr-poly2] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 65 | Component | `test_component_meta_learner_three_classes` | [lr-poly3] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 66 | Component | `test_component_meta_learner_three_classes` | [tree] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 67 | Component | `test_component_meta_learner_three_classes` | [hgb] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 68 | Component | `test_component_meta_learner_three_classes` | [svm] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 69 | System | `test_system_refactor_matches_before` | [score|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 70 | System | `test_system_refactor_matches_before` | [score+recon|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 71 | System | `test_system_refactor_matches_before` | [score+pos|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 72 | System | `test_system_refactor_matches_before` | [score|hgb] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 73 | System | `test_system_refactor_matches_before` | [score|svm] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 74 | System | `test_system_refactor_matches_before` | [score|tree] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 75 | System | `test_system_source_equals_experiment` | Given StackingSource(邏輯迴歸、只用分數) / When 走 SignalSource 介面訓練 2020–2023、預測 2024 / Then 每一天的判斷和實驗流程(基底層 + 元學習器)完全相同,所以逐年回測可以直接用它 | 通過 |
+| 35 | Module | `test_module_amp_is_not_a_feature` | Given 主軸的資料表 / When 取特徵欄 / Then 標籤幅度、每邊對方向天數(都會用到未來 5 天)不在特徵裡,特徵仍是 29 個 | 通過 |
+| 36 | Module | `test_module_label_side_high_hand_computed` | Given 收盤 100、101、100.5、101.5、102、105(第 6 天,最高)、104、104.5、103、102、101 / When 算每邊對方向的天數 / Then 前 5 天漲了 4 天(只有 101 → 100.5 是跌)、後 5 天跌了 4 天(只有 104 → 104.5 是漲);其他天沒有計數 | 通過 |
+| 37 | Module | `test_module_label_side_low_flat_not_counted` | Given 收盤 110、109、109、108、107、100(第 6 天,最低)、101、101、102、103、104 / When 算每邊對方向的天數 / Then 前 5 天跌了 4 天、後 5 天漲了 4 天:平盤(109 → 109、101 → 101)不算對方向 | 通過 |
+| 38 | Module | `test_module_relabel_side_filter` | Given 高點每邊對方向 3+3、2+5、5+2 天,低點 4+3 天,一個非極值 / When 用每邊至少 3 天改訓練標籤 / Then 3+3 與 4+3 保留,2+5、5+2 變非極值(任一邊不夠就刪),非極值不變 | 通過 |
+| 39 | System | `test_system_train_counts_2020_2023` | Given 2024 的訓練期 2020–2023 / When 用 3% 門檻改訓練標籤 / Then 高點從 3,771 剩 1,254、低點從 3,652 剩 1,312, 其餘都變成非極值,總天數不變 | 通過 |
+| 40 | System | `test_system_side_filter_counts_2020_2023` | Given 2024 的訓練期 2020–2023(完整 TW50) / When 用每邊至少 3 天改訓練標籤 / Then 高點從 3,771 剩 2,309、低點從 3,652 剩 2,264 | 通過 |
+| 41 | System | `test_system_scoring_uses_original_labels` | Given 用 3% 門檻訓練 / When 預測 2024 / Then 對答案的 y 仍是原本的標籤(和 0% 時完全相同); 不看標籤的規則訊號也完全不變 | 通過 |
+| 42 | Component | `test_component_label_and_rule` | [嚴格最高] Given 收盤 [10, 11, 12, 13, 14, 20, 15, 14, 13, 12, 11](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 高點,規則 = 高點候選 | 通過 |
+| 43 | Component | `test_component_label_and_rule` | [與之後同價並列最高] Given 收盤 [10, 11, 12, 13, 14, 20, 15, 20, 13, 12, 11](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 高點,規則 = 高點候選 | 通過 |
+| 44 | Component | `test_component_label_and_rule` | [之後被超越=假候選] Given 收盤 [10, 11, 12, 13, 14, 20, 21, 14, 13, 12, 11](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 高點候選 | 通過 |
+| 45 | Component | `test_component_label_and_rule` | [嚴格最低] Given 收盤 [20, 19, 18, 17, 16, 10, 15, 16, 17, 18, 19](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 低點,規則 = 低點候選 | 通過 |
+| 46 | Component | `test_component_label_and_rule` | [之後更低=假低點候選] Given 收盤 [20, 19, 18, 17, 16, 10, 15, 9, 17, 18, 19](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 低點候選 | 通過 |
+| 47 | Component | `test_component_label_and_rule` | [盤整中間=一般日子] Given 收盤 [10, 12, 11, 13, 12, 12, 13, 11, 12, 10, 13](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 不是候選 | 通過 |
+| 48 | Component | `test_component_label_and_rule` | [11 天全部同價] Given 收盤 [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 非極值,規則 = 不是候選 | 通過 |
+| 49 | Component | `test_component_label_and_rule` | [左邊 6 天同價後下跌] Given 收盤 [10, 10, 10, 10, 10, 10, 9, 8, 7, 6, 5](t 是第 6 個) / When 貼標籤、套規則 / Then 標籤 = 高點,規則 = 不是候選 | 通過 |
+| 50 | Component | `test_component_incomplete_window_is_unlabeled` | Given 一串收盤 / When 貼標籤 / Then 前 5 天與最後 5 天(11 日窗口不完整)沒有標籤,不會進入訓練或測試 | 通過 |
+| 51 | Component | `test_component_rule_never_misses_except_flat_left` | Given TW50 2016~2026 全部股票日 / When 比對規則候選與真標籤 / Then 高、低點候選互斥; 沒被規則挑到的真高(低)點,全部都是「t-5 ~ t 收盤同價」的特例 | 通過 |
+| 52 | Component | `test_component_feature_columns` | Given 主軸的特徵設定(6 根 K、量 ÷ 10 日均量) / When 建立面板 / Then 剛好 29 個特徵:開高低收 × 6 天 − t 日收盤 + 量 × 6 天; 標籤、候選、股票代號與交易報酬 r5 都不在特徵裡 | 通過 |
+| 53 | Component | `test_component_features_do_not_peek_future` | Given 廣達的日 K / When 把 2024-11-08 之後的開高低收量全部亂改 / Then 2024-11-08 以前每一天的 29 個特徵完全不變(不偷看未來) | 通過 |
+| 54 | Component | `test_component_features_scale_invariant` | Given 廣達的日 K / When 價格全部 × 3、成交量全部 × 7 / Then 29 個特徵不變(只看形狀,不看股價高低與成交量大小) | 通過 |
+| 55 | Module | `test_module_split_no_label_leak` | [測試 2024] Given 主軸切分(訓練 2020–2023;測試 2024 或 2025–26) / When 切出訓練與測試 / Then 每一檔股票、每一個訓練樣本, 它的 t+5(該股票自己的第 5 個交易日)都早於測試期第一天,而且訓練與測試的日期沒有重疊 | 通過 |
+| 56 | Module | `test_module_split_no_label_leak` | [我們的切分] Given 主軸切分(訓練 2020–2023;測試 2024 或 2025–26) / When 切出訓練與測試 / Then 每一檔股票、每一個訓練樣本, 它的 t+5(該股票自己的第 5 個交易日)都早於測試期第一天,而且訓練與測試的日期沒有重疊 | 通過 |
+| 57 | Module | `test_module_fit_uses_only_train_true_class` | Given 2024 切分的訓練期 / When 訓練高點、低點各一組 AE + OC-SVM / Then 標準化只用訓練期的該類候選; OC-SVM 只用訓練期候選中的真高(低)點,一筆測試資料都沒用 | 通過 |
+| 58 | Module | `test_module_prediction_structure` | Given 2024 測試期的判斷 / When 對照規則候選 / Then 判高點的一定是高點候選、判低點的一定是低點候選、 不是候選的一律判非極值;所以真高點不會被判成低點,真低點也不會被判成高點 | 通過 |
+| 59 | System | `test_system_reproducible` | Given 同一份資料與種子 42 / When 把高點模型從頭再訓練一次 / Then 2024 每一天的高點判斷完全一樣(結果可重現) | 通過 |
+| 60 | System | `test_system_metrics_match_report` | Given 2024 測試期的判斷 / When 計算混淆矩陣與 macro-F1 / Then 混淆矩陣加總 = 12,098 天、macro-F1 與 sklearn 一致; 規則 54.20%、模型(種子 42)53.96%,與簡報和 README 的數字相同 | 通過 |
+| 61 | System | `test_system_data_quality` | Given TW50 50 檔還原日 K / When 清理後檢查 / Then 沒有零量日、最高 ≥ 開收、最低 ≤ 開收; 每年「開盤 ÷ 前日收盤」中位數在 0.98 ~ 1.02(開盤和收盤用同一套還原,沒有錯位) | 通過 |
+| 62 | Module | `test_module_pool_excludes_low_vol` | Given 完整 TW50 50 檔與使用者剔除的 16 檔 / When 讀主軸的股票池 / Then 剩 34 檔,剔除的一檔都不在,其餘都是 TW50 成分股 | 通過 |
+| 63 | Module | `test_module_excluded_are_lowest_volatility` | Given 2020-01 以後每檔的每日漲跌幅(絕對值)中位數 / When 由低到高排序 / Then 剔除的 16 檔正好是最低的 16 檔(中華電 ~ 中信金) | 通過 |
+| 64 | Component | `test_component_split_base_meta` | Given 2024 的訓練期(2020–2023) / When 切成基底層 A 與元學習器 B / Then A 只有 2020–2022、B 只有 2023; A 的每一筆標籤(該股自己的 t+5)都早於 2023 年第一天,所以元學習器看到的分數來自基底層沒看過的資料 | 通過 |
+| 65 | Component | `test_component_meta_learner_three_classes` | [lr] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 66 | Component | `test_component_meta_learner_three_classes` | [lr-l1] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 67 | Component | `test_component_meta_learner_three_classes` | [lr-enet] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 68 | Component | `test_component_meta_learner_three_classes` | [lr-poly2] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 69 | Component | `test_component_meta_learner_three_classes` | [lr-poly3] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 70 | Component | `test_component_meta_learner_three_classes` | [tree] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 71 | Component | `test_component_meta_learner_three_classes` | [hgb] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 72 | Component | `test_component_meta_learner_three_classes` | [svm] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 73 | System | `test_system_refactor_matches_before` | [score|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 74 | System | `test_system_refactor_matches_before` | [score+recon|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 75 | System | `test_system_refactor_matches_before` | [score+pos|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 76 | System | `test_system_refactor_matches_before` | [score|hgb] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 77 | System | `test_system_refactor_matches_before` | [score|svm] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 78 | System | `test_system_refactor_matches_before` | [score|tree] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 79 | System | `test_system_source_equals_experiment` | Given StackingSource(邏輯迴歸、只用分數) / When 走 SignalSource 介面訓練 2020–2023、預測 2024 / Then 每一天的判斷和實驗流程(基底層 + 元學習器)完全相同,所以逐年回測可以直接用它 | 通過 |
