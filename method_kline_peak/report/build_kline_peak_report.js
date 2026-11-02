@@ -66,17 +66,17 @@ const card = (slide, o) => slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { rectR
 const bullets = (items, o = {}) => items.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < items.length - 1,
   paraSpaceAfter: 8, ...o } }));
 
-// ---------- 資料(抄自 backtest_long_only.json,34 檔、訓練門檻 0%) ----------
-// [總報酬, 最大回撤, 交易筆數, 勝率, 每筆平均報酬]
+// ---------- 資料(抄自 claude/kline-peak-predict-tool f14a08e 的 backtest_long_only_34_amp6.json,34 檔、訓練門檻 6%) ----------
+// [總報酬, 最大回撤(不用,null), 交易筆數, 勝率]
 const BT = {
-  "2024": { main: { net: [-24.82, -28.23, 142, 44.4, -0.57], gross: [-0.94, -16.78, 142, 51.4, 0.02] },
-            stack: { net: [-45.02, -45.92, 137, 38.0, -1.24], gross: [-28.22, -37.02, 137, 43.1, -0.66] } },
-  "2025": { main: { net: [-34.87, -36.81, 140, 41.4, -0.87], gross: [-14.51, -20.61, 140, 48.6, -0.29] },
-            stack: { net: [-11.94, -32.01, 132, 50.0, -0.21], gross: [13.86, -27.63, 132, 56.1, 0.37] } },
-  "2026": { main: { net: [0.09, -15.16, 94, 38.3, 0.06], gross: [20.19, -13.05, 94, 50.0, 0.65] },
-            stack: { net: [0.5, -23.63, 88, 40.9, 0.09], gross: [19.18, -18.11, 88, 50.0, 0.68] } },
+  "2024": { main: { net: [-13.22, null, 98, 43.9], gross: [5.0, null, 98, 53.1] },
+            stack: { net: [-18.69, null, 85, 43.5], gross: [-4.08, null, 85, 50.6] } },
+  "2025": { main: { net: [11.92, null, 75, 50.7], gross: [29.58, null, 75, 56.0] },
+            stack: { net: [22.01, null, 71, 46.5], gross: [40.17, null, 71, 53.5] } },
+  "2026": { main: { net: [7.66, null, 66, 48.5], gross: [22.37, null, 66, 57.6] },
+            stack: { net: [12.55, null, 67, 41.8], gross: [28.1, null, 67, 44.8] } },
 };
-const fmtPct = (v) => (v > 0 ? "+" : "") + String(v) + "%";
+const fmtPct = (v) => (v > 0 ? "+" : "") + (Number.isInteger(v) ? v.toFixed(1) : String(v)) + "%";
 
 // ======================= 1. 封面 =======================
 pres.addSection({ title: "開場" });
@@ -144,14 +144,14 @@ const facts = [
   ["成本 0.585%", "買 0.1425% + 賣 0.1425% + 證交稅 0.3%"],
   ["資金", "每年獨立 100 萬,年底結清"],
   ["其他假設", "漲停也算買得到;2026 年只到 9/11"],
-  ["模型", "訓練門檻 0%(瑞昱個案圖同樣設定)"],
+  ["模型", "訓練門檻 6%"],
 ];
 facts.forEach(([h, d], i) => {
   const x = 0.6 + (i % 2) * 6.15, y = 3.85 + Math.floor(i / 2) * 0.95;
   T(s, h, { x, y, w: 1.9, h: 0.8, fontSize: 18, bold: true, valign: "middle" });
   T(s, d, { x: x + 2.0, y, w: 3.95, h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
 });
-s.addNotes("股票池是 34 檔(台灣50 剔除 16 檔低波動股),和瑞昱個案的模型一致。每天收盤後在 34 檔中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清;漲停也當作買得到;2026 只到 9 月 11 日。");
+s.addNotes("股票池是 34 檔(台灣50 剔除 16 檔低波動股),回測用的模型訓練門檻是 6%。每天收盤後在 34 檔中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清;漲停也當作買得到;2026 只到 9 月 11 日。");
 
 // ======================= 4. 結果表格(34 檔) =======================
 const hdr = (t, o = {}) => ({ text: t, options: { bold: true, fill: { color: HEX.dk1 }, color: "FFFFFF", align: "center", valign: "middle", ...o } });
@@ -182,18 +182,18 @@ const resultTable = (sl, data, poolRow) => {
     border: { type: "solid", pt: 0.75, color: HEX.accent6 } });
 };
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
-s.addText("34 檔回測結果:報酬、勝率、筆數", { placeholder: "title" });
+s.addText("34 檔回測結果(訓練門檻 6%)", { placeholder: "title" });
 resultTable(s, BT, null);
-s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)的結果,數字直接抄自 backtest_long_only.json。扣成本和沒扣成本的交易筆數一樣,差別只在每筆扣 0.585%。2024、2025 兩方法扣成本後都虧損;2026 到 9/11 沒扣成本主軸 +20.19%、Stacking +19.18%,扣成本後只剩 +0.09%、+0.5%。");
+s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)、訓練門檻 6% 的結果,數字直接抄自 backtest_long_only_34_amp6.json。門檻是看測試年選的。扣成本後:2024 主軸 -13.22%、Stacking -18.69%;2025 主軸 +11.92%、Stacking +22.01%;2026 到 9/11 主軸 +7.66%、Stacking +12.55%。交易筆數 2024 為 98 / 85、2025 為 75 / 71、2026 為 66 / 67;扣成本和沒扣成本的筆數一樣,差別只在每筆扣 0.585%。");
 
 // ======================= 瑞昱(三段合併一頁) =======================
 pres.addSection({ title: "瑞昱 2024" });
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "瑞昱 2024" });
-s.addText("瑞昱 2024:真實高低點 vs 兩方法(34 檔模型)", { placeholder: "title" });
+s.addText("瑞昱 2024:真實高低點 vs 兩方法", { placeholder: "title" });
 {
   const iw = 7.6, x0 = 0.6, lh = 0.28, gap = 0.08, rx = 8.55, rw = 4.2;
   const panels = [
-    { key: "true", px: 458, label: "真實標籤(11 天收盤最高 / 最低)", color: C.text2,
+    { key: "true", px: 458, label: "真實標籤(11 天收盤最高 / 最低);下方兩段為 34 檔、訓練門檻 0% 模型的輸出", color: C.text2,
       lines: [["真高點", "18 個", C.accent1], ["真低點", "19 個", C.accent2]] },
     { key: "mainline", px: 454, label: "① 主軸:判低點 45 天、判高點 52 天", color: C.accent3,
       lines: [["判高點", "對 16 / 錯 36", C.accent1], ["判低點", "對 16 / 錯 29", C.accent2]] },
@@ -215,7 +215,7 @@ s.addText("瑞昱 2024:真實高低點 vs 兩方法(34 檔模型)", { placeholde
     y += lh + ih + gap;
   });
 }
-s.addNotes("上段是真實標籤:真高點 18 個、真低點 19 個。中段是主軸:判高點對 16 錯 36,判低點對 16 錯 29。下段是 Stacking 邏輯迴歸:判高點對 11 錯 31,判低點對 14 錯 26。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。兩方法判出的高低點都比真實多,錯的比對的多;Stacking 判的天數比主軸少,判對的也比較少。這張圖是 34 檔模型的輸出(台灣50 剔除 16 檔低波動股)。");
+s.addNotes("上段是真實標籤:真高點 18 個、真低點 19 個。中段是主軸:判高點對 16 錯 36,判低點對 16 錯 29。下段是 Stacking 邏輯迴歸:判高點對 11 錯 31,判低點對 14 錯 26。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。兩方法判出的高低點都比真實多,錯的比對的多;Stacking 判的天數比主軸少,判對的也比較少。這張圖是 34 檔(台灣50 剔除 16 檔低波動股)、訓練門檻 0% 模型的輸出,和第 4 頁回測用的 6% 模型不同。");
 
 // ======================= 5. 下一步 =======================
 pres.addSection({ title: "下一步" });
