@@ -60,7 +60,7 @@ def training_set(year, store):
         raise NotEnoughData(f"{year} 年的交易日還不到 {C.HOLD} 天,先沿用 {year - 1} 年的模型")
     panel, fc = ML.build_panel(data, 6, [])
     tr = WF.relabel(WF.year_split(panel, year, C.TRAIN_YEARS)["train"], C.TRAIN_MIN_AMP)
-    return tr, fc, sorted(data)
+    return tr, fc, list(data)                                                 # 保持 TICKER_SETS 順序(同研究)
 
 
 def train(year, store, log=print):

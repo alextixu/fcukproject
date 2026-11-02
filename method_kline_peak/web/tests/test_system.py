@@ -15,15 +15,16 @@ DATE = pd.Timestamp("2026-06-15")
 def test_model_settings_match_research(prod_model):
     """Given 2026 年的正式模型 / When 檢查設定 / Then 股票池 73 檔、訓練 2022–2025(最後 5 個交易日剔除)、種子 42、29 個特徵"""
     m = prod_model
+    import mainline as ML
     assert len(m["pool"]) == 73 and m["pool"] == U.pool_for_year(2026)
+    assert m["pool"] == list(ML.load_data())                               # 和研究的股票池同一份、同順序
     assert m["train"][0].startswith("2022-01") and m["train"][1] == "2025-12-23"
     assert len(m["fc"]) == 29 and C.SEED == 42
 
 
 def test_model_reproduces_research_2026(prod_model, real_store):
     """Given 正式模型與研究 walk-forward 的 2026 年模型同設定 / When 對 2026 年 1–9 月的股票池逐日判斷 /
-    Then 測試筆數和研究相同(11,826),兩個方法的 macro-F1 與研究結果(results/confusion_2024_2026_tw100.json)差不到 0.2 個百分點
-    (這台機器的浮點運算和研究時略有不同,少數幾筆判斷不同)"""
+    Then 測試筆數和研究相同(11,826),兩個方法的 macro-F1 與混淆矩陣和研究結果(results/confusion_2024_2026_tw100.json)完全相同"""
     import mainline as ML
     import walkforward as WF
     from confusion import summarize
@@ -37,7 +38,8 @@ def test_model_reproduces_research_2026(prod_model, real_store):
     assert len(te) == 11826
     for col, key in (("main_pred", "① 主軸"), ("stack_pred", "② Stacking 邏輯迴歸")):
         s = summarize(te.y.to_numpy(), pr[col].map(KIND2CODE).to_numpy(), NAMES)
-        assert s["macro_f1"] == pytest.approx(ref[key]["macro_f1"], abs=0.002)
+        assert s["macro_f1"] == pytest.approx(ref[key]["macro_f1"], abs=1e-12)
+        assert s["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"] == ref[key]["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"]
         cm = np.array(s["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"])
         assert cm[0, 2] == 0 and cm[2, 0] == 0                              # 高低點不會互相判反
 

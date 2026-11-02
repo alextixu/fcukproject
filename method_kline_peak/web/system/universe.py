@@ -95,16 +95,18 @@ def classify(code, df, pool, upto=None):
 def pool_for_year(year, store=None, pool=None):
     """year 年使用的股票池(.TW 代號)。pool 預設為設定值 config.POOL。
     2026 年且研究結果檔有這個股票池:直接用結果檔記錄的清單(TW100 73 檔、TW200 168 檔、台灣50 34 檔),和研究完全相同;
-    其他情況:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。"""
+    其他情況:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。
+    順序照 TICKER_SETS[pool](同 mainline.load_data):訓練資料的列順序會影響 AE / OC-SVM 的結果,順序不同就無法和研究完全一致。"""
+    import mainline as ML
+    from data_loader import TICKER_SETS  # noqa: E402
     pool = pool or C.POOL
     if year == 2026 and pool in C.RESEARCH_POOL_FILES:
         with open(os.path.join(C.RESULTS, C.RESEARCH_POOL_FILES[pool]), encoding="utf-8") as f:
-            return sorted(json.load(f)["pool"])
-    import mainline as ML
-    from data_loader import TICKER_SETS  # noqa: E402
+            keep = set(json.load(f)["pool"])
+        return [tk for tk in TICKER_SETS[pool] if tk in keep]
     from .datasource import PriceStore
     store = store or PriceStore()
     data = store.load_many(TICKER_SETS[pool], end=f"{year - 1}-12-31")
     data = {tk: df for tk, df in data.items() if len(df) >= 250}
     drop = set(ML.low_vol(data))
-    return sorted(tk for tk in data if tk not in drop)
+    return [tk for tk in data if tk not in drop]

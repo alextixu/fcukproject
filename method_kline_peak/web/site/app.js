@@ -220,18 +220,18 @@ async function pageStock(code) {
 /* ---------- 成績追蹤 ---------- */
 function pageTrack() {
   const T = trk(TM, TK), dates = D.track.dates || {};
-  const series = T.series || [], W = 860, H = 220, top = 14, bot = H - 26;
+  const series = T.series || [], W = innerWidth < 760 ? 420 : 860, H = innerWidth < 760 ? 240 : 220, top = 14, bot = H - 26;
   let g = '';
   if (series.length > 1) {
     const ymax = Math.max(50, ...series.map(s => s[1])) / 100, y = v => bot - v / ymax * (bot - top), x = i => 40 + i / (series.length - 1) * (W - 50);
     const li = series.findIndex(s => s[2] === 'daily');
     if (li >= 0) g += `<rect x="${x(li)}" y="${top}" width="${x(series.length - 1) - x(li) + 1}" height="${bot - top}" fill="#e8f0fd" opacity=".7"/><text x="${x(li) + 4}" y="${top + 14}" font-size="11" fill="var(--low)" font-weight="700">實際追蹤</text>`;
-    g += `<text x="${li > 0 ? x(li) - 6 : W - 12}" y="${top + 14}" font-size="11" fill="#8a929c" text-anchor="end">回放(上線前,同一個模型逐日產生)</text>`;
+    g += `<text x="${li > 0 ? x(li) - 6 : W - 12}" y="${top + 14}" font-size="11" fill="#8a929c" text-anchor="end">${innerWidth < 760 ? '回放' : '回放(上線前,同一個模型逐日產生)'}</text>`;
     for (let t = 0; t <= ymax + 1e-9; t += .1) g += `<line x1="40" x2="${W - 10}" y1="${y(t)}" y2="${y(t)}" stroke="#eef0f3"/><text x="34" y="${y(t) + 4}" font-size="10" fill="#8a929c" text-anchor="end">${Math.round(t * 100)}%</text>`;
     const br = (T.base_rate?.pct || 0) / 100;
     g += `<line x1="40" x2="${W - 10}" y1="${y(br)}" y2="${y(br)}" stroke="#9aa3ad" stroke-dasharray="4 3"/><text x="${W - 12}" y="${y(br) - 4}" font-size="10" fill="#5b6470" text-anchor="end">隨機猜約 ${pct(T.base_rate?.pct, 0)}</text>`;
     g += `<polyline points="${series.map((s, i) => `${x(i)},${y(s[1] / 100)}`).join(' ')}" fill="none" stroke="${TK === 'low' ? 'var(--low)' : 'var(--high)'}" stroke-width="2"/>`;
-    [0, .25, .5, .75, 1].forEach(f => { const i = Math.round(f * (series.length - 1)); g += `<text x="${x(i)}" y="${H - 6}" font-size="10" fill="#8a929c" text-anchor="middle">${md(series[i][0])}</text>`; });
+    (innerWidth < 760 ? [0, .5, 1] : [0, .25, .5, .75, 1]).forEach(f => { const i = Math.round(f * (series.length - 1)); g += `<text x="${x(i)}" y="${H - 6}" font-size="10" fill="#8a929c" text-anchor="middle">${md(series[i][0])}</text>`; });
   }
   const R = (D.research?.classification || []).find(r => r.year === '2026' && r.method === TM) || {};
   const k = (lbl, r, extra) => `<div class="card"><div class="lbl">${lbl}</div><div class="kpi">${pct(r?.pct)}</div><div class="info">${r?.n ? `${r.hits} / ${r.n} 檔次` : '尚無資料'}${extra ? ' ・ ' + extra : ''}</div></div>`;
