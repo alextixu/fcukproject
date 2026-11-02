@@ -76,16 +76,6 @@ const BT = {
   "2026": { main: { net: [0.09, -15.16, 94, 38.3, 0.06], gross: [20.19, -13.05, 94, 50.0, 0.65] },
             stack: { net: [0.5, -23.63, 88, 40.9, 0.09], gross: [19.18, -18.11, 88, 50.0, 0.68] } },
 };
-// TW100(73 檔)抄自 claude/kline-peak-predict-tool d041823 的 backtest_long_only_tw100.json
-// [總報酬, 最大回撤(不用,null), 交易筆數, 勝率]
-const BT100 = {
-  "2024": { main: { net: [11.69, null, 144, 47.9], gross: [47.95, null, 144, 52.8] },
-            stack: { net: [-12.81, null, 144, 45.8], gross: [15.36, null, 144, 49.3] } },
-  "2025": { main: { net: [-42.17, null, 142, 35.9], gross: [-23.7, null, 142, 40.8] },
-            stack: { net: [-7.06, null, 137, 44.5], gross: [21.22, null, 137, 51.8] } },
-  "2026": { main: { net: [8.69, null, 98, 50.0], gross: [31.59, null, 98, 56.1] },
-            stack: { net: [37.78, null, 96, 59.4], gross: [65.95, null, 96, 62.5] } },
-};
 const fmtPct = (v) => (v > 0 ? "+" : "") + String(v) + "%";
 
 // ======================= 1. 封面 =======================
@@ -163,7 +153,7 @@ facts.forEach(([h, d], i) => {
 });
 s.addNotes("股票池是 34 檔(台灣50 剔除 16 檔低波動股),和瑞昱個案的模型一致。每天收盤後在 34 檔中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清;漲停也當作買得到;2026 只到 9 月 11 日。");
 
-// ======================= 4–5. 結果表格(34 檔、TW100) =======================
+// ======================= 4. 結果表格(34 檔) =======================
 const hdr = (t, o = {}) => ({ text: t, options: { bold: true, fill: { color: HEX.dk1 }, color: "FFFFFF", align: "center", valign: "middle", ...o } });
 const cell = (t, o = {}) => ({ text: String(t), options: { align: "center", valign: "middle", ...o } });
 const valCell = (v, o = {}) => cell(fmtPct(v), { color: v < 0 ? "C0392B" : (v > 0 ? "1E7B34" : HEX.dk1), ...o });
@@ -185,7 +175,7 @@ const resultTable = (sl, data, poolRow) => {
       rows.push(row);
     });
   });
-  const d = poolRow ? 0.64 : 0.68; // TW100 多一列股票池,資料列略矮以免碰到頁碼
+  const d = poolRow ? 0.64 : 0.68; // 有股票池列時資料列略矮,以免碰到頁碼
   const rowH = [...(poolRow ? [0.45] : []), 0.45, 0.45, d, d, d, d, d, d];
   sl.addTable(rows, { x: 0.6, y: 1.45, w: 12.15, colW: [1.6, 3.0, 1.6, 1.4, 1.6, 1.4, 1.55],
     rowH, fontSize: 15, fontFace: THEME.bodyFontFace, color: HEX.dk1,
@@ -194,12 +184,7 @@ const resultTable = (sl, data, poolRow) => {
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
 s.addText("34 檔回測結果:報酬、勝率、筆數", { placeholder: "title" });
 resultTable(s, BT, null);
-s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)的結果,數字直接抄自 backtest_long_only.json。扣成本和沒扣成本的交易筆數一樣,差別只在每筆扣 0.585%。2024、2025 兩方法扣成本後都虧損;2026 到 9/11 沒扣成本主軸 +20.19%、Stacking +19.18%,扣成本後只剩 +0.09%、+0.5%。下一頁是 TW100 73 檔的同樣表格。");
-
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
-s.addText("TW100 回測結果:報酬、勝率、筆數", { placeholder: "title" });
-resultTable(s, BT100, "股票池:TW100 有資料的 95 檔,剔除 22 檔低波動股,剩 73 檔");
-s.addNotes("TW100 的 73 檔(有資料的 95 檔剔除 22 檔低波動股),交易規則和訓練方式與 34 檔完全相同,數字抄自 backtest_long_only_tw100.json。扣成本後:2024 主軸 +11.69%、Stacking -12.81%;2025 主軸 -42.17%、Stacking -7.06%;2026 到 9/11 主軸 +8.69%、Stacking +37.78%。沒扣成本 2024 主軸 +47.95%,2026 Stacking +65.95%。");
+s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)的結果,數字直接抄自 backtest_long_only.json。扣成本和沒扣成本的交易筆數一樣,差別只在每筆扣 0.585%。2024、2025 兩方法扣成本後都虧損;2026 到 9/11 沒扣成本主軸 +20.19%、Stacking +19.18%,扣成本後只剩 +0.09%、+0.5%。");
 
 // ======================= 瑞昱(三段合併一頁) =======================
 pres.addSection({ title: "瑞昱 2024" });
