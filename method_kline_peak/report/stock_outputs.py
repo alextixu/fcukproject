@@ -3,8 +3,10 @@
 目前的設定:34 檔、訓練門檻 0%、前 4 年訓練(主軸;Stacking = 前 3 年 A + 第 4 年 B)、種子 42。
 上:收盤價與真實標籤(▼ 真高點、▲ 真低點)。中、下:主軸、Stacking 邏輯迴歸每天的判斷
 (▼ 判高點、▲ 判低點;實心 = 和真實標籤相同、空心 = 判錯),綠色區塊 = 前 3 檔只做多回測裡這檔真的被買進的持有期間。
-用法: python method_kline_peak/report/stock_outputs.py 2379.TW 2024
-輸出: results/outputs_<代號>_<年>.png、results/outputs_<代號>_<年>.csv(每天一列)
+--pool / --train-min-amp / --tag:換股票池、訓練門檻;輸出檔名加 _<tag>_amp<門檻>(例 --pool tw50 --tag 34 --train-min-amp 6
+  → results/outputs_8046_2024_34_amp6.png);三個都不給時同原本(mainline.POOL、0%、檔名不加後綴)
+用法: python method_kline_peak/report/stock_outputs.py 2379.TW 2024 [--pool tw50 --tag 34 --train-min-amp 6]
+輸出: results/outputs_<代號>_<年>[_<tag>_amp<門檻>].png / .csv(每天一列)
 """
 import argparse
 import os
@@ -37,16 +39,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ticker")
     ap.add_argument("year", type=int)
+    ap.add_argument("--pool", default=ML.POOL)
+    ap.add_argument("--train-min-amp", type=float, default=0.0)
+    ap.add_argument("--tag", default=None, help="輸出檔名後綴(例 34、tw200)")
     a = ap.parse_args()
-    tk, y = a.ticker, a.year
-    data, panel, fc, prices = T.load()
+    tk, y, amp = a.ticker, a.year, a.train_min_amp
+    data, panel, fc, prices = T.load(a.pool)
     start, end = f"{y}-01-01", min(f"{y}-12-31", END)
     px = clean(data[tk]).loc[start:end]
     rule = BY.TradeRule(slots=3)
     out = pd.DataFrame({"close": px["close"]})
     trades, info = {}, {}
     for name in T.SOURCES:
-        sig, _ = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name]())
+        sig, _ = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name](), train_min_amp=amp)
         sim = BY.simulate(prices, sig[sig.pred == UP][T.COLS], start, end, rule)
         trades[name] = sim["trades"][sim["trades"].ticker == tk]
         s = sig[sig.ticker == tk].set_index("date")
@@ -56,7 +61,8 @@ def main():
         out[f"{name} 買進日(t+1 開盤)"] = out.index.isin(trades[name].entry)
         info[name] = (s, sim["trades"])
     out.index.name = "date"
-    base = os.path.join(ML.OUT, f"outputs_{tk[:4]}_{y}")
+    suffix = f"_{a.tag or a.pool}_amp{amp:g}" if (a.tag or a.pool != ML.POOL or amp) else ""
+    base = os.path.join(ML.OUT, f"outputs_{tk[:4]}_{y}{suffix}")
     out.to_csv(base + ".csv", encoding="utf-8-sig")
 
     nm = ticker_names().get(tk, tk)
@@ -96,12 +102,12 @@ def main():
         ax.set_ylim(out.close.min() - pad * 3, out.close.max() + pad * 9)
         tot = tr.net_ret.add(1).prod() - 1 if len(tr) else 0
         ax.set_title(f"{name}:判低點 {int((p == '低點').sum())} 天、判高點 {int((p == '高點').sum())} 天;"
-                     f"前 3 檔回測裡這檔被買 {len(tr)} 次(綠色 = 持有期間,上方數字 = 該筆扣成本報酬;全部 34 檔共 {len(all_tr)} 筆)",
+                     f"前 3 檔回測裡這檔被買 {len(tr)} 次(綠色 = 持有期間,上方數字 = 該筆扣成本報酬;全部 {len(data)} 檔共 {len(all_tr)} 筆)",
                      loc="left", fontsize=12, color=INK, fontweight="bold")
         ax.legend(frameon=True, facecolor="white", edgecolor=GRID, fontsize=10, labelcolor=INK, loc="lower right", ncol=2)
     axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%m 月"))
     axes[-1].xaxis.set_major_locator(mdates.MonthLocator())
-    fig.suptitle(f"{tk[:4]} {nm} {y} 每天的模型輸出(34 檔、訓練門檻 0%、前 4 年訓練、種子 42;只做多前 3 檔、t+1 開盤買、t+5 收盤賣)",
+    fig.suptitle(f"{tk[:4]} {nm} {y} 每天的模型輸出({len(data)} 檔、訓練門檻 {amp:g}%、前 4 年訓練、種子 42;只做多前 3 檔、t+1 開盤買、t+5 收盤賣)",
                  x=0.01, ha="left", fontsize=15, color=INK, y=0.995)
     fig.text(0.01, 0.005, "▼ 判高點、▲ 判低點:實心 = 和真實標籤相同、空心 = 判錯。只有判低點會買;同一天訊號多於空位時挑分數最高的,所以判低點不一定買得到。",
              fontsize=10.5, color=MUTED)
