@@ -50,6 +50,16 @@ SPLITS = {
 METHODS = {"rule": "規則基準(論文)", "native": "AE + OC-SVM(原系統判法)", "rule_oc": "規則候選 + AE + OC-SVM"}
 
 
+def label_amp(C, y):
+    """標籤幅度(%),兩邊較小那邊:高點 = min(從前 5 天最低收盤漲到 t, 從 t 跌到後 5 天最低收盤);
+    低點 = min(從前 5 天最高收盤跌到 t, 從 t 漲到後 5 天最高收盤);非極值為 NaN。會用到未來 5 天,只能當標籤用。"""
+    lmax, rmax = side_extreme(C, HALF, False, "max"), side_extreme(C, HALF, True, "max")
+    lmin, rmin = side_extreme(C, HALF, False, "min"), side_extreme(C, HALF, True, "min")
+    hi = np.minimum(C / lmin - 1, 1 - rmin / C) * 100
+    lo = np.minimum(1 - C / lmax, rmax / C - 1) * 100
+    return hi.where(y == DOWN, lo.where(y == UP))
+
+
 def paper_label(C):
     lmax, rmax = side_extreme(C, HALF, False, "max"), side_extreme(C, HALF, True, "max")
     lmin, rmin = side_extreme(C, HALF, False, "min"), side_extreme(C, HALF, True, "min")

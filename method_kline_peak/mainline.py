@@ -54,7 +54,7 @@ from feasibility import P, START, END, COST, load_pool, clean  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 from peak_labels import causal_features  # noqa: E402
 from confusion import ORDER, SURFACE, INK, plt, draw, summarize  # noqa: E402
-from paper_aeocsvm import NAMES, SPLITS, paper_label, rule_pred, mean_metrics  # noqa: E402
+from paper_aeocsvm import NAMES, SPLITS, paper_label, label_amp, rule_pred, mean_metrics  # noqa: E402
 SPLITS = {**SPLITS, "測試 2024": {"train": ("2020-01-01", "2023-12-31"), "test": ("2024-01-01", "2024-12-31")}}
 import ae_ocsvm  # noqa: E402
 import kline.autoencoder as KA  # noqa: E402   (ae_ocsvm 已把 method_kline 加入 sys.path)
@@ -111,6 +111,7 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
             feats.append(cp.add_prefix("chip_"))
         part = pd.concat(feats, axis=1).replace([np.inf, -np.inf], np.nan)
         part["y"], part["cand_hi"], part["cand_lo"], part["ticker"] = y, cand_hi, cand_lo, tk
+        part["amp"] = label_amp(df["close"], y)                          # 標籤幅度,只用於訓練時的幅度門檻,不進特徵
         part["r5"] = df["close"].shift(-5) / df["open"].shift(-1) - 1   # 只用於交易評估,不進特徵
         part.index.name = "date"
         parts.append(part.reset_index())
@@ -118,7 +119,7 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
     shape_cols = list(feats[0].columns)
     panel = panel[panel["y"].notna() & panel[shape_cols].notna().all(axis=1) & (panel["date"] >= START)]
     panel["y"] = panel["y"].astype(int)
-    feat_cols = [c for c in panel.columns if c not in ("date", "y", "cand_hi", "cand_lo", "ticker", "r5")]
+    feat_cols = [c for c in panel.columns if c not in ("date", "y", "cand_hi", "cand_lo", "ticker", "r5", "amp")]
     return panel.reset_index(drop=True), feat_cols
 
 

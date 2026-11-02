@@ -99,11 +99,20 @@ class MainlineSource(SignalSource):
 SOURCES = {"主軸": MainlineSource, "規則": RuleSource}
 
 
-def run_year(panel, feat_cols, year, source):
-    """訓練 Y-4 ~ Y-1 → 預測 Y;回傳 (訊號表含標籤 y, 訓練樣本數)。"""
+def relabel(train, min_amp):
+    """訓練用標籤:兩邊幅度未達 min_amp(%)的高點 / 低點改成非極值;min_amp = 0 不改。"""
+    if not min_amp:
+        return train
+    small = (train["y"] != FLAT) & ~(train["amp"] >= min_amp)
+    return train.assign(y=train["y"].where(~small, FLAT))
+
+
+def run_year(panel, feat_cols, year, source, train_min_amp=0.0):
+    """訓練 Y-4 ~ Y-1 → 預測 Y;回傳 (訊號表含標籤 y, 訓練樣本數)。
+    train_min_amp > 0:訓練時只把兩邊幅度 ≥ train_min_amp% 的點當高點 / 低點;對答案用的 y 永遠是原本的標籤。"""
     d = year_split(panel, year)
-    tr, te = d["train"], d["test"]
+    tr, te = relabel(d["train"], train_min_amp), d["test"]
     source.fit(tr, feat_cols)
-    sig = source.predict(te.drop(columns="y"))
+    sig = source.predict(te.drop(columns=["y", "amp"], errors="ignore"))
     sig["y"] = te["y"].to_numpy()
     return sig, len(tr)

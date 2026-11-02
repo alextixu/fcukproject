@@ -259,6 +259,27 @@ python method_kline_peak/mainline.py --tag z16 --latent 16 --epochs 100 --nu 0.0
 - 以波動為單位(到 t 為止 20 天日報酬標準差,中位 1.25%):≥ 1σ 留下 86% / 84%、≥ 1.5σ 留下 64% / 61%、≥ 2σ 留下 41% / 38%。
 - 圖:`results/label_amplitude.png`;數字:`results/label_amplitude.json`。
 
+### 用 3% 幅度門檻訓練、用原本的標籤對答案(`amp_train_eval.py`;2026-11-02 使用者要求)
+
+訓練時只把兩邊幅度 ≥ 3% 的點當高點 / 低點(其餘改成非極值;主軸的 OC-SVM、Stacking 的基底層與元學習器都一樣),
+測試期用原本的標籤對答案(只要是 11 天最高 / 最低就算對)。訓練都是前 4 年,種子 42。`walkforward.run_year(..., train_min_amp=3)`。
+
+| 年 | 方法 | macro-F1:0% → 3% | 找到 高 / 低 | 命中 高 / 低 | 判幾個 高 / 低 |
+|---|---|---|---|---|---|
+| 2024 | ① 主軸 | 53.96 → 52.64 | 81.6 / 84.4 → 64.0 / 59.3 | 27.7 / 29.8 → 27.6 / 28.6 | 2,638 / 2,591 → 2,075 / 1,890 |
+| 2024 | ② Stacking 邏輯迴歸 | 48.78 → 45.86 | 40.7 / 51.8 → 22.3 / 30.6 | 24.7 / 25.2 → 24.8 / 25.1 | 1,479 / 1,876 → 805 / 1,110 |
+| 2024 | ③ Stacking 門檻 | 47.79 → 43.88 | 43.1 / 55.0 → 15.8 / 23.0 | 24.1 / 23.3 → 24.8 / 25.5 | 1,599 / 2,153 → 572 / 822 |
+| 2025 | ① 主軸 | 53.01 → 51.96 | 76.7 / 79.6 → 53.5 / 59.0 | 26.2 / 30.0 → 25.3 / 30.4 | 2,671 / 2,426 → 1,923 / 1,776 |
+| 2025 | ② Stacking 邏輯迴歸 | 49.12 → 47.37 | 33.2 / 44.9 → 24.9 / 30.2 | 24.1 / 28.8 → 26.5 / 28.5 | 1,251 / 1,429 → 855 / 970 |
+| 2025 | ③ Stacking 門檻 | 47.76 → 45.66 | 34.9 / 45.4 → 22.9 / 21.2 | 22.6 / 26.2 → 26.7 / 28.2 | 1,409 / 1,585 → 783 / 687 |
+| 2026(1–9 月) | ① 主軸 | 53.63 → 52.91 | 61.5 / 72.1 → 56.0 / 61.9 | 23.2 / 34.4 → 23.0 / 34.3 | 1,484 / 1,293 → 1,359 / 1,115 |
+| 2026(1–9 月) | ② Stacking 邏輯迴歸 | 49.75 → 47.99 | 38.1 / 49.6 → 39.7 / 40.2 | 20.6 / 31.9 → 20.9 / 28.2 | 1,034 / 958 → 1,061 / 878 |
+| 2026(1–9 月) | ③ Stacking 門檻 | 48.06 → 48.57 | 39.0 / 41.2 → 26.1 / 35.0 | 20.5 / 28.9 → 22.5 / 33.5 | 1,065 / 879 → 648 / 645 |
+
+- 9 個裡有 8 個 macro-F1 下降(-0.7 ~ -3.9 點),只有 Stacking 門檻 2026 +0.5。
+- 判出來的點變少、找到率下降,但命中率幾乎沒變:模型分不出大幅度和小幅度的點,只是判得比較少。
+- 結果:`results/amp_train_eval.json`。
+
 ## 標籤定義(評估後的建議版)
 
 中心日 t = 窗格第 6 天,左右各 5 個交易日。
@@ -512,7 +533,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 71 項(約 1–2.5 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 77 項(約 1–2.5 分鐘),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/backtest_top3.py                    # 只做多前 3 檔,三個方法 × 2024–2026(約 1 分鐘;--short-slots 3 加做空)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)
@@ -538,6 +559,7 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | `stacking.py` | Stacking:拿掉規則,`BaseScorers`(兩組 AE + OC-SVM)→ `MetaLearner`(邏輯迴歸 L2 / L1 / Elastic Net / 多項式、決策樹、梯度提升、SVM);`StackingSource` 實作 `SignalSource` |
 | `walkforward.py` | 逐年 walk-forward:SignalSource 介面(主軸 / 規則),訓練 Y-4 ~ Y-1 → 預測 Y |
 | `backtest_years.py` | 投資組合回測引擎(做多,可加做空 `short_slots`;0.585% 成本)、逐年報表與基準(0050、TW50 等權、隨機) |
+| `amp_train_eval.py` | 用幅度門檻訓練(`--min-amp`,預設 3%)、用原本的標籤對答案,三個方法 × 2024–2026,對照 0% |
 | `label_amplitude.py` | 標籤幅度:高低點兩邊差多少、平均形狀、不同幅度門檻留下多少標籤與完全抓對後的交易報酬(圖 + json) |
 | `backtest_top3.py` | 只交易模型前 3 檔(預設只做多;`--short-slots 3` 加做空前 3 檔),三個方法 × 2024–2026,扣成本與沒扣成本 |
 | `export_windows.py` | 匯出主軸(種子 42、nu 0.1、我們的切分)每檔訓練 / 測試期的 K 線、標籤、規則候選、模型判斷 |
