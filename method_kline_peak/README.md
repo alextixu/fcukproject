@@ -80,6 +80,17 @@ macro-F1(找到 高 / 低,命中 高 / 低,%):
 
 每筆交易:`results/reversal_2379_2025.json`;圖:`results/reversal_2379_2025.png`。
 
+### 判高點買、判低點賣(只做多、不反手),只交易瑞昱 2025(`reversal_single.py --long-only`;2026-11-02 使用者要求)
+
+沒持有時判高點 → 隔天開盤全部資金買進;持有中判低點 → 隔天開盤賣出後空手,等下一個判高點再買;年底收盤平倉;成本同前。
+
+| 方法 | 扣成本 | 沒扣成本 | 筆數 | 勝率 | 最大回撤 |
+|---|---|---|---|---|---|
+| 主軸 | -12.2% | -3.0% | 17 | 29.4% | -19.4% |
+| Stacking 邏輯迴歸 | -1.2% | +2.3% | 6 | 66.7% | -12.1% |
+
+每筆交易:`results/reversal_long_2379_2025.json`;圖:`results/reversal_long_2379_2025.png`。
+
 ### 判低點買、判高點賣:只交易瑞昱 2025(`lohi_single.py`;2026-11-02 使用者要求)
 
 模型同目前設定(34 檔一起訓練、訓練門檻 0%、訓練 2021–2024),只取 2379 瑞昱的判斷交易:沒持有時判低點 → 隔天開盤全部資金買進;
@@ -690,7 +701,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 87 項(約 1 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 88 項(約 1 分鐘),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/backtest_top3.py                    # 只做多前 3 檔,兩個方法 × 2024–2026(約 1 分鐘;--short-slots 3 加做空)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)

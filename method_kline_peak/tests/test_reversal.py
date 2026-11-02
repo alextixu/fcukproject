@@ -53,3 +53,14 @@ def test_module_reversal_no_cost_compounds():
     out = simulate_reversal(px(), pred(d0=DOWN, d3=UP, d6=DOWN), DAYS[0], DAYS[11], TradeRule(**NO_COST))
     want = 1_000_000 * 104 / 101 * (1 - 3 / 104) * 111.5 / 107
     assert out["equity"].iloc[-1] == pytest.approx(want, rel=5e-4)
+
+
+def test_module_long_only_sell_on_low_then_wait():
+    """Given 第 0 天判高點、第 3 天判低點、第 6 天判高點 / When 只做多(不反手) /
+    Then 第 1 天開盤(101)買 → 第 4 天開盤(104)賣出後空手 → 第 7 天開盤(107)再買 → 期末平倉;兩筆都是做多,中間沒有空單"""
+    out = simulate_reversal(px(), pred(d0=DOWN, d3=UP, d6=DOWN), DAYS[0], DAYS[11], RULE, allow_short=False)
+    tr, eq = out["trades"], out["equity"]
+    assert list(tr.side) == ["做多", "做多"] and list(tr.how) == ["低點賣出", "期末"]
+    assert list(tr.entry) == [DAYS[1], DAYS[7]] and list(tr.exit) == [DAYS[4], DAYS[11]]
+    assert tr.net_ret[0] == pytest.approx(104 / 101 * NET - 1)
+    assert eq.loc[DAYS[4]:DAYS[6]].nunique() == 1 and eq.iloc[-1] == pytest.approx(RULE.init_cash + tr.pnl.sum())

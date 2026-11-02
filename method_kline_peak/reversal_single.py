@@ -2,7 +2,8 @@
 
 模型:目前的設定(34 檔一起訓練、訓練門檻 0%、前 4 年訓練、種子 42),只取這一檔的判斷。交易規則見 reversal.py;
 100 萬全部投入、成本 0.585%(另列成本設 0)。
-用法: python method_kline_peak/reversal_single.py 2379.TW 2025
+--long-only:只做多、不反手(判高點買、判低點賣出後空手),輸出檔名 reversal_long_<代號>_<年>
+用法: python method_kline_peak/reversal_single.py 2379.TW 2025 [--long-only]
 輸出: results/reversal_<代號>_<年>.json、results/reversal_<代號>_<年>.png
 """
 import argparse
@@ -33,19 +34,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ticker")
     ap.add_argument("year", type=int)
+    ap.add_argument("--long-only", action="store_true")
     a = ap.parse_args()
-    tk, y = a.ticker, a.year
+    tk, y, short = a.ticker, a.year, not a.long_only
     data, panel, fc, _ = T.load()
     start, end = f"{y}-01-01", min(f"{y}-12-31", END)
     px = clean(data[tk])[["open", "close"]]
-    res = {"ticker": tk, "year": y, "rule": "判高點 → 隔天開盤做多;做多中判低點 → 隔天開盤賣出並反手做空;做空中判高點 → 回補並反手做多",
+    res = {"ticker": tk, "year": y, "rule": ("判高點 → 隔天開盤做多;做多中判低點 → 隔天開盤賣出並反手做空;做空中判高點 → 回補並反手做多" if short
+                                             else "只做多:判高點 → 隔天開盤買進;持有中判低點 → 隔天開盤賣出後空手"),
            "results": {}}
     sims, sigs = {}, {}
     for name in T.SOURCES:
         sig, _ = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name]())
         s = sig[sig.ticker == tk].set_index("date")
-        sim = simulate_reversal(px, s.pred, start, end, BY.TradeRule())
-        gross = simulate_reversal(px, s.pred, start, end, BY.TradeRule(**BY.NO_COST))
+        sim = simulate_reversal(px, s.pred, start, end, BY.TradeRule(), allow_short=short)
+        gross = simulate_reversal(px, s.pred, start, end, BY.TradeRule(**BY.NO_COST), allow_short=short)
         tr = sim["trades"]
         st = BY.stats(sim["equity"], tr)
         idx = px.loc[start:end].index
@@ -66,7 +69,7 @@ def main():
               f"回撤 {r['max_dd_pct']}%  做多 {by_side['做多']}  做空 {by_side['做空']}", flush=True)
         for t in r["trades"]:
             print(f"    {t['side']} {t['entry']} {t['entry_px']:.1f} → {t['exit']} {t['exit_px']:.1f}  {t['hold_days']} 天  {t['net_ret_pct']:+.2f}%  {t['how']}")
-    base = os.path.join(ML.OUT, f"reversal_{tk[:4]}_{y}")
+    base = os.path.join(ML.OUT, f"reversal_{'' if short else 'long_'}{tk[:4]}_{y}")
     with open(base + ".json", "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)
 
@@ -89,7 +92,8 @@ def main():
                         ha="center", va="bottom", rotation=90, fontsize=8.5, color=INK)
         ax.set_ylim(close.min() - pad * 3, close.max() + pad * 10)
         b = r["by_side"]
-        ax.set_title(f"{name}:做多 {b['做多']['n']} 筆(綠底)、做空 {b['做空']['n']} 筆(紅底);上方 = 該筆扣成本報酬",
+        sides = f"做多 {b['做多']['n']} 筆(綠底)、做空 {b['做空']['n']} 筆(紅底)" if short else f"做多 {b['做多']['n']} 筆(綠底 = 持有期間)"
+        ax.set_title(f"{name}:{sides};上方 = 該筆扣成本報酬",
                      loc="left", fontsize=12.5, color=INK, fontweight="bold")
         ax.legend(frameon=True, facecolor="white", edgecolor=GRID, fontsize=10, labelcolor=INK, loc="lower right", ncol=2)
         ax.set_ylabel("收盤(還原價)", color=MUTED, fontsize=10)
@@ -99,7 +103,7 @@ def main():
             ax2.plot(xs, [cv[d.strftime("%Y-%m-%d")] for d in xs], color=LO if k == 0 else HI, lw=2, ls=ls, label=lab)
         ax2.axhline(0, color=MUTED, lw=0.8, ls=":")
         ax2.set_title(f"{name} 資產:扣成本 {r['total_return_pct']:+.1f}%、沒扣成本 {r['gross_return_pct']:+.1f}%,最大回撤 {r['max_dd_pct']:.1f}%"
-                      f"(做多損益 {b['做多']['pnl_pct_of_init']:+.1f}、做空損益 {b['做空']['pnl_pct_of_init']:+.1f} 個百分點)",
+                      + (f"(做多損益 {b['做多']['pnl_pct_of_init']:+.1f}、做空損益 {b['做空']['pnl_pct_of_init']:+.1f} 個百分點)" if short else ""),
                       loc="left", fontsize=11.5, color=INK)
         ax2.set_ylabel("報酬(%)", color=MUTED, fontsize=10)
         ax2.legend(frameon=False, fontsize=10, labelcolor=INK, loc="upper left", ncol=2)
@@ -112,7 +116,8 @@ def main():
             a_.grid(axis="y", color=GRID, lw=0.8)
     axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%m 月"))
     axes[-1].xaxis.set_major_locator(mdates.MonthLocator())
-    fig.suptitle(f"{tk[:4]} {nm} {y}:判高點做多、判低點反手做空(只交易這一檔、100 萬全部投入、隔天開盤執行、成本 0.585%)",
+    how = "判高點做多、判低點反手做空" if short else "判高點買進、判低點賣出(只做多、不反手)"
+    fig.suptitle(f"{tk[:4]} {nm} {y}:{how}(只交易這一檔、100 萬全部投入、隔天開盤執行、成本 0.585%)",
                  x=0.01, ha="left", fontsize=15, color=INK, y=0.995)
     fig.savefig(base + ".png", facecolor="white", bbox_inches="tight")
     print(base + ".png")
