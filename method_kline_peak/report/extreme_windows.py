@@ -35,7 +35,7 @@ def pct(v):
     return "0.00%" if abs(v) < 0.005 else f"{v:+.2f}%"
 
 
-def draw(ax, df, i, cls, title, sub):
+def draw(ax, df, i, cls, title, sub, two_lines=False):
     a, b = i - 5, i + 5
     w = df.iloc[a:b + 1]
     lo, hi = w["low"].min(), w["high"].max()
@@ -71,8 +71,9 @@ def draw(ax, df, i, cls, title, sub):
     ax.tick_params(length=0)
     for s in ax.spines.values():
         s.set_visible(False)
-    ax.set_title(title, loc="left", fontsize=13, color=INK, fontweight="bold", pad=24)
-    ax.text(0, 1.01, f"{ltxt}、{rtxt} → {sub}", transform=ax.transAxes, fontsize=10.5, color=INK2, va="bottom", ha="left")
+    ax.set_title(title, loc="left", fontsize=13, color=INK, fontweight="bold", pad=40 if two_lines else 24)
+    ax.text(0, 1.01, f"{sub}\n{ltxt}、{rtxt}" if two_lines else f"{ltxt}、{rtxt} → {sub}", transform=ax.transAxes,
+            fontsize=10.5, color=INK2, va="bottom", ha="left", linespacing=1.4)
     return min(left, right)
 
 
