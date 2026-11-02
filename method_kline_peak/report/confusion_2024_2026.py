@@ -3,7 +3,7 @@
 股票池 = mainline.load_data()(34 檔);測哪一年就用前 4 年訓練(Stacking:前 3 年基底層 A + 第 4 年元學習器 B),
 訓練期剔除最後 5 個交易日;對答案一律用原本的標籤(只要是 11 天最高 / 最低就算)。種子 42。
 --side 3:改畫「每邊至少 3 天對方向」訓練的版本(規則、主軸、Stacking 邏輯迴歸),輸出檔名加 _side3。
---plain:只畫規則、主軸、Stacking 邏輯迴歸(門檻 0%);輸出檔名加股票池名稱(例 _tw100)。
+--plain:只畫主軸、Stacking 邏輯迴歸兩個方法(訓練門檻 0%);輸出檔名加股票池名稱(例 _tw100)。
 用法: python method_kline_peak/report/confusion_2024_2026.py [--amp 8 | --side 3 | --plain]
 輸出: results/confusion_2024_2026.png、results/confusion_2024_2026.json(或 _side3)
 """
@@ -33,13 +33,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--amp", type=float, default=8.0)
     ap.add_argument("--side", type=int, default=0)
-    ap.add_argument("--plain", action="store_true", help="只畫規則、主軸、Stacking 邏輯迴歸(門檻 0%)")
+    ap.add_argument("--plain", action="store_true", help="只畫主軸、Stacking 邏輯迴歸(門檻 0%)兩個方法")
     a = ap.parse_args()
     amp, side = a.amp, a.side
     data = ML.load_data()
     panel, fc = ML.build_panel(data, 6, [])
     if a.plain:
-        cols = [("規則(不用訓練)", "規則", 0.0, 0), ("① 主軸", "主軸", 0.0, 0), ("② Stacking 邏輯迴歸", "Stacking 邏輯迴歸", 0.0, 0)]
+        cols = [("① 主軸", "主軸", 0.0, 0), ("② Stacking 邏輯迴歸", "Stacking 邏輯迴歸", 0.0, 0)]
     elif side:
         cols = [("規則(不用訓練)", "規則", 0.0, 0), (f"① 主軸,每邊 ≥ {side} 天", "主軸", 0.0, side),
                 (f"② Stacking 邏輯迴歸,每邊 ≥ {side} 天", "Stacking 邏輯迴歸", 0.0, side)]
@@ -62,11 +62,11 @@ def main():
         fig.text(0.004, 1 - (r + 0.5) / len(YEARS) * 0.95 - 0.02, f"測試 {y}" + ("(1–9 月)" if y == 2026 else ""), rotation=90,
                  va="center", fontsize=15, color=CC.INK, fontweight="bold")
     what = "訓練門檻 0%" if a.plain else (f"訓練:每邊至少 {side} 天對方向" if side else f"訓練門檻 0% 與 {amp:g}%")
-    fig.suptitle(f"2024–2026 混淆矩陣({ML.POOL.upper()} 剔除低波動股後 {len(data)} 檔,種子 42;{what};對答案都用原本的標籤;顏色 = 每列比例)",
-                 fontsize=16, color=CC.INK, x=0.02, ha="left", y=0.997)
+    fig.suptitle(f"2024–2026 混淆矩陣({ML.POOL.upper()} 剔除低波動股後 {len(data)} 檔,種子 42)\n{what};對答案都用原本的標籤;顏色 = 每列比例",
+                 fontsize=16, color=CC.INK, x=0.02, ha="left", y=0.997, linespacing=1.4)
     fig.text(0.02, 0.003, "列 = 真實標籤、欄 = 判斷;橘框 = 高低點判反。測試天數:"
              + "、".join(f"{y} 年 {n:,} 天" for y, n in ndays.items()) + "。", fontsize=11, color=CC.MUTED)
-    fig.tight_layout(rect=(0.012, 0.015, 1, 0.975), h_pad=3.0, w_pad=2.2)
+    fig.tight_layout(rect=(0.012, 0.015, 1, 0.955), h_pad=3.0, w_pad=2.2)
     tag = f"_{ML.POOL}" + ("" if a.plain else (f"_side{side}" if side else ""))
     out = os.path.join(ML.OUT, f"confusion_2024_2026{tag}.png")
     fig.savefig(out, facecolor="white")
