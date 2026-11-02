@@ -68,6 +68,18 @@ macro-F1(找到 高 / 低,命中 高 / 低,%):
 | ② Stacking 邏輯迴歸,門檻 0% | 48.54(找到 47 / 56,命中 24 / 23) | 49.43(找到 35 / 45,命中 25 / 28) | 49.45(找到 41 / 51,命中 21 / 30) |
 | ② Stacking 邏輯迴歸,門檻 8% | 38.79(找到 7 / 9,命中 32 / 28) | 40.61(找到 11 / 10,命中 27 / 32) | 45.13(找到 25 / 22,命中 20 / 31) |
 
+### 反手交易:判高點做多、判低點反手做空,只交易瑞昱 2025(`reversal.py`、`reversal_single.py`;2026-11-02 使用者要求)
+
+第一個判高點 → 隔天開盤全部資金做多;做多中判低點 → 隔天開盤賣出並反手放空;做空中判高點 → 回補並反手做多;
+同方向訊號重複不理會;年底收盤平倉。放空用 100% 保證金、不計借券費;成本同前。模型同目前設定(34 檔、門檻 0%、訓練 2021–2024)。
+
+| 方法 | 扣成本 | 沒扣成本 | 筆數 | 勝率 | 最大回撤 | 做多 / 做空損益(個百分點) |
+|---|---|---|---|---|---|---|
+| 主軸 | -20.4% | -2.8% | 34(多 17 / 空 17) | 26.5% | -33.1% | -11.1 / -9.3 |
+| Stacking 邏輯迴歸 | +1.5% | +8.8% | 12(多 6 / 空 6) | 75.0% | -26.7% | -1.4 / +2.9 |
+
+每筆交易:`results/reversal_2379_2025.json`;圖:`results/reversal_2379_2025.png`。
+
 ### 判低點買、判高點賣:只交易瑞昱 2025(`lohi_single.py`;2026-11-02 使用者要求)
 
 模型同目前設定(34 檔一起訓練、訓練門檻 0%、訓練 2021–2024),只取 2379 瑞昱的判斷交易:沒持有時判低點 → 隔天開盤全部資金買進;
@@ -678,7 +690,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 83 項(約 1 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 87 項(約 1 分鐘),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/backtest_top3.py                    # 只做多前 3 檔,兩個方法 × 2024–2026(約 1 分鐘;--short-slots 3 加做空)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)
@@ -709,6 +721,7 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | `report/one_window.py` | 單一天的 11 天 K 線,標出每天收盤漲跌與是否對方向(`python report/one_window.py 2379.TW 2023-05-29`) |
 | `report/equity_curves.py` | backtest_top3 結果檔的資產曲線(方法 × 年;實線扣成本、虛線沒扣成本) |
 | `report/stock_outputs.py` | 一檔股票一整年每天的模型輸出(真實標籤、主軸與 Stacking 的判斷、前 3 檔回測裡的買進;圖 + 每天一列的 csv) |
+| `reversal.py`、`reversal_single.py` | 單一股票反手交易(判高點做多、判低點反手做空)的引擎與回測(`python reversal_single.py 2379.TW 2025`) |
 | `lohi_single.py` | 單一股票「判低點買、判高點賣」回測:兩個方法 × 一年,每筆交易、資產曲線(`python lohi_single.py 2379.TW 2025`) |
 | `report/confusion_2024_2026.py` | 2024–2026 混淆矩陣:規則、主軸、Stacking 邏輯迴歸,訓練門檻 0% 與 `--amp`(預設 8%) |
 | `amp_sweep.py` | 訓練門檻每次 +1%:6 個平均沒提升就停(預設),或 `--grid` 每個方法跑到訓練點不夠為止(圖 + json) |

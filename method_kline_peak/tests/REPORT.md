@@ -1,6 +1,6 @@
 # 主軸測試報告(自動產生)
 
-結果:82 / 83 通過,1 項刻意跳過(條件不適用)
+結果:86 / 87 通過,1 項刻意跳過(條件不適用)
 
 | # | 層級 | 測試 | 情境(Given / When / Then) | 結果 |
 |---|---|---|---|---|
@@ -71,19 +71,23 @@
 | 65 | System | `test_system_data_quality` | Given TW50 50 檔還原日 K / When 清理後檢查 / Then 沒有零量日、最高 ≥ 開收、最低 ≤ 開收; 每年「開盤 ÷ 前日收盤」中位數在 0.98 ~ 1.02(開盤和收盤用同一套還原,沒有錯位) | 通過 |
 | 66 | Module | `test_module_pool_excludes_low_vol` | Given 完整 TW50 50 檔與使用者剔除的 16 檔 / When 讀主軸的股票池 / Then 剩 34 檔,剔除的一檔都不在,其餘都是 TW50 成分股 | 通過 |
 | 67 | Module | `test_module_excluded_are_lowest_volatility` | Given 2020-01 以後每檔的每日漲跌幅(絕對值)中位數 / When 由低到高排序 / Then 剔除的 16 檔正好是最低的 16 檔(中華電 ~ 中信金) | 通過 |
-| 68 | Component | `test_component_split_base_meta` | Given 2024 的訓練期(2020–2023) / When 切成基底層 A 與元學習器 B / Then A 只有 2020–2022、B 只有 2023; A 的每一筆標籤(該股自己的 t+5)都早於 2023 年第一天,所以元學習器看到的分數來自基底層沒看過的資料 | 通過 |
-| 69 | Component | `test_component_meta_learner_three_classes` | [lr] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 70 | Component | `test_component_meta_learner_three_classes` | [lr-l1] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 71 | Component | `test_component_meta_learner_three_classes` | [lr-enet] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 72 | Component | `test_component_meta_learner_three_classes` | [lr-poly2] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 73 | Component | `test_component_meta_learner_three_classes` | [lr-poly3] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 74 | Component | `test_component_meta_learner_three_classes` | [tree] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 75 | Component | `test_component_meta_learner_three_classes` | [hgb] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 76 | Component | `test_component_meta_learner_three_classes` | [svm] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
-| 77 | System | `test_system_refactor_matches_before` | [score|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 78 | System | `test_system_refactor_matches_before` | [score+recon|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 79 | System | `test_system_refactor_matches_before` | [score+pos|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 80 | System | `test_system_refactor_matches_before` | [score|hgb] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 81 | System | `test_system_refactor_matches_before` | [score|svm] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 82 | System | `test_system_refactor_matches_before` | [score|tree] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
-| 83 | System | `test_system_source_equals_experiment` | Given StackingSource(邏輯迴歸、只用分數) / When 走 SignalSource 介面訓練 2020–2023、預測 2024 / Then 每一天的判斷和實驗流程(基底層 + 元學習器)完全相同,所以逐年回測可以直接用它 | 通過 |
+| 68 | Module | `test_module_reversal_long_short_long` | Given 第 0 天判高點、第 3 天判低點、第 6 天判高點 / When 反手交易 / Then 第 1 天開盤(101)做多 → 第 4 天開盤(104)賣出並反手放空 → 第 7 天開盤(107)回補並反手做多 → 最後一天收盤(111.5)平倉; 每筆報酬照成本手算,期末資產 = 100 萬 + 損益加總 | 通過 |
+| 69 | Module | `test_module_reversal_waits_for_first_high` | Given 第 0 天判低點、第 2 天判高點 / When 反手交易 / Then 第一個高點之前的低點不理會:第 3 天開盤才第一次做多,持有到期末 | 通過 |
+| 70 | Module | `test_module_reversal_repeated_signals_ignored` | Given 第 0、2、4 天都判高點 / When 反手交易 / Then 做多中再判高點不加碼也不重買:只有一筆做多,第 1 天買、期末賣 | 通過 |
+| 71 | Module | `test_module_reversal_no_cost_compounds` | Given 同第一個情境、成本設 0 / When 反手交易 / Then 期末資產 ≈ 100 萬 × 104/101 × (1 − 3/104) × 111.5/107(只差整數股的零頭) | 通過 |
+| 72 | Component | `test_component_split_base_meta` | Given 2024 的訓練期(2020–2023) / When 切成基底層 A 與元學習器 B / Then A 只有 2020–2022、B 只有 2023; A 的每一筆標籤(該股自己的 t+5)都早於 2023 年第一天,所以元學習器看到的分數來自基底層沒看過的資料 | 通過 |
+| 73 | Component | `test_component_meta_learner_three_classes` | [lr] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 74 | Component | `test_component_meta_learner_three_classes` | [lr-l1] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 75 | Component | `test_component_meta_learner_three_classes` | [lr-enet] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 76 | Component | `test_component_meta_learner_three_classes` | [lr-poly2] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 77 | Component | `test_component_meta_learner_three_classes` | [lr-poly3] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 78 | Component | `test_component_meta_learner_three_classes` | [tree] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 79 | Component | `test_component_meta_learner_three_classes` | [hgb] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 80 | Component | `test_component_meta_learner_three_classes` | [svm] Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 / Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1 (SVM 為 0) | 通過 |
+| 81 | System | `test_system_refactor_matches_before` | [score|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 82 | System | `test_system_refactor_matches_before` | [score+recon|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 83 | System | `test_system_refactor_matches_before` | [score+pos|lr] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 84 | System | `test_system_refactor_matches_before` | [score|hgb] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 85 | System | `test_system_refactor_matches_before` | [score|svm] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 86 | System | `test_system_refactor_matches_before` | [score|tree] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
+| 87 | System | `test_system_source_equals_experiment` | Given StackingSource(邏輯迴歸、只用分數) / When 走 SignalSource 介面訓練 2020–2023、預測 2024 / Then 每一天的判斷和實驗流程(基底層 + 元學習器)完全相同,所以逐年回測可以直接用它 | 通過 |
