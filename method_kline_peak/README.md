@@ -670,6 +670,7 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | `walkforward.py` | 逐年 walk-forward:SignalSource 介面(主軸 / 規則),訓練 Y-4 ~ Y-1 → 預測 Y |
 | `backtest_years.py` | 投資組合回測引擎(做多,可加做空 `short_slots`;0.585% 成本)、逐年報表與基準(0050、TW50 等權、隨機) |
 | `report/label_shapes.py` | 現在的標籤長怎樣:對方向的天數(前 5 天漲 + 後 5 天跌,高點;低點反之)分布與例子(圖) |
+| `report/label_side_filter.py` | 做法 2「每邊至少 N 天對方向」會保留 / 刪掉哪些標籤:例子與前 5 天 × 後 5 天分布(`--min-side`,預設 3;只畫圖) |
 | `report/confusion_2024_2026.py` | 2024–2026 混淆矩陣:規則、主軸、Stacking 邏輯迴歸,訓練門檻 0% 與 `--amp`(預設 8%) |
 | `amp_sweep.py` | 訓練門檻每次 +1%:6 個平均沒提升就停(預設),或 `--grid` 每個方法跑到訓練點不夠為止(圖 + json) |
 | `amp_train_eval.py` | 用幅度門檻訓練(`--min-amp`,預設 3%)、用原本的標籤對答案,兩個方法 × 2024–2026,對照 0% |
