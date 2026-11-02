@@ -22,7 +22,7 @@ sys.path.insert(0, HERE)
 import mainline as ML  # noqa: E402
 import walkforward as WF  # noqa: E402
 from export_windows import ticker_names  # noqa: E402
-from feasibility import START, END, load_pool, clean  # noqa: E402
+from feasibility import clean  # noqa: E402
 from learn5_trade6 import UP, DOWN  # noqa: E402
 
 INK, INK2, MUTED, KNOWN, BAND = "#13202A", "#47545F", "#7A8691", "#EEF2F5", "#E2E8ED"
@@ -82,7 +82,7 @@ def main():
     ap.add_argument("--min-amp", type=float, default=0.0, help="訓練時的幅度門檻(%);> 0 時只從達門檻的點裡挑")
     a = ap.parse_args()
     test_year, min_amp = a.test_year, a.min_amp
-    data = load_pool(ML.POOL, START, END)
+    data = ML.load_data()
     panel, _ = ML.build_panel(data, 6, [])
     tr = WF.relabel(WF.year_split(panel, test_year)["train"], min_amp)
     y0, y1 = tr.date.dt.year.min(), tr.date.dt.year.max()

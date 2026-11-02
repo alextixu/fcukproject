@@ -47,6 +47,30 @@ python method_kline_peak/mainline.py --tag z16 --latent 16 --epochs 100 --nu 0.0
 - 同樣在 t 日收盤判斷、收盤價標籤的設定下,監督式的 LightGBM 也沒贏過規則(第 2 節:54.6% vs 55.3%)。
   這表示目前的價格、技術指標、籌碼特徵裡,本來就沒有分辨真假候選的資訊,不只是 AE + OC-SVM 的問題。
 
+### 股票池剔除 16 檔低波動股(`mainline.EXCLUDE`、`mainline.load_data()`;2026-11-02 使用者要求)
+
+剔除 2020-01 ~ 2026-09 每日漲跌幅中位數最低的 16 檔(0.43% ~ 0.72%,標籤多是小起伏):中華電、台灣大、合庫金、台灣高鐵、
+第一金、遠傳、華南金、兆豐金、統一超、玉山金、亞泥、台新金、統一、永豐金、台泥、中信金;剩 34 檔。
+主軸、Stacking、回測、圖都改用 34 檔(`ML.load_data()`);測試仍固定用完整 50 檔,回歸數字不變。訓練門檻維持 0%。
+
+只做多前 3 檔(`python backtest_top3.py`,規則同上一節),50 檔 → 34 檔:
+
+| 年 | 方法 | 扣成本 | 沒扣成本 | 筆數 | 勝率 | macro-F1 |
+|---|---|---|---|---|---|---|
+| 2024 | ① 主軸 | -28.8% → **-24.8%** | -5.8% → -0.9% | 142 | 44.4% | 53.96 → 51.95 |
+| 2024 | ② Stacking 邏輯迴歸 | -30.2% → **-45.0%** | -8.2% → -28.2% | 137 | 38.0% | 48.78 → 48.54 |
+| 2024 | ③ Stacking 門檻 | -26.1% → **-34.3%** | -2.2% → -13.1% | 144 | 43.1% | 47.79 → 46.96 |
+| 2025 | ① 主軸 | -41.7% → **-34.9%** | -23.3% → -14.5% | 140 | 41.4% | 53.01 → 53.14 |
+| 2025 | ② Stacking 邏輯迴歸 | -18.6% → **-11.9%** | +6.5% → +13.9% | 132 | 50.0% | 49.12 → 49.43 |
+| 2025 | ③ Stacking 門檻 | -33.7% → **-30.2%** | -13.6% → -9.2% | 135 | 40.7% | 47.76 → 48.88 |
+| 2026(1–9 月) | ① 主軸 | +16.0% → **+0.1%** | +39.3% → +20.2% | 94 | 38.3% | 53.63 → 52.93 |
+| 2026(1–9 月) | ② Stacking 邏輯迴歸 | +10.0% → **+0.5%** | +32.8% → +19.2% | 88 | 40.9% | 49.75 → 49.45 |
+| 2026(1–9 月) | ③ Stacking 門檻 | +5.8% → **-8.2%** | +26.8% → +10.0% | 93 | 41.9% | 48.06 → 48.01 |
+
+- 9 個裡 4 個變好(主軸 2024、三個方法的 2025)、5 個變差;9 個平均扣成本報酬 -16.4% → -21.0%。
+- macro-F1 變動在 -2.0 ~ +1.1 點之間,沒有一致的方向。
+- 結果:`results/backtest_long_only.json`(含分類分數與股票池清單)。
+
 ### 只交易模型前 3 檔:三個方法 × 2024–2026(`backtest_top3.py`;2026-11-02 使用者要求)
 
 只做多(`python backtest_top3.py`):低點訊號 t+1 開盤買、t+5 收盤賣,同時最多 3 檔、每檔前一天總資產 1/3,
@@ -64,7 +88,7 @@ python method_kline_peak/mainline.py --tag z16 --latent 16 --epochs 100 --nu 0.0
 | 2026(1–9 月) | ② Stacking 邏輯迴歸 | **+10.0%** | +32.8% | 97 | 53.6% | -19.8% |
 | 2026(1–9 月) | ③ Stacking 門檻 | **+5.8%** | +26.8% | 93 | 47.3% | -16.0% |
 
-結果:`results/backtest_long_only.json`。
+結果:`results/backtest_long_only_tw50.json`(TW50 50 檔,剔除低波動股之前)。
 
 加做空(`python backtest_top3.py --short-slots 3`):高點訊號 t+1 開盤放空、t+5 收盤回補,做多、做空各最多 3 檔
 (總共 6 檔,每檔 1/6);同一檔同時只有一個部位;做空成本 放空時 0.1425% + 稅 0.3%、回補時 0.1425%(不計借券費)。
@@ -81,7 +105,7 @@ python method_kline_peak/mainline.py --tag z16 --latent 16 --epochs 100 --nu 0.0
 | 2026(1–9 月) | ② Stacking 邏輯迴歸 | -20.8%(+2.3 / -23.1) | -4.3%(+11.6 / -16.0) | 192(97 / 95) | 46.4% | -30.4% |
 | 2026(1–9 月) | ③ Stacking 門檻 | -14.1%(+2.3 / -16.4) | +3.1%(+11.9 / -8.8) | 187(93 / 94) | 42.8% | -17.4% |
 
-貢獻 = 該方向所有交易損益加總 ÷ 100 萬。結果:`results/backtest_long_short.json`。
+貢獻 = 該方向所有交易損益加總 ÷ 100 萬。結果:`results/backtest_long_short_tw50.json`(TW50 50 檔)。
 
 ### 三個方法並排:2024、2025(訓練長度都是前 4 年;`backtest_years.py --sources …`、`stacking.py`)
 
@@ -533,7 +557,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 77 項(約 1–2.5 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 79 項(約 1–2.5 分鐘),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/backtest_top3.py                    # 只做多前 3 檔,三個方法 × 2024–2026(約 1 分鐘;--short-slots 3 加做空)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)

@@ -19,7 +19,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 import mainline as ML  # noqa: E402
-from feasibility import START, END, load_pool, clean  # noqa: E402
+from feasibility import START, clean  # noqa: E402
 from paper_aeocsvm import paper_label  # noqa: E402
 from learn5_trade6 import UP, DOWN  # noqa: E402
 
@@ -37,7 +37,7 @@ plt.rcParams["axes.unicode_minus"] = False
 
 
 def collect():
-    data = load_pool(ML.POOL, START, END)
+    data = ML.load_data()
     rows, paths = [], []
     for tk, df in data.items():
         df = clean(df)

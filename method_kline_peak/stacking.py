@@ -60,7 +60,6 @@ sys.path.insert(0, HERE)
 import mainline as ML  # noqa: E402
 import ae_ocsvm  # noqa: E402
 import walkforward as WF  # noqa: E402
-from feasibility import START, END, load_pool  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 from paper_aeocsvm import NAMES, rule_pred  # noqa: E402
 from confusion import summarize  # noqa: E402
@@ -263,7 +262,7 @@ def main():
     ap.add_argument("--meta-years", type=int, default=1)
     args = ap.parse_args()
     t0 = time.time()
-    panel, fc = ML.build_panel(load_pool(ML.POOL, START, END), 6, [])
+    panel, fc = ML.build_panel(ML.load_data(), 6, [])
     d = WF.year_split(panel, args.test_year, args.train_years)
     A, B = split_base_meta(d["train"], args.meta_years)
     C = d["test"]

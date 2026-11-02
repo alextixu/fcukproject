@@ -29,7 +29,7 @@ import pandas as pd
 import mainline as ML
 import walkforward as WF
 import stacking as S
-from feasibility import P, START, END, load_pool, clean
+from feasibility import P, END, clean
 from learn5_trade6 import UP, DOWN
 from paper_aeocsvm import NAMES
 from confusion import summarize
@@ -176,7 +176,7 @@ def main():
     args = ap.parse_args()
     out_path = os.path.join(ML.OUT, args.out)
     t0 = time.time()
-    data = load_pool(ML.POOL, START, END)
+    data = ML.load_data()
     panel, fc = ML.build_panel(data, 6, [])
     prices = {tk: clean(df)[["open", "close"]] for tk, df in data.items()}
     etf = clean(pd.read_parquet(os.path.join(P.YF_2026_CACHE, "0050.TW.parquet")))[["open", "close"]]

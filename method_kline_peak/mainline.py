@@ -62,6 +62,9 @@ import kline.autoencoder as KA  # noqa: E402   (ae_ocsvm 已把 method_kline 加
 OUT = os.path.join(HERE, "results")
 LOG = os.path.join(OUT, "experiments.csv")
 POOL = "tw50"
+# 2026-11-02 使用者剔除:2020-01 ~ 2026-09 每日漲跌幅中位數最低的 16 檔(0.43% ~ 0.72%,標籤多是小起伏)
+EXCLUDE = ("2412.TW", "3045.TW", "5880.TW", "2633.TW", "2892.TW", "4904.TW", "2880.TW", "2886.TW",
+           "2912.TW", "2884.TW", "1102.TW", "2887.TW", "1216.TW", "2890.TW", "1101.TW", "2891.TW")
 VOL_MA = 10                                       # 量的基準均量天數(2026-10-19 改為 10,之前為 20)
 ARCH, LATENT = "shallow", 16                      # AE 編碼器 29 → 16 一層(2026-10-19 起;之前為原系統 29 → 58 → 8 → 4)
 CAND = {DOWN: "cand_hi", UP: "cand_lo"}
@@ -121,6 +124,11 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
     panel["y"] = panel["y"].astype(int)
     feat_cols = [c for c in panel.columns if c not in ("date", "y", "cand_hi", "cand_lo", "ticker", "r5", "amp")]
     return panel.reset_index(drop=True), feat_cols
+
+
+def load_data(start=START, end=END, exclude=EXCLUDE):
+    """主軸的股票池:TW50 剔除 EXCLUDE(目前 34 檔)。"""
+    return {tk: df for tk, df in load_pool(POOL, start, end).items() if tk not in exclude}
 
 
 def split(panel, sp, half=5):
@@ -430,7 +438,7 @@ def main():
     t0 = time.time()
     plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
 
-    panel, feat_cols = build_panel(load_pool(POOL, START, END), args.window, args.extra, args.vol_ma)
+    panel, feat_cols = build_panel(load_data(), args.window, args.extra, args.vol_ma)
     print(f"[{args.tag}] window {args.window}、量基準 {args.vol_ma} 日均量、extra {args.extra or '-'}:{len(feat_cols)} 個特徵,"
           f"AE {args.arch}、latent {args.latent}、epochs {args.epochs}、nu {args.nu}、gamma {args.gamma}、weight {args.weight}、dist {args.dist}"
           f"  ({time.time() - t0:.0f}s)", flush=True)

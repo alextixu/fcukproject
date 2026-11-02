@@ -21,7 +21,6 @@ sys.path.insert(0, HERE)
 import mainline as ML  # noqa: E402
 import walkforward as WF  # noqa: E402
 import stacking as S  # noqa: E402
-from feasibility import START, END, load_pool  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 from confusion import summarize  # noqa: E402
 from paper_aeocsvm import NAMES  # noqa: E402
@@ -68,7 +67,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--year", type=int, default=2024, choices=[2024, 2025])
     year = ap.parse_args().year
-    panel, fc = ML.build_panel(load_pool(ML.POOL, START, END), 6, [])
+    panel, fc = ML.build_panel(ML.load_data(), 6, [])
     d = WF.year_split(panel, year, year - 2020)
     A, B = S.split_base_meta(d["train"], year - 2023)
     C = d["test"]

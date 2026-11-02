@@ -15,7 +15,6 @@ import mainline as ML
 import walkforward as WF
 import backtest_years as BY
 from confusion import summarize
-from feasibility import START, END, load_pool
 from paper_aeocsvm import NAMES
 
 YEARS = (2024, 2025, 2026)
@@ -36,7 +35,7 @@ def main():
     ap.add_argument("--min-amp", type=float, default=3.0)
     th = ap.parse_args().min_amp
     t0 = time.time()
-    data = load_pool(ML.POOL, START, END)
+    data = ML.load_data()
     panel, fc = ML.build_panel(data, 6, [])
     res = {"train_min_amp": [0.0, th], "years": {}}
     for y in YEARS:
