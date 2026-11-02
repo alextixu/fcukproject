@@ -10,7 +10,8 @@
   - 每年獨立 100 萬,年底結清;另列成本設 0 的結果(扣成本前)
 訓練:測哪一年就用前 4 年(主軸 4 年;Stacking 前 3 年基底層 + 第 4 年元學習器)
 股票池:mainline.load_data()(TW50 剔除 mainline.EXCLUDE 的 16 檔低波動股,34 檔);同時記錄分類分數(用原本的標籤對答案)
-用法: python method_kline_peak/backtest_top3.py [--short-slots 0 | 3]
+--train-min-amp 3:訓練時只把兩邊幅度 ≥ 3% 的點當高點 / 低點(對答案仍用原本的標籤),輸出檔名加 _amp3
+用法: python method_kline_peak/backtest_top3.py [--short-slots 0 | 3] [--train-min-amp 3]
 輸出: results/backtest_long_only.json(只做多)或 results/backtest_long_short.json(做多 + 做空)
       剔除前(TW50 50 檔)的結果保留在 results/backtest_long_only_tw50.json、results/backtest_long_short_tw50.json
 """
@@ -55,19 +56,21 @@ def cls_metrics(sig):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--short-slots", type=int, default=0, choices=[0, 3])
-    k = ap.parse_args().short_slots
+    ap.add_argument("--train-min-amp", type=float, default=0.0)
+    a = ap.parse_args()
+    k, amp = a.short_slots, a.train_min_amp
     rule, no_cost = BY.TradeRule(slots=3, short_slots=k), BY.TradeRule(slots=3, short_slots=k, **BY.NO_COST)
-    out_path = os.path.join(ML.OUT, "backtest_long_short.json" if k else "backtest_long_only.json")
+    out_path = os.path.join(ML.OUT, ("backtest_long_short" if k else "backtest_long_only") + (f"_amp{amp:g}" if amp else "") + ".json")
     t0 = time.time()
     data = ML.load_data()
     panel, fc = ML.build_panel(data, 6, [])
     prices = {tk: clean(df)[["open", "close"]] for tk, df in data.items()}
-    res = {"rule": asdict(rule), "pool": sorted(data), "excluded": list(ML.EXCLUDE), "years": {}}
+    res = {"rule": asdict(rule), "train_min_amp": amp, "pool": sorted(data), "excluded": list(ML.EXCLUDE), "years": {}}
     for y in YEARS:
         start, end = f"{y}-01-01", min(f"{y}-12-31", END)
         res["years"][str(y)] = {"period": [start, end]}
         for name in SOURCES:
-            sig, n_train = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name]())
+            sig, n_train = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name](), train_min_amp=amp)
             lo, hi = sig[sig.pred == UP][COLS], sig[sig.pred == DOWN][COLS]
             net = result(BY.simulate(prices, lo, start, end, rule, shorts=hi))
             gross = result(BY.simulate(prices, lo, start, end, no_cost, shorts=hi))
