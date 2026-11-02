@@ -1,5 +1,5 @@
 // 台股 11 天局部高低點三分類 — 回測結果與下一步(pptxgenjs,結構化:主題 + 版面 + 區段)
-// 數字全部抄自 results/backtest_long_only.json(34 檔) 與 results/outputs_2379_2024.png 的圖例。
+// 數字全部從 json 與圖例原樣抄(來源寫在各資料區塊上方)。
 // 執行:PPTX_SKILL=<pptx skill 目錄> node report/build_kline_peak_report.js [輸出路徑]
 const path = require("path");
 const pptxgen = require("pptxgenjs");
@@ -76,6 +76,15 @@ const BT = {
   "2026": { main: { net: [7.66, null, 66, 48.5], gross: [22.37, null, 66, 57.6] },
             stack: { net: [12.55, null, 67, 41.8], gross: [28.1, null, 67, 44.8] } },
 };
+// ---------- TW200(抄自 claude/kline-peak-predict-tool b324e42 的 backtest_long_only_tw200_amp7.json,168 檔、訓練門檻 7%) ----------
+const BT200 = {
+  "2024": { main: { net: [-25.57, null, 136, 45.6], gross: [-3.15, null, 136, 48.5] },
+            stack: { net: [-22.83, null, 129, 43.4], gross: [-0.88, null, 129, 45.7] } },
+  "2025": { main: { net: [28.03, null, 139, 48.9], gross: [67.76, null, 139, 52.5] },
+            stack: { net: [-0.87, null, 120, 43.3], gross: [25.13, null, 120, 48.3] } },
+  "2026": { main: { net: [2.39, null, 96, 49.0], gross: [23.32, null, 96, 54.2] },
+            stack: { net: [-4.65, null, 95, 46.3], gross: [14.69, null, 95, 49.5] } },
+};
 const fmtPct = (v) => (v > 0 ? "+" : "") + (Number.isInteger(v) ? v.toFixed(1) : String(v)) + "%";
 
 // ======================= 1. 封面 =======================
@@ -83,11 +92,11 @@ pres.addSection({ title: "開場" });
 let s = pres.addSlide({ masterName: "DARK", sectionTitle: "開場" });
 s.addText("台股 11 天局部高低點三分類\n回測結果與下一步", { placeholder: "title" });
 s.addText([
-  { text: "34 檔只做多回測(台灣50 剔除 16 檔低波動股;2024、2025、2026 至 9/11)", options: { breakLine: true } },
-  { text: "瑞昱 2379 個案:真實高低點 vs 兩方法判斷", options: { breakLine: true } },
-  { text: "下一步:輸入股票代號 → 系統輸出建議" },
+  { text: "34 檔與 TW200 只做多回測(2024、2025、2026 至 9/11)", options: { breakLine: true } },
+  { text: "南電 8046 個案:真實高低點 vs 兩方法判斷", options: { breakLine: true } },
+  { text: "下一步:展示網頁系統 UI/UX" },
 ], { placeholder: "body" });
-s.addNotes("本報告整理兩個方法在 34 檔股票池(台灣50 剔除 16 檔低波動股)的只做多回測結果、瑞昱 2024 的個案,以及下一步改成決策輔助工具的規劃。數字都來自 repo 內既有的結果檔,沒有重跑。");
+s.addNotes("本報告整理兩個方法在 34 檔(台灣50 剔除 16 檔低波動股)與 TW200(剔除低波動股後 168 檔)的只做多回測結果、南電 2024 的個案,以及網頁系統的 UI/UX 示意稿。數字都來自 repo 內既有的結果檔,沒有重跑。");
 
 // ======================= 2. 兩個方法 + 訓練方式 =======================
 pres.addSection({ title: "方法" });
@@ -127,7 +136,7 @@ pres.addSection({ title: "回測" });
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
 s.addText("回測規則", { placeholder: "title" });
 const steps = [
-  ["t 收盤後", "34 檔中判「低點」的,取分數最高的前 3 檔"],
+  ["t 收盤後", "股票池中判「低點」的,取分數最高的前 3 檔"],
   ["t+1 開盤", "買進,每檔 1/3 資金"],
   ["t+5 收盤", "賣出"],
 ];
@@ -139,19 +148,19 @@ steps.forEach(([h, d], i) => {
   if (i < 2) T(s, "→", { x: x + 3.78, y: 2.2, w: 0.35, h: 0.6, fontSize: 24, bold: true, color: C.accent5, align: "center" });
 });
 const facts = [
-  ["股票池", "34 檔(台灣50 剔除 16 檔低波動股)"],
+  ["股票池", "34 檔(台灣50 剔除 16 檔低波動股)\nTW200(剔除低波動股後 168 檔)"],
   ["只做多", "判高點不放空"],
   ["成本 0.585%", "買 0.1425% + 賣 0.1425% + 證交稅 0.3%"],
   ["資金", "每年獨立 100 萬,年底結清"],
   ["其他假設", "漲停也算買得到;2026 年只到 9/11"],
-  ["模型", "訓練門檻 6%"],
+  ["模型", "訓練門檻:34 檔 6%、TW200 7%"],
 ];
 facts.forEach(([h, d], i) => {
   const x = 0.6 + (i % 2) * 6.15, y = 3.85 + Math.floor(i / 2) * 0.95;
   T(s, h, { x, y, w: 1.9, h: 0.8, fontSize: 18, bold: true, valign: "middle" });
   T(s, d, { x: x + 2.0, y, w: 3.95, h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
 });
-s.addNotes("股票池是 34 檔(台灣50 剔除 16 檔低波動股),回測用的模型訓練門檻是 6%。每天收盤後在 34 檔中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清;漲停也當作買得到;2026 只到 9 月 11 日。");
+s.addNotes("股票池有兩個:34 檔(台灣50 剔除 16 檔低波動股)和 TW200(剔除低波動股後 168 檔);訓練門檻 34 檔用 6%、TW200 用 7%。每天收盤後在股票池中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清;漲停也當作買得到;2026 只到 9 月 11 日。");
 
 // ======================= 4. 結果表格(34 檔) =======================
 const hdr = (t, o = {}) => ({ text: t, options: { bold: true, fill: { color: HEX.dk1 }, color: "FFFFFF", align: "center", valign: "middle", ...o } });
@@ -186,66 +195,113 @@ s.addText("34 檔回測結果(訓練門檻 6%)", { placeholder: "title" });
 resultTable(s, BT, null);
 s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)、訓練門檻 6% 的結果,數字直接抄自 backtest_long_only_34_amp6.json。門檻是看測試年選的。扣成本後:2024 主軸 -13.22%、Stacking -18.69%;2025 主軸 +11.92%、Stacking +22.01%;2026 到 9/11 主軸 +7.66%、Stacking +12.55%。交易筆數 2024 為 98 / 85、2025 為 75 / 71、2026 為 66 / 67;扣成本和沒扣成本的筆數一樣,差別只在每筆扣 0.585%。");
 
-// ======================= 瑞昱(三段合併一頁) =======================
-pres.addSection({ title: "瑞昱 2024" });
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "瑞昱 2024" });
-s.addText("瑞昱 2024:真實高低點 vs 兩方法", { placeholder: "title" });
-{
+s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
+s.addText("TW200 回測結果(訓練門檻 7%)", { placeholder: "title" });
+resultTable(s, BT200, "股票池:TW200 剔除低波動股後 168 檔");
+s.addNotes("這頁是 TW200 剔除低波動股後 168 檔、訓練門檻 7% 的結果,數字直接抄自 backtest_long_only_tw200_amp7.json。門檻是看測試年選的。扣成本後:2024 主軸 -25.57%、Stacking -22.83%;2025 主軸 +28.03%、Stacking -0.87%;2026 到 9/11 主軸 +2.39%、Stacking -4.65%。交易筆數 2024 為 136 / 129、2025 為 139 / 120、2026 為 96 / 95。");
+
+// ======================= 南電(三段合併一頁) =======================
+pres.addSection({ title: "南電 2024" });
+const stockSlide = (title, tag, mainDays, stackDays, mainHL, stackHL, notes) => {
+  const sl = pres.addSlide({ masterName: "CONTENT", sectionTitle: "南電 2024" });
+  sl.addText(title, { placeholder: "title" });
   const iw = 7.6, x0 = 0.6, lh = 0.28, gap = 0.08, rx = 8.55, rw = 4.2;
   const panels = [
-    { key: "true", px: 458, label: "真實標籤(11 天收盤最高 / 最低);下方兩段為 34 檔、訓練門檻 0% 模型的輸出", color: C.text2,
-      lines: [["真高點", "18 個", C.accent1], ["真低點", "19 個", C.accent2]] },
-    { key: "mainline", px: 454, label: "① 主軸:判低點 45 天、判高點 52 天", color: C.accent3,
-      lines: [["判高點", "對 16 / 錯 36", C.accent1], ["判低點", "對 16 / 錯 29", C.accent2]] },
-    { key: "stacking", px: 489, label: "② Stacking 邏輯迴歸:判低點 40 天、判高點 42 天", color: C.accent4,
-      lines: [["判高點", "對 11 / 錯 31", C.accent1], ["判低點", "對 14 / 錯 26", C.accent2]] },
+    { file: "kline_peak_8046_true.png", px: 458, label: "真實標籤(11 天收盤最高 / 最低)", color: C.text2,
+      lines: [["真高點", "17 個", C.accent1], ["真低點", "16 個", C.accent2]] },
+    { file: `kline_peak_8046_${tag}_mainline.png`, px: 454, label: `① 主軸:${mainDays}`, color: C.accent3,
+      lines: [["判高點", mainHL[0], C.accent1], ["判低點", mainHL[1], C.accent2]] },
+    { file: `kline_peak_8046_${tag}_stacking.png`, px: 489, label: `② Stacking 邏輯迴歸:${stackDays}`, color: C.accent4,
+      lines: [["判高點", stackHL[0], C.accent1], ["判低點", stackHL[1], C.accent2]] },
   ];
   let y = 1.3;
-  panels.forEach((p) => {
+  panels.forEach((p, pi) => {
     const ih = iw * p.px / 2335;
-    T(s, p.label, { x: x0, y, w: iw, h: lh, fontSize: 12, bold: true, color: p.color, valign: "middle" });
-    s.addImage({ path: path.join(HERE, `kline_peak_2379_${p.key}.png`), x: x0, y: y + lh, w: iw, h: ih,
-      altText: `瑞昱 2379 2024 ${p.label}` });
+    T(sl, p.label, { x: x0, y, w: iw, h: lh, fontSize: 12, bold: true, color: p.color, valign: "middle" });
+    sl.addImage({ path: path.join(HERE, p.file), x: x0, y: y + lh, w: iw, h: ih, altText: `南電 8046 2024 ${p.label}` });
     const cy = y + lh, ch = ih;
-    card(s, { x: rx, y: cy, w: rw, h: ch, objectName: `stat-${p.key}` });
-    T(s, p.lines.map(([h, v, col], k) => [
+    card(sl, { x: rx, y: cy, w: rw, h: ch, objectName: `stat-${pi}` });
+    T(sl, p.lines.map(([h, v, col], k) => [
       { text: h + "  ", options: { color: C.text2, fontSize: 15 } },
       { text: v, options: { color: col, bold: true, fontSize: 20, breakLine: k < p.lines.length - 1 } },
     ]).flat(), { x: rx + 0.3, y: cy + 0.1, w: rw - 0.5, h: ch - 0.2, valign: "middle", paraSpaceAfter: 6 });
     y += lh + ih + gap;
   });
-}
-s.addNotes("上段是真實標籤:真高點 18 個、真低點 19 個。中段是主軸:判高點對 16 錯 36,判低點對 16 錯 29。下段是 Stacking 邏輯迴歸:判高點對 11 錯 31,判低點對 14 錯 26。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。兩方法判出的高低點都比真實多,錯的比對的多;Stacking 判的天數比主軸少,判對的也比較少。這張圖是 34 檔(台灣50 剔除 16 檔低波動股)、訓練門檻 0% 模型的輸出,和第 4 頁回測用的 6% 模型不同。");
+  sl.addNotes(notes);
+};
+stockSlide("南電 2024:34 檔模型(門檻 6%)", "34amp6", "判低點 17 天、判高點 5 天", "判低點 32 天、判高點 9 天",
+  ["對 2 / 錯 3", "對 5 / 錯 12"], ["對 3 / 錯 6", "對 7 / 錯 25"],
+  "南電 8046 的 2024 年,模型是 34 檔、訓練門檻 6%,和第 4 頁回測同一個模型。上段是真實標籤:真高點 17 個、真低點 16 個。中段是主軸:判低點 17 天、判高點 5 天;判高點對 2 錯 3,判低點對 5 錯 12。下段是 Stacking 邏輯迴歸:判低點 32 天、判高點 9 天;判高點對 3 錯 6,判低點對 7 錯 25。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。");
+stockSlide("南電 2024:TW200 模型(門檻 7%)", "tw200amp7", "判低點 29 天、判高點 14 天", "判低點 24 天、判高點 7 天",
+  ["對 4 / 錯 10", "對 7 / 錯 22"], ["對 3 / 錯 4", "對 5 / 錯 19"],
+  "同一檔南電 2024,換成 TW200(168 檔)、訓練門檻 7% 的模型,和第 5 頁回測同一個模型。真實標籤一樣是真高點 17 個、真低點 16 個。主軸判低點 29 天、判高點 14 天;判高點對 4 錯 10,判低點對 7 錯 22。Stacking 判低點 24 天、判高點 7 天;判高點對 3 錯 4,判低點對 5 錯 19。同一檔股票,兩個模型判的天數和對錯都不同。");
 
-// ======================= 5. 下一步 =======================
+// ======================= 下一步:展示 UI/UX =======================
 pres.addSection({ title: "下一步" });
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
-s.addText("下一步:輸入股票代號 → 系統輸出建議", { placeholder: "title" });
-// 流程
+s.addText("下一步:展示 UI/UX", { placeholder: "title" });
 const flow = [
-  ["輸入", "使用者在網頁輸入股票代號"],
-  ["判斷", "模型用到今天為止的 K 線判斷"],
-  ["輸出", "今天是 高點 / 低點 / 非極值,附信心值與建議"],
+  ["輸入代號", "使用者在網頁輸入股票代號"],
+  ["看今天的判斷", "今天是 高點 / 低點 / 非極值,附信心值"],
+  ["5 天後對答案", "5 個交易日後用真實結果對答案,累積命中率"],
 ];
 flow.forEach(([h, d], i) => {
   const x = 0.6 + i * 4.15;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.5, w: 3.75, h: 1.75, rectRadius: 0.08,
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.5, w: 3.75, h: 2.1, rectRadius: 0.08,
     fill: { color: i === 2 ? HEX.dk1 : HEX.lt2 }, line: { type: "none" }, objectName: `flow-${i}` });
-  T(s, h, { x: x + 0.3, y: 1.65, w: 3.2, h: 0.45, fontSize: 20, bold: true, color: i === 2 ? C.background1 : C.accent2 });
-  T(s, d, { x: x + 0.3, y: 2.15, w: 3.2, h: 1.0, fontSize: 15, color: i === 2 ? C.background1 : C.text1 });
-  if (i < 2) T(s, "→", { x: x + 3.78, y: 2.05, w: 0.35, h: 0.6, fontSize: 24, bold: true, color: C.accent5, align: "center" });
+  T(s, h, { x: x + 0.3, y: 1.7, w: 3.2, h: 0.5, fontSize: 20, bold: true, color: i === 2 ? C.background1 : C.accent2 });
+  T(s, d, { x: x + 0.3, y: 2.3, w: 3.2, h: 1.1, fontSize: 15, color: i === 2 ? C.background1 : C.text1 });
+  if (i < 2) T(s, "→", { x: x + 3.78, y: 2.25, w: 0.35, h: 0.6, fontSize: 24, bold: true, color: C.accent5, align: "center" });
 });
-// 兩欄說明
-T(s, "訓練資料改用台灣100", { x: 0.6, y: 3.65, w: 5.9, h: 0.45, fontSize: 18, bold: true });
+T(s, "系統定位", { x: 0.6, y: 4.05, w: 12.15, h: 0.45, fontSize: 18, bold: true });
 T(s, bullets([
-  "訓練資料擴大到台灣100(同樣剔除低波動股)",
-  "目前是 34 檔(台灣50 剔除 16 檔低波動股);目的是收集更多高點 / 低點標籤來訓練",
-]), { x: 0.6, y: 4.2, w: 5.9, h: 2.2, fontSize: 15 });
-T(s, "為什麼改成決策輔助", { x: 6.85, y: 3.65, w: 5.9, h: 0.45, fontSize: 18, bold: true });
-T(s, bullets([
-  "改成工具:使用者自己決定要不要交易,系統提供判斷與信心值",
-]), { x: 6.85, y: 4.2, w: 5.9, h: 2.2, fontSize: 15 });
-s.addNotes("下一步把系統改成決策輔助工具:使用者在網頁輸入股票代號,系統回答今天是高點、低點或非極值,附信心值與建議。訓練資料擴大到台灣100,同樣剔除低波動股,目的是取得更多高低點標籤。");
+  "決策輔助工具:使用者自己決定要不要交易,系統提供判斷與信心值",
+  "接下來兩頁是網頁示意稿(假資料),共四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明",
+]), { x: 0.6, y: 4.6, w: 12.15, h: 1.8, fontSize: 15 });
+s.addNotes("系統怎麼用:使用者在網頁輸入股票代號,系統回答今天是高點、低點或非極值,附信心值;5 個交易日後用真實結果對答案,累積命中率。系統定位是決策輔助,交易與否由使用者決定。接下來兩頁是網頁的示意稿,畫面上的數字是假資料。");
+
+// ======================= UI/UX 示意稿 =======================
+const shot = (sl, file, x, y, w, h, alt) => {
+  sl.addShape(pres.shapes.RECTANGLE, { x: x - 0.02, y: y - 0.02, w: w + 0.04, h: h + 0.04, fill: { color: HEX.lt1 },
+    line: { color: HEX.accent6, width: 1 }, shadow: { type: "outer", color: "000000", opacity: 0.12, blur: 6, offset: 2, angle: 90 } });
+  sl.addImage({ path: path.join(HERE, file), x, y, w, h, altText: alt });
+};
+const capt = (sl, text, x, y, w) => T(sl, text, { x, y, w, h: 0.3, fontSize: 13, bold: true, color: C.text2, valign: "middle" });
+// 第 1 頁:四個頁面說明 + 今日判斷(桌機、手機)
+s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
+s.addText("UI/UX 示意稿(假資料):今日判斷", { placeholder: "title" });
+const pagesInfo = [
+  ["① 今日判斷", "收盤後列出判低點 / 判高點分數最高的前 3 檔,可切換兩方法"],
+  ["② 個股查詢", "輸入代號,看今天的判斷、各類分數、兩方法比較與過去訊號對錯"],
+  ["③ 成績追蹤", "每天的判斷存檔,5 個交易日後對答案,看命中率"],
+  ["④ 方法與說明", "研究結果、回測摘要與免責說明"],
+];
+pagesInfo.forEach(([h, d], i) => {
+  const y = 1.3 + i * 1.25;
+  card(s, { x: 0.6, y, w: 3.55, h: 1.12, objectName: `page-${i}` });
+  T(s, h, { x: 0.8, y: y + 0.1, w: 3.2, h: 0.35, fontSize: 15, bold: true, color: C.accent2 });
+  T(s, d, { x: 0.8, y: y + 0.45, w: 3.2, h: 0.62, fontSize: 13, color: C.text1 });
+});
+{
+  const y0 = 1.65, h = 4.55, wd = h * 1280 / 1000, wm = h * 780 / 1650, xd = 4.5, xm = 12.75 - wm;
+  capt(s, "① 今日判斷 · 桌機", xd, 1.3, wd);
+  shot(s, "kline_peak_ui_today_desktop.png", xd, y0, wd, h, "今日判斷(桌機)示意稿");
+  capt(s, "手機", xm, 1.3, wm);
+  shot(s, "kline_peak_ui_today_mobile.png", xm, y0, wm, h, "今日判斷(手機)示意稿");
+}
+s.addNotes("網頁有四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明。這頁是今日判斷,收盤後列出判低點和判高點分數最高的前 3 檔,可以切換主軸和 Stacking;左邊是桌機、右邊是手機版。這是示意稿,畫面上的股票判斷、分數和成績都是假資料,截圖只取每頁上半部。");
+// 第 2 頁:個股查詢 + 成績追蹤
+s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
+s.addText("UI/UX 示意稿(假資料):個股查詢、成績追蹤", { placeholder: "title" });
+{
+  const y0 = 1.65, h = 4.6, w1 = h * 1280 / 1180, w2 = h * 1280 / 1000, gap = 0.45;
+  const x1 = 0.6 + (12.15 - w1 - w2 - gap) / 2, x2 = x1 + w1 + gap;
+  capt(s, "② 個股查詢(以 2330 為例)", x1, 1.3, w1);
+  shot(s, "kline_peak_ui_stock_desktop.png", x1, y0, w1, h, "個股查詢(桌機)示意稿");
+  capt(s, "③ 成績追蹤", x2, 1.3, w2);
+  shot(s, "kline_peak_ui_track_desktop.png", x2, y0, w2, h, "成績追蹤(桌機)示意稿");
+}
+s.addNotes("左邊是個股查詢,以 2330 為例:輸入代號後看到今天的判斷、各類分數、兩方法比較,下方是 K 線與過去訊號的對錯。右邊是成績追蹤:每天的判斷存檔,5 個交易日後對答案,顯示命中率和每天的明細。方法與說明頁放研究結果、回測摘要和免責說明,這裡沒有附圖。畫面上的數字都是假資料。");
 
 (async () => {
   await pres.writeFile({ fileName: OUT });
