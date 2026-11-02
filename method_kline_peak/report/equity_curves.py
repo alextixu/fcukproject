@@ -58,7 +58,7 @@ def main():
             if r == 0 and c == 0:
                 ax.legend(frameon=False, fontsize=10, labelcolor=INK, loc="lower left")
     t = f"資產曲線:{a.title}" if a.title else "資產曲線"
-    fig.suptitle(f"{t}(34 檔、只做多前 3 檔、每檔 1/3、t+1 開盤買、t+5 收盤賣;每年獨立 100 萬;實線 = 扣成本 0.585%、虛線 = 沒扣成本)",
+    fig.suptitle(f"{t}({len(res["pool"])} 檔、只做多前 3 檔、每檔 1/3、t+1 開盤買、t+5 收盤賣;每年獨立 100 萬;實線 = 扣成本 0.585%、虛線 = 沒扣成本)",
                  x=0.01, ha="left", fontsize=14, color=INK, y=0.995)
     fig.tight_layout(rect=(0, 0, 0.985, 0.95), h_pad=3, w_pad=2.5)
     out = os.path.splitext(a.path)[0] + "_curves.png"
