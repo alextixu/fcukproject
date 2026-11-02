@@ -12,7 +12,8 @@
 股票池:mainline.load_data()(mainline.POOL 剔除 mainline.low_vol 的低波動股;目前 TW100 → 73 檔);同時記錄分類分數(用原本的標籤對答案)
 --train-min-amp 3:訓練時只把兩邊幅度 ≥ 3% 的點當高點 / 低點(對答案仍用原本的標籤),輸出檔名加 _amp3
 --train-min-side 3:訓練時只把每邊對方向 ≥ 3 天的點當高點 / 低點(做法 2;對答案仍用原本的標籤),輸出檔名加 _side3
-用法: python method_kline_peak/backtest_top3.py [--short-slots 0 | 3] [--train-min-amp 3] [--train-min-side 3]
+--pool tw200:換股票池(預設 mainline.POOL = tw100),同樣剔除 mainline.low_vol 的低波動股,輸出檔名用股票池名稱
+用法: python method_kline_peak/backtest_top3.py [--pool tw200] [--short-slots 0 | 3] [--train-min-amp 3] [--train-min-side 3]
 輸出: results/backtest_long_only_<股票池>.json(只做多,例 _tw100)或 results/backtest_long_short_<股票池>.json(做多 + 做空)
       34 檔(TW50 剔除 16 檔)的結果保留在 results/backtest_long_only.json(及 _amp*、_side3)
       剔除前(TW50 50 檔)的結果保留在 results/backtest_long_only_tw50.json、results/backtest_long_short_tw50.json
@@ -81,8 +82,8 @@ def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES, years=Y
     return out
 
 
-def load():
-    data = ML.load_data()
+def load(pool=ML.POOL):
+    data = ML.load_data(pool=pool)
     panel, fc = ML.build_panel(data, 6, [])
     return data, panel, fc, {tk: clean(df)[["open", "close"]] for tk, df in data.items()}
 
@@ -92,12 +93,13 @@ def main():
     ap.add_argument("--short-slots", type=int, default=0, choices=[0, 3])
     ap.add_argument("--train-min-amp", type=float, default=0.0)
     ap.add_argument("--train-min-side", type=int, default=0)
+    ap.add_argument("--pool", default=ML.POOL, help="股票池(預設 mainline.POOL)")
     a = ap.parse_args()
     k, amp, side = a.short_slots, a.train_min_amp, a.train_min_side
-    out_path = os.path.join(ML.OUT, ("backtest_long_short" if k else "backtest_long_only") + f"_{ML.POOL}" + (f"_amp{amp:g}" if amp else "") + (f"_side{side}" if side else "") + ".json")
-    data, panel, fc, prices = load()
+    out_path = os.path.join(ML.OUT, ("backtest_long_short" if k else "backtest_long_only") + f"_{a.pool}" + (f"_amp{amp:g}" if amp else "") + (f"_side{side}" if side else "") + ".json")
+    data, panel, fc, prices = load(a.pool)
     res = {"rule": asdict(BY.TradeRule(slots=3, short_slots=k)), "train_min_amp": amp, "train_min_side": side, "pool": sorted(data),
-           "excluded": ML.low_vol(ML.load_pool(ML.POOL, ML.START, ML.END)), "years": run_all(panel, fc, prices, amp, k, log=lambda m: print(m, flush=True), side=side)}
+           "excluded": ML.low_vol(ML.load_pool(a.pool, ML.START, ML.END)), "years": run_all(panel, fc, prices, amp, k, log=lambda m: print(m, flush=True), side=side)}
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1, default=str)
     print(f"記錄於 {out_path}")
