@@ -12,7 +12,8 @@
 股票池:mainline.load_data()(mainline.POOL 剔除 mainline.low_vol 的低波動股;目前 TW100 → 73 檔);同時記錄分類分數(用原本的標籤對答案)
 --train-min-amp 3:訓練時只把兩邊幅度 ≥ 3% 的點當高點 / 低點(對答案仍用原本的標籤),輸出檔名加 _amp3
 --train-min-side 3:訓練時只把每邊對方向 ≥ 3 天的點當高點 / 低點(做法 2;對答案仍用原本的標籤),輸出檔名加 _side3
---pool tw200:換股票池(預設 mainline.POOL = tw100),同樣剔除 mainline.low_vol 的低波動股,輸出檔名用股票池名稱
+--pool tw200:換股票池(預設 mainline.POOL = tw100),同樣剔除 mainline.low_vol 的低波動股,輸出檔名用股票池名稱(或 --tag)
+  例:34 檔、訓練門檻 6% → --pool tw50 --tag 34 --train-min-amp 6 → results/backtest_long_only_34_amp6.json
 用法: python method_kline_peak/backtest_top3.py [--pool tw200] [--short-slots 0 | 3] [--train-min-amp 3] [--train-min-side 3]
 輸出: results/backtest_long_only_<股票池>.json(只做多,例 _tw100)或 results/backtest_long_short_<股票池>.json(做多 + 做空)
       34 檔(TW50 剔除 16 檔)的結果保留在 results/backtest_long_only.json(及 _amp*、_side3)
@@ -56,8 +57,9 @@ def cls_metrics(sig):
             "precision_pct": {k: round((s["precision"][k] or 0) * 100, 1) for k in ("高點", "低點")}}
 
 
-def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES, years=YEARS, side=0):
-    """各方法 × YEARS 的回測;回傳 {年: {方法: 結果}}。amp = 訓練門檻(%),k = 做空格數。"""
+def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES, years=YEARS, side=0, on_signal=None):
+    """各方法 × YEARS 的回測;回傳 {年: {方法: 結果}}。amp = 訓練門檻(%),k = 做空格數。
+    on_signal(sig):有給的話,用每天的預測表另外算指標,存在結果的 "訊號指標"。"""
     rule, no_cost = BY.TradeRule(slots=3, short_slots=k), BY.TradeRule(slots=3, short_slots=k, **BY.NO_COST)
     t0, out = time.time(), {}
     for y in years:
@@ -74,6 +76,8 @@ def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES, years=Y
             cm = cls_metrics(sig)
             out[str(y)][name] = {"n_train": n_train, "n_low_signals": len(lo), "n_high_signals": len(hi),
                                    "分類": cm, "扣成本": net, "沒扣成本": gross}
+            if on_signal is not None:
+                out[str(y)][name]["訊號指標"] = on_signal(sig)
             log(f"{y} {name:<12} 扣成本 {net['total_return_pct']:+7.2f}%(多 {net['做多']['pnl_pct_of_init']:+.2f} / 空 {net['做空']['pnl_pct_of_init']:+.2f})"
                 f"  沒扣成本 {gross['total_return_pct']:+7.2f}%(多 {gross['做多']['pnl_pct_of_init']:+.2f} / 空 {gross['做空']['pnl_pct_of_init']:+.2f})"
                 f"  {net['n_trades']} 筆(多 {net['做多']['n_trades']} / 空 {net['做空']['n_trades']}),勝 {net['win_rate_pct']}%,"
@@ -94,9 +98,10 @@ def main():
     ap.add_argument("--train-min-amp", type=float, default=0.0)
     ap.add_argument("--train-min-side", type=int, default=0)
     ap.add_argument("--pool", default=ML.POOL, help="股票池(預設 mainline.POOL)")
+    ap.add_argument("--tag", default=None, help="輸出檔名裡的股票池名稱(預設 = --pool;例 34 檔:--pool tw50 --tag 34)")
     a = ap.parse_args()
     k, amp, side = a.short_slots, a.train_min_amp, a.train_min_side
-    out_path = os.path.join(ML.OUT, ("backtest_long_short" if k else "backtest_long_only") + f"_{a.pool}" + (f"_amp{amp:g}" if amp else "") + (f"_side{side}" if side else "") + ".json")
+    out_path = os.path.join(ML.OUT, ("backtest_long_short" if k else "backtest_long_only") + f"_{a.tag or a.pool}" + (f"_amp{amp:g}" if amp else "") + (f"_side{side}" if side else "") + ".json")
     data, panel, fc, prices = load(a.pool)
     res = {"rule": asdict(BY.TradeRule(slots=3, short_slots=k)), "train_min_amp": amp, "train_min_side": side, "pool": sorted(data),
            "excluded": ML.low_vol(ML.load_pool(a.pool, ML.START, ML.END)), "years": run_all(panel, fc, prices, amp, k, log=lambda m: print(m, flush=True), side=side)}
