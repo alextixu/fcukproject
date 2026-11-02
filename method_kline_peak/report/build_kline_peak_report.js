@@ -24,7 +24,6 @@ const THEME = {
   },
 };
 const HEX = THEME.colors;
-const LIGHT = { main: "93D1CD", stack: "C2BAF0" };
 
 const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE"; // 13.33" × 7.5"
@@ -57,8 +56,6 @@ pres.defineSlideMaster({
     ...motif(11.1, 0.62, 0.11, 0.035),
     { placeholder: { options: { name: "title", type: "title", x: 0.6, y: 0.35, w: 10.3, h: 0.85, fontSize: 30, bold: true, align: "left",
       color: C.text1, valign: "middle", margin: 0 }, text: "" } },
-    { text: { text: "台股 11 天局部高低點三分類 · 2026-11", options: { x: 0.6, y: 6.95, w: 6, h: 0.3, fontSize: 10,
-      color: C.accent5, margin: 0 } } },
   ],
   slideNumber: { x: 12.25, y: 6.95, w: 0.5, h: 0.3, fontSize: 10, color: HEX.accent5, align: "right" },
 });
@@ -79,7 +76,6 @@ const BT = {
   "2026": { main: { net: [0.09, -15.16, 94, 38.3, 0.06], gross: [20.19, -13.05, 94, 50.0, 0.65] },
             stack: { net: [0.5, -23.63, 88, 40.9, 0.09], gross: [19.18, -18.11, 88, 50.0, 0.68] } },
 };
-const pct = (v) => (v > 0 ? "+" : "") + v.toFixed(2).replace(/0$/, "").replace(/\.$/, "") + "%";
 const fmtPct = (v) => (v > 0 ? "+" : "") + String(v) + "%";
 
 // ======================= 1. 封面 =======================
@@ -93,35 +89,8 @@ s.addText([
 ], { placeholder: "body" });
 s.addNotes("本報告整理兩個方法在 34 檔股票池(台灣50 剔除 16 檔低波動股)的只做多回測結果、瑞昱 2024 的個案,以及下一步改成決策輔助工具的規劃。數字都來自 repo 內既有的結果檔,沒有重跑。");
 
-// ======================= 2. 問題與標籤定義 =======================
+// ======================= 2. 兩個方法 + 訓練方式 =======================
 pres.addSection({ title: "方法" });
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "方法" });
-s.addText("問題與標籤定義", { placeholder: "title" });
-T(s, "每天、每檔股票分成三類", { x: 0.6, y: 1.5, w: 5.4, h: 0.45, fontSize: 20, bold: true });
-T(s, bullets([
-  "取 11 天視窗,t = 第 6 天(前 5 天 + t + 後 5 天)",
-  "t 的收盤是 11 天最高 → 高點",
-  "t 的收盤是 11 天最低 → 低點",
-  "其他 → 非極值",
-  "標籤要看到 t 之後 5 天,所以只能用來訓練與評估;實際判斷時只能用 t 當天以前的資料",
-]), { x: 0.6, y: 2.1, w: 5.4, h: 4.3, fontSize: 16 });
-
-// 示意:11 根收盤,t 最高
-const closes = [52, 55, 58, 63, 70, 82, 74, 66, 60, 57, 54];
-const bx = 6.8, by = 1.75, bw = 0.42, gap = 0.12, base = 5.4, scale = 0.036;
-card(s, { x: 6.5, y: 1.45, w: 6.25, h: 5.15, objectName: "label-demo-card" });
-closes.forEach((c, k) => {
-  const h = c * scale;
-  s.addShape(pres.shapes.RECTANGLE, { x: bx + k * (bw + gap), y: base - h, w: bw, h, objectName: `bar-${k}`,
-    fill: { color: k === 5 ? C.accent1 : C.accent6 }, line: { type: "none" } });
-  T(s, k === 5 ? "t" : (k < 5 ? `t-${5 - k}` : `t+${k - 5}`), { x: bx + k * (bw + gap) - 0.05, y: base + 0.08, w: bw + 0.1,
-    h: 0.3, fontSize: 11, align: "center", color: k === 5 ? C.accent1 : C.accent5, bold: k === 5 });
-});
-T(s, "▼ 高點:t 收盤是 11 天最高", { x: bx, y: by, w: 5.6, h: 0.4, fontSize: 15, bold: true, color: C.accent1 });
-T(s, "示意圖(數值為虛構):長條高度 = 收盤價", { x: bx, y: 5.95, w: 5.6, h: 0.35, fontSize: 11, color: C.accent5 });
-s.addNotes("標籤定義:11 天視窗,t 為第 6 天。t 的收盤是 11 天最高就標高點、最低就標低點,其餘為非極值。右圖只是示意,數值是虛構的。");
-
-// ======================= 3. 兩個方法 + 訓練方式 =======================
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "方法" });
 s.addText("兩個方法與訓練方式", { placeholder: "title" });
 // 特徵條
@@ -186,13 +155,13 @@ s.addNotes("股票池是 34 檔(台灣50 剔除 16 檔低波動股),和瑞昱個
 
 // ======================= 5. 結果表格 =======================
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測(34 檔)" });
-s.addText("回測結果:報酬、回撤、筆數、勝率", { placeholder: "title" });
+s.addText("回測結果:報酬、勝率、筆數", { placeholder: "title" });
 const hdr = (t, o = {}) => ({ text: t, options: { bold: true, fill: { color: HEX.dk1 }, color: "FFFFFF", align: "center", valign: "middle", ...o } });
 const cell = (t, o = {}) => ({ text: String(t), options: { align: "center", valign: "middle", ...o } });
 const valCell = (v, o = {}) => cell(fmtPct(v), { color: v < 0 ? "C0392B" : (v > 0 ? "1E7B34" : HEX.dk1), ...o });
 const rows = [
-  [hdr("年份", { rowspan: 2 }), hdr("方法", { rowspan: 2 }), hdr("扣成本", { colspan: 3 }), hdr("沒扣成本", { colspan: 3 }), hdr("交易筆數", { rowspan: 2 })],
-  [hdr("總報酬"), hdr("最大回撤"), hdr("勝率"), hdr("總報酬"), hdr("最大回撤"), hdr("勝率")],
+  [hdr("年份", { rowspan: 2 }), hdr("方法", { rowspan: 2 }), hdr("扣成本", { colspan: 2 }), hdr("沒扣成本", { colspan: 2 }), hdr("交易筆數", { rowspan: 2 })],
+  [hdr("總報酬"), hdr("勝率"), hdr("總報酬"), hdr("勝率")],
 ];
 const yearLabel = { "2024": "2024", "2025": "2025", "2026": "2026\n(至 9/11)" };
 ["2024", "2025", "2026"].forEach((y, yi) => {
@@ -201,94 +170,49 @@ const yearLabel = { "2024": "2024", "2025": "2025", "2026": "2026\n(至 9/11)" }
     const row = [];
     if (mi === 0) row.push(cell(yearLabel[y], { rowspan: 2, bold: true, fill }));
     row.push(cell(name, { fill, align: "left" }));
-    row.push(valCell(r.net[0], { fill, bold: true }), valCell(r.net[1], { fill }), cell(r.net[3].toFixed(1) + "%", { fill }));
-    row.push(valCell(r.gross[0], { fill, bold: true }), valCell(r.gross[1], { fill }), cell(r.gross[3].toFixed(1) + "%", { fill }));
+    row.push(valCell(r.net[0], { fill, bold: true }), cell(r.net[3].toFixed(1) + "%", { fill }));
+    row.push(valCell(r.gross[0], { fill, bold: true }), cell(r.gross[3].toFixed(1) + "%", { fill }));
     row.push(cell(r.net[2], { fill }));
     rows.push(row);
   });
 });
-s.addTable(rows, { x: 0.6, y: 1.45, w: 12.15, colW: [1.35, 2.6, 1.25, 1.25, 1.1, 1.25, 1.25, 1.1, 1.0],
-  rowH: [0.42, 0.42, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6], fontSize: 14, fontFace: THEME.bodyFontFace, color: HEX.dk1,
+s.addTable(rows, { x: 0.6, y: 1.45, w: 12.15, colW: [1.6, 3.0, 1.6, 1.4, 1.6, 1.4, 1.55],
+  rowH: [0.45, 0.45, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68], fontSize: 15, fontFace: THEME.bodyFontFace, color: HEX.dk1,
   border: { type: "solid", pt: 0.75, color: HEX.accent6 } });
-T(s, "資料:results/backtest_long_only.json(34 檔、訓練門檻 0%)。交易筆數扣不扣成本相同。最大回撤為負值;紅 = 負、綠 = 正。", {
-  x: 0.6, y: 6.25, w: 12.15, h: 0.4, fontSize: 11, color: C.accent5 });
-s.addNotes("表格數字直接抄自 backtest_long_only.json(34 檔)。扣成本和沒扣成本的交易筆數一樣,差別只在每筆扣 0.585%。");
+s.addNotes("表格數字直接抄自 backtest_long_only.json(34 檔)。扣成本和沒扣成本的交易筆數一樣,差別只在每筆扣 0.585%。2024、2025 兩方法扣成本後都虧損;2026 到 9/11 沒扣成本主軸 +20.19%、Stacking +19.18%,扣成本後只剩 +0.09%、+0.5%。");
 
-// ======================= 6. 長條圖 + 解讀 =======================
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測(34 檔)" });
-s.addText("結果解讀:成本吃掉大部分報酬", { placeholder: "title" });
-const years = ["2024", "2025", "2026(至 9/11)"];
-const ser = (name, k, which) => ({ name, labels: years, values: ["2024", "2025", "2026"].map((y) => BT[y][k][which][0]) });
-s.addChart(pres.charts.BAR, [
-  ser("主軸 扣成本", "main", "net"), ser("主軸 沒扣成本", "main", "gross"),
-  ser("Stacking 扣成本", "stack", "net"), ser("Stacking 沒扣成本", "stack", "gross"),
-], {
-  x: 0.5, y: 1.4, w: 7.3, h: 5.35, barDir: "col", barGrouping: "clustered", barGapWidthPct: 60,
-  chartColors: [HEX.accent3, LIGHT.main, HEX.accent4, LIGHT.stack],
-  showTitle: true, title: "總報酬(%)", titleFontSize: 13, titleColor: HEX.dk2, titleFontFace: "+mn-lt",
-  showValue: true, dataLabelPosition: "outEnd", dataLabelFontSize: 9, dataLabelColor: HEX.dk2, dataLabelFontFace: "+mn-lt",
-  dataLabelFormatCode: "0.00",
-  catAxisLabelColor: HEX.dk2, valAxisLabelColor: HEX.accent5, catAxisLabelFontSize: 12, valAxisLabelFontSize: 10,
-  catAxisLabelFontFace: "+mn-lt", valAxisLabelFontFace: "+mn-lt", catAxisLabelPos: "low",
-  valGridLine: { color: "E3E8EC", size: 0.75 }, catGridLine: { style: "none" },
-  showLegend: true, legendPos: "b", legendFontSize: 11, legendFontFace: "+mn-lt", legendColor: HEX.dk2,
-});
-T(s, "只看 json 的事實", { x: 8.2, y: 1.45, w: 4.55, h: 0.45, fontSize: 18, bold: true });
-T(s, bullets([
-  "每年約 140 筆(2024:142 / 137;2025:140 / 132),每筆成本 0.585%",
-  "每筆平均報酬:主軸 2024 沒扣 +0.02% → 扣後 -0.57%;Stacking 2025 沒扣 +0.37% → 扣後 -0.21%",
-  "2024、2025 兩方法扣成本都虧損;Stacking 2024 扣成本 -45.02%,最大回撤 -45.92%",
-  "Stacking 2025 沒扣成本 +13.86%,扣成本變 -11.94%",
-  "2026(至 9/11)沒扣成本:主軸 +20.19%、Stacking +19.18%;扣成本後只剩 +0.09%、+0.5%",
-]), { x: 8.2, y: 2.0, w: 4.55, h: 4.7, fontSize: 14 });
-s.addNotes("長條圖比較兩方法三年的總報酬,深色是扣成本、淺色是沒扣成本。每年約 140 筆交易、每筆 0.585%,所以扣成本前後差距很大。2024、2025 扣成本都虧;2026 到 9/11 沒扣成本主軸 +20.19%、Stacking +19.18%,扣成本後只剩 +0.09%、+0.5%。");
-
-// ======================= 資產曲線(現成圖) =======================
-s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測(34 檔)" });
-s.addText("每日資產曲線:實線扣成本、虛線沒扣成本", { placeholder: "title" });
-s.addImage({ path: path.join(HERE, "..", "results", "backtest_long_only_curves.png"), x: 1.52, y: 1.35, w: 10.3, h: 10.3 * 1472 / 2976,
-  altText: "34 檔只做多回測資產曲線:主軸與 Stacking,2024、2025、2026" });
-T(s, "上排主軸、下排 Stacking 邏輯迴歸;左到右 2024、2025、2026(1–9 月)。來源:results/backtest_long_only_curves.png", {
-  x: 0.6, y: 6.5, w: 12.15, h: 0.3, fontSize: 10, color: C.accent5 });
-s.addNotes("這是現成的資產曲線圖,沒有重畫。實線扣成本、虛線沒扣成本,兩條線的距離就是交易成本累積的影響。");
-
-// ======================= 瑞昱 =======================
+// ======================= 瑞昱(三段合併一頁) =======================
 pres.addSection({ title: "瑞昱 2024" });
-const realtek = (title, imgKey, label, hi, lo, color, note) => {
-  const sl = pres.addSlide({ masterName: "CONTENT", sectionTitle: "瑞昱 2024" });
-  sl.addText(title, { placeholder: "title" });
-  const iw = 9.3, ih1 = iw * 458 / 2335, ih2 = iw * (imgKey === "stacking" ? 489 : 454) / 2335;
-  T(sl, "真實標籤(11 天收盤最高 / 最低)", { x: 0.6, y: 1.35, w: iw, h: 0.35, fontSize: 13, bold: true, color: C.text2 });
-  sl.addImage({ path: path.join(HERE, "kline_peak_2379_true.png"), x: 0.6, y: 1.72, w: iw, h: ih1,
-    altText: "瑞昱 2379 2024 收盤與真實高低點" });
-  const y2 = 1.72 + ih1 + 0.3;
-  T(sl, label, { x: 0.6, y: y2, w: iw, h: 0.35, fontSize: 13, bold: true, color });
-  sl.addImage({ path: path.join(HERE, `kline_peak_2379_${imgKey}.png`), x: 0.6, y: y2 + 0.37, w: iw, h: ih2,
-    altText: `瑞昱 2379 2024 ${label}` });
-  // 右側數字
-  const rx = 10.25, rw = 2.5;
-  card(sl, { x: rx, y: 1.35, w: rw, h: 1.25, objectName: "truth-card" });
-  T(sl, "真實", { x: rx + 0.2, y: 1.45, w: rw - 0.4, h: 0.3, fontSize: 12, color: C.accent5 });
-  T(sl, [{ text: "高點 18", options: { color: C.accent1, breakLine: true } }, { text: "低點 19", options: { color: C.accent2 } }],
-    { x: rx + 0.2, y: 1.78, w: rw - 0.4, h: 0.75, fontSize: 18, bold: true });
-  const stat = (y, head, ok, ng, col) => {
-    card(sl, { x: rx, y, w: rw, h: 1.45, objectName: `stat-${head}` });
-    T(sl, head, { x: rx + 0.2, y: y + 0.1, w: rw - 0.4, h: 0.3, fontSize: 12, color: C.accent5 });
-    T(sl, [{ text: "對 " + ok, options: { color: col, breakLine: true } }, { text: "錯 " + ng, options: { color: C.accent5 } }],
-      { x: rx + 0.2, y: y + 0.42, w: rw - 0.4, h: 0.95, fontSize: 22, bold: true });
-  };
-  stat(2.8, "判高點 ▼", hi[0], hi[1], C.accent1);
-  stat(4.45, "判低點 ▲", lo[0], lo[1], C.accent2);
-  T(sl, note, { x: 0.6, y: 6.3, w: 12.15, h: 0.55, fontSize: 11, color: C.accent5 });
-  return sl;
-};
-const NOTE = "34 檔模型的輸出(台灣50 剔除 16 檔低波動股)。實心 = 判對、空心 = 判錯;綠色區間 = 回測持有期間,上方數字 = 該筆扣成本報酬。x 軸為 2024/01–12。來源:results/outputs_2379_2024.png";
-s = realtek("瑞昱 2024:真實高低點 vs 主軸", "mainline", "主軸:判低點 45 天、判高點 52 天", [16, 36], [16, 29], C.accent3, NOTE);
-s.addNotes("上方是真實標籤:真高點 18 個、真低點 19 個。下方是主軸的判斷:判高點對 16 錯 36,判低點對 16 錯 29。主軸判出的高低點比真實多很多,錯的比對的多。這張圖是 34 檔模型的輸出。");
-s = realtek("瑞昱 2024:真實高低點 vs Stacking", "stacking", "Stacking 邏輯迴歸:判低點 40 天、判高點 42 天", [11, 31], [14, 26], C.accent4, NOTE);
-s.addNotes("Stacking 的判斷:判高點對 11 錯 31,判低點對 14 錯 26。判的天數比主軸少,但判對的也比較少。這張圖同樣是 34 檔模型的輸出。");
+s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "瑞昱 2024" });
+s.addText("瑞昱 2024:真實高低點 vs 兩方法(34 檔模型)", { placeholder: "title" });
+{
+  const iw = 7.6, x0 = 0.6, lh = 0.28, gap = 0.08, rx = 8.55, rw = 4.2;
+  const panels = [
+    { key: "true", px: 458, label: "真實標籤(11 天收盤最高 / 最低)", color: C.text2,
+      lines: [["真高點", "18 個", C.accent1], ["真低點", "19 個", C.accent2]] },
+    { key: "mainline", px: 454, label: "① 主軸:判低點 45 天、判高點 52 天", color: C.accent3,
+      lines: [["判高點", "對 16 / 錯 36", C.accent1], ["判低點", "對 16 / 錯 29", C.accent2]] },
+    { key: "stacking", px: 489, label: "② Stacking 邏輯迴歸:判低點 40 天、判高點 42 天", color: C.accent4,
+      lines: [["判高點", "對 11 / 錯 31", C.accent1], ["判低點", "對 14 / 錯 26", C.accent2]] },
+  ];
+  let y = 1.3;
+  panels.forEach((p) => {
+    const ih = iw * p.px / 2335;
+    T(s, p.label, { x: x0, y, w: iw, h: lh, fontSize: 12, bold: true, color: p.color, valign: "middle" });
+    s.addImage({ path: path.join(HERE, `kline_peak_2379_${p.key}.png`), x: x0, y: y + lh, w: iw, h: ih,
+      altText: `瑞昱 2379 2024 ${p.label}` });
+    const cy = y + lh, ch = ih;
+    card(s, { x: rx, y: cy, w: rw, h: ch, objectName: `stat-${p.key}` });
+    T(s, p.lines.map(([h, v, col], k) => [
+      { text: h + "  ", options: { color: C.text2, fontSize: 15 } },
+      { text: v, options: { color: col, bold: true, fontSize: 20, breakLine: k < p.lines.length - 1 } },
+    ]).flat(), { x: rx + 0.3, y: cy + 0.1, w: rw - 0.5, h: ch - 0.2, valign: "middle", paraSpaceAfter: 6 });
+    y += lh + ih + gap;
+  });
+}
+s.addNotes("上段是真實標籤:真高點 18 個、真低點 19 個。中段是主軸:判高點對 16 錯 36,判低點對 16 錯 29。下段是 Stacking 邏輯迴歸:判高點對 11 錯 31,判低點對 14 錯 26。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。兩方法判出的高低點都比真實多,錯的比對的多;Stacking 判的天數比主軸少,判對的也比較少。這張圖是 34 檔模型的輸出(台灣50 剔除 16 檔低波動股)。");
 
-// ======================= 9. 下一步 =======================
+// ======================= 5. 下一步 =======================
 pres.addSection({ title: "下一步" });
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
 s.addText("下一步:輸入股票代號 → 系統輸出建議", { placeholder: "title" });
@@ -318,16 +242,6 @@ T(s, bullets([
   "改成工具:使用者自己決定要不要交易,系統提供判斷與信心值",
 ]), { x: 6.85, y: 4.2, w: 5.9, h: 2.2, fontSize: 15 });
 s.addNotes("下一步把系統改成決策輔助工具:使用者在網頁輸入股票代號,系統回答今天是高點、低點或非極值,附信心值與建議。訓練資料擴大到台灣100,95 檔有資料,剔除低波動後 73 檔,目的是取得更多高低點標籤。");
-
-// ======================= 10. 總結 =======================
-s = pres.addSlide({ masterName: "DARK", sectionTitle: "下一步" });
-s.addText("總結", { placeholder: "title" });
-s.addText(bullets([
-  "34 檔只做多:每年約 140 筆,每筆 0.585% 成本;2024、2025 扣成本後兩方法都虧損,2026(至 9/11)扣成本後接近 0",
-  "瑞昱 2024:兩方法判出的高低點中,判錯多於判對",
-  "下一步:用台灣100(73 檔)擴充標籤,做成「輸入代號 → 高 / 低 / 非極值 + 信心值」的網頁工具",
-], { paraSpaceAfter: 14 }), { placeholder: "body" });
-s.addNotes("總結三點:回測扣成本後 2024、2025 虧損;瑞昱個案判錯多於判對;下一步擴充資料並做成網頁決策輔助工具。");
 
 (async () => {
   await pres.writeFile({ fileName: OUT });
