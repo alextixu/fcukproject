@@ -4,7 +4,8 @@
   高點 = min(從前 5 天最低收盤漲到 t, 從 t 跌到後 5 天最低收盤);低點 = min(從前 5 天最高收盤跌到 t, 從 t 漲到後 5 天最高收盤)
 四張:最高的高點(幅度最大)、最低的高點(幅度最小)、最低的低點(幅度最大)、最高的低點(幅度最小);同分取日期最早的。
 訓練年份 = 測 --test-year 時主軸實際用的訓練資料(前 4 年,剔除最後 5 個交易日)。
-用法: python method_kline_peak/report/extreme_windows.py [--test-year 2024]
+--min-amp 3:套用訓練時的幅度門檻(未達門檻的點在訓練時是非極值),只從留下的點裡挑。
+用法: python method_kline_peak/report/extreme_windows.py [--test-year 2024] [--min-amp 3]
 輸出: results/label_extremes_<起>_<迄>.png
 """
 import argparse
@@ -78,10 +79,12 @@ def draw(ax, df, i, cls, title, sub):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--test-year", type=int, default=2024)
-    test_year = ap.parse_args().test_year
+    ap.add_argument("--min-amp", type=float, default=0.0, help="訓練時的幅度門檻(%);> 0 時只從達門檻的點裡挑")
+    a = ap.parse_args()
+    test_year, min_amp = a.test_year, a.min_amp
     data = load_pool(ML.POOL, START, END)
     panel, _ = ML.build_panel(data, 6, [])
-    tr = WF.year_split(panel, test_year)["train"]
+    tr = WF.relabel(WF.year_split(panel, test_year)["train"], min_amp)
     y0, y1 = tr.date.dt.year.min(), tr.date.dt.year.max()
     names = ticker_names()
     picks = []
@@ -95,15 +98,16 @@ def main():
         df = clean(data[r.ticker])
         i = df.index.get_loc(r.date)
         nm = names.get(r.ticker, r.ticker)
-        tie = f"(幅度同為 0 的共 {n_min} 個,取最早的)" if n_min and n_min > 1 else ""
+        tie = f"(幅度同為最小的共 {n_min} 個,取最早的)" if n_min and n_min > 1 else ""
         amp = draw(ax, df, i, cls, f"{title}:{r.ticker[:4]} {nm} {r.date:%Y-%m-%d}", f"幅度 {r.amp:.2f}%{tie}")
         assert abs(amp - r.amp) < 1e-6
-    fig.suptitle(f"訓練年份 {y0}–{y1}(測 {test_year} 的訓練資料)的極端例子:高點 {(tr.y == DOWN).sum():,} 個、低點 {(tr.y == UP).sum():,} 個",
+    gate = f",訓練門檻 {min_amp:g}%" if min_amp else ",沒有幅度門檻"
+    fig.suptitle(f"訓練年份 {y0}–{y1}(測 {test_year} 的訓練資料{gate})的極端例子:高點 {(tr.y == DOWN).sum():,} 個、低點 {(tr.y == UP).sum():,} 個",
                  x=0.02, ha="left", fontsize=15, color=INK, y=0.995)
     fig.text(0.02, 0.006, "灰底 = t 日收盤時看得到的 6 天,框 = t 日;虛線 = t 日收盤,點線 = 算幅度用的兩邊最低(高點)/ 最高(低點)收盤;"
              "空心 K 棒 = 收漲,實心 = 收跌。", fontsize=10, color=INK2)
     fig.subplots_adjust(left=0.04, right=0.99, top=0.88, bottom=0.07, hspace=0.42, wspace=0.12)
-    out = os.path.join(ML.OUT, f"label_extremes_{y0}_{y1}.png")
+    out = os.path.join(ML.OUT, f"label_extremes_{y0}_{y1}" + (f"_amp{min_amp:g}" if min_amp else "") + ".png")
     fig.savefig(out, facecolor="white")
     for cls, title, r, _ in order:
         print(title, r.ticker, names.get(r.ticker, ""), r.date.date(), round(float(r.amp), 2))
