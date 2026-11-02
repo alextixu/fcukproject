@@ -172,7 +172,8 @@ def grid_figure(curves, out, min_points):
     ax.set_title(f"訓練點越來越少(虛線 = {min_points} 個,少於就不再跑)", loc="left", fontsize=12.5, color=INK, pad=10)
     ax.legend(frameon=False, fontsize=10, labelcolor=INK, loc="upper right")
     ax.set_xticks(xs)
-    fig.suptitle("訓練門檻每次 +1%,跑到訓練點不夠為止(34 檔、只做多前 3 檔、2024–2026;直接看測試年,沒有驗證期)",
+    xs_all = sorted(map(int, curves["主軸"]))
+    fig.suptitle(f"訓練門檻每次 +1%({xs_all[0]}%–{xs_all[-1]}%;34 檔、只做多前 3 檔、2024–2026;直接看測試年,沒有驗證期)",
                  x=0.02, ha="left", fontsize=14, color=INK, y=0.99)
     fig.tight_layout(rect=(0, 0, 1, 0.95), w_pad=3)
     fig.savefig(out, facecolor=SURF)
