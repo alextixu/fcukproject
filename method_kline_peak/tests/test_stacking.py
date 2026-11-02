@@ -50,7 +50,7 @@ def test_component_split_base_meta(data, abc):
 def test_component_meta_learner_three_classes(learner):
     """Given 一份三類都有的合成分數(高點分數大 → 高點、低點分數大 → 低點) / When 用這種元學習器訓練並預測 /
     Then 輸出只有低點 / 非極值 / 高點三類、每一類都會出現;把握程度是有限數字,有機率的分類器落在 0 ~ 1
-    (門檻法是超過門檻的幅度,SVM 為 0)"""
+    (SVM 為 0)"""
     rng = np.random.default_rng(0)
     n = 900
     y = rng.choice([UP, FLAT, DOWN], size=n, p=[0.2, 0.6, 0.2])

@@ -1,4 +1,4 @@
-"""只交易模型前 3 檔的回測(2026-11-02 使用者要求):3 個方法 × 2024、2025、2026,共 9 個。
+"""只交易模型前 3 檔的回測(2026-11-02 使用者要求):2 個方法(主軸、Stacking 邏輯迴歸)× 2024、2025、2026,共 6 個。
 
 交易規則(其餘同 backtest_years.py)
   - 低點訊號 → 做多:t+1 開盤買,t+5 收盤賣;同時最多 3 檔
@@ -30,7 +30,7 @@ from learn5_trade6 import UP, DOWN
 from paper_aeocsvm import NAMES
 
 YEARS = (2024, 2025, 2026)
-SOURCES = ["主軸", "Stacking 邏輯迴歸", "Stacking 門檻"]
+SOURCES = ["主軸", "Stacking 邏輯迴歸"]
 COLS = ["date", "ticker", "score"]
 
 
@@ -54,7 +54,7 @@ def cls_metrics(sig):
 
 
 def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES, years=YEARS):
-    """3 個方法 × YEARS 的回測;回傳 {年: {方法: 結果}}。amp = 訓練門檻(%),k = 做空格數。"""
+    """各方法 × YEARS 的回測;回傳 {年: {方法: 結果}}。amp = 訓練門檻(%),k = 做空格數。"""
     rule, no_cost = BY.TradeRule(slots=3, short_slots=k), BY.TradeRule(slots=3, short_slots=k, **BY.NO_COST)
     t0, out = time.time(), {}
     for y in years:

@@ -172,58 +172,6 @@
       "pnl_pct_of_init": 0.0
      }
     }
-   },
-   "Stacking 門檻": {
-    "n_train": 32863,
-    "n_low_signals": 637,
-    "n_high_signals": 446,
-    "分類": {
-     "macro_f1_pct": 44.84,
-     "recall_pct": {
-      "高點": 19.0,
-      "低點": 26.8
-     },
-     "precision_pct": {
-      "高點": 23.8,
-      "低點": 24.0
-     }
-    },
-    "扣成本": {
-     "total_return_pct": -9.92,
-     "max_dd_pct": -22.63,
-     "sharpe": -0.31,
-     "n_trades": 124,
-     "win_rate_pct": 46.0,
-     "avg_net_ret_pct": -0.19,
-     "做多": {
-      "n_trades": 124,
-      "win_rate_pct": 46.0,
-      "pnl_pct_of_init": -9.92
-     },
-     "做空": {
-      "n_trades": 0,
-      "win_rate_pct": null,
-      "pnl_pct_of_init": 0.0
-     }
-    },
-    "沒扣成本": {
-     "total_return_pct": 14.67,
-     "max_dd_pct": -16.4,
-     "sharpe": 0.69,
-     "n_trades": 124,
-     "win_rate_pct": 51.6,
-     "avg_net_ret_pct": 0.4,
-     "做多": {
-      "n_trades": 124,
-      "win_rate_pct": 51.6,
-      "pnl_pct_of_init": 14.67
-     },
-     "做空": {
-      "n_trades": 0,
-      "win_rate_pct": null,
-      "pnl_pct_of_init": 0.0
-     }
-    }
    }
   },
   "2025": {
@@ -334,58 +282,6 @@
       "pnl_pct_of_init": 0.0
      }
     }
-   },
-   "Stacking 門檻": {
-    "n_train": 32763,
-    "n_low_signals": 881,
-    "n_high_signals": 760,
-    "分類": {
-     "macro_f1_pct": 48.72,
-     "recall_pct": {
-      "高點": 32.4,
-      "低點": 39.6
-     },
-     "precision_pct": {
-      "高點": 25.7,
-      "低點": 26.9
-     }
-    },
-    "扣成本": {
-     "total_return_pct": -10.07,
-     "max_dd_pct": -28.21,
-     "sharpe": -0.26,
-     "n_trades": 130,
-     "win_rate_pct": 53.8,
-     "avg_net_ret_pct": -0.15,
-     "做多": {
-      "n_trades": 130,
-      "win_rate_pct": 53.8,
-      "pnl_pct_of_init": -10.07
-     },
-     "做空": {
-      "n_trades": 0,
-      "win_rate_pct": null,
-      "pnl_pct_of_init": 0.0
-     }
-    },
-    "沒扣成本": {
-     "total_return_pct": 15.78,
-     "max_dd_pct": -24.3,
-     "sharpe": 0.69,
-     "n_trades": 130,
-     "win_rate_pct": 59.2,
-     "avg_net_ret_pct": 0.43,
-     "做多": {
-      "n_trades": 130,
-      "win_rate_pct": 59.2,
-      "pnl_pct_of_init": 15.78
-     },
-     "做空": {
-      "n_trades": 0,
-      "win_rate_pct": null,
-      "pnl_pct_of_init": 0.0
-     }
-    }
    }
   },
   "2026": {
@@ -489,58 +385,6 @@
       "n_trades": 87,
       "win_rate_pct": 55.2,
       "pnl_pct_of_init": 68.69
-     },
-     "做空": {
-      "n_trades": 0,
-      "win_rate_pct": null,
-      "pnl_pct_of_init": 0.0
-     }
-    }
-   },
-   "Stacking 門檻": {
-    "n_train": 32753,
-    "n_low_signals": 546,
-    "n_high_signals": 422,
-    "分類": {
-     "macro_f1_pct": 49.39,
-     "recall_pct": {
-      "高點": 26.5,
-      "低點": 43.0
-     },
-     "precision_pct": {
-      "高點": 23.5,
-      "低點": 31.3
-     }
-    },
-    "扣成本": {
-     "total_return_pct": -11.47,
-     "max_dd_pct": -28.42,
-     "sharpe": -0.57,
-     "n_trades": 87,
-     "win_rate_pct": 41.4,
-     "avg_net_ret_pct": -0.37,
-     "做多": {
-      "n_trades": 87,
-      "win_rate_pct": 41.4,
-      "pnl_pct_of_init": -11.47
-     },
-     "做空": {
-      "n_trades": 0,
-      "win_rate_pct": null,
-      "pnl_pct_of_init": 0.0
-     }
-    },
-    "沒扣成本": {
-     "total_return_pct": 4.92,
-     "max_dd_pct": -18.78,
-     "sharpe": 0.4,
-     "n_trades": 87,
-     "win_rate_pct": 49.4,
-     "avg_net_ret_pct": 0.21,
-     "做多": {
-      "n_trades": 87,
-      "win_rate_pct": 49.4,
-      "pnl_pct_of_init": 4.92
      },
      "做空": {
       "n_trades": 0,

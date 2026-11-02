@@ -28,7 +28,6 @@
   tree      決策樹(深度 3)
   hgb       梯度提升樹
   svm       多類別 SVM(rbf)
-  threshold 門檻調整法:不訓練模型,在 B 上找兩個門檻(高點分數、低點分數)讓 macro-F1 最高;只用兩個分數
 線性回歸、Ridge / Lasso / Elastic Net 回歸、多項式回歸輸出連續數字,不是三分類,所以只取它們的正則化與多項式特徵,
 放進多類別邏輯迴歸。
 
@@ -74,36 +73,6 @@ INPUTS = {
 }
 
 
-class ThresholdCombiner:
-    """門檻調整法:只看前兩欄(高點分數、低點分數,已標準化)。在 B 上掃兩個門檻 a、b(各取分數的 50%–99.5% 分位數,
-    共 100 × 100 組),選 macro-F1 最高的一組。判斷:只有高點分數 ≥ a → 高點;只有低點分數 ≥ b → 低點;
-    兩個都過 → 超過門檻多的那一類;都沒過 → 非極值。confidence = 超過門檻的幅度(買進時排序用)。"""
-
-    def __init__(self, grid=np.linspace(0.50, 0.995, 100)):
-        self.grid = grid
-
-    @staticmethod
-    def _pred(X, a, b):
-        mh, ml = X[:, 0] - a, X[:, 1] - b
-        hi, lo = mh >= 0, ml >= 0
-        pred = np.full(len(X), FLAT)
-        pred[hi & (~lo | (mh >= ml))] = DOWN
-        pred[lo & (~hi | (ml > mh))] = UP
-        return pred
-
-    def fit(self, X, y):
-        qa, qb = np.quantile(X[:, 0], self.grid), np.quantile(X[:, 1], self.grid)
-        self.f1_, self.a_, self.b_ = max((ML.fast_macro_f1(y, self._pred(X, a, b)), a, b) for a in qa for b in qb)
-        self.classes_ = np.array([FLAT, UP, DOWN])
-        return self
-
-    def predict(self, X):
-        return self._pred(X, self.a_, self.b_)
-
-    def confidence(self, X):
-        return np.maximum(X[:, 0] - self.a_, X[:, 1] - self.b_)
-
-
 def _lr(cw, **kw):
     return LogisticRegression(class_weight=cw, **kw)
 
@@ -121,9 +90,7 @@ LEARNERS = {
     "tree": lambda cw: DecisionTreeClassifier(max_depth=3, class_weight=cw, random_state=0),
     "hgb": lambda cw: HistGradientBoostingClassifier(max_depth=3, max_iter=200, learning_rate=0.05, class_weight=cw, random_state=0),
     "svm": lambda cw: SVC(kernel="rbf", C=1.0, gamma="scale", class_weight=cw),
-    "threshold": lambda cw: ThresholdCombiner(),
 }
-SCORE_ONLY = {"threshold"}                                          # 只用兩個分數的方法,實驗只配 score 輸入
 
 
 # ─────────────────────────── 切分 ───────────────────────────
@@ -197,7 +164,7 @@ def class_weight(y):
 
 
 class MetaLearner:
-    """一種輸入組合 + 一種分類器;predict 回傳 (三分類判斷, 把握程度:機率、門檻法為超過門檻的幅度、其他為 0)。"""
+    """一種輸入組合 + 一種分類器;predict 回傳 (三分類判斷, 把握程度:有機率的分類器為最大類的機率、其他為 0)。"""
 
     def __init__(self, learner="lr", inputs="score"):
         self.learner, self.inputs = learner, inputs
@@ -211,9 +178,7 @@ class MetaLearner:
     def predict(self, F):
         X = self.fsc.transform(F[INPUTS[self.inputs]].to_numpy())
         pred = self.model.predict(X)
-        if hasattr(self.model, "confidence"):
-            score = self.model.confidence(X)
-        elif hasattr(self.model, "predict_proba"):
+        if hasattr(self.model, "predict_proba"):
             score = self.model.predict_proba(X).max(axis=1)
         else:
             score = np.zeros(len(X))
@@ -298,15 +263,11 @@ def main():
                 "inside_rate_cand": float((s[cand] > 0).mean()), "inside_rate_ordinary": float((s[~cand] > 0).mean())}
         for inp in INPUTS:
             for ln in LEARNERS:
-                if ln in SCORE_ONLY and inp != "score":
-                    continue
                 meta = MetaLearner(ln, inp).fit(FB, yb)
                 pred, _ = meta.predict(FC)
                 r = {**summarize(yc, pred, NAMES), **extra(yc, pred, C)}
                 if meta.coef():
                     r["coef"] = meta.coef()
-                if ln == "threshold":
-                    r["thresholds_std"] = {"high": float(meta.model.a_), "low": float(meta.model.b_), "macro_f1_on_B": float(meta.model.f1_)}
                 res["runs"].setdefault(f"{inp}|{ln}", {})[seed] = r
         print(f"  種子 {seed} 完成  ({time.time() - t0:.0f}s)", flush=True)
 

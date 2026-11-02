@@ -1,7 +1,7 @@
 """訓練門檻一路往上加(每次 +1%),跑到不再提升為止(2026-11-02 使用者要求)。
 
-每個門檻都跑 backtest_top3 的 9 個回測(34 檔、只做多前 3 檔,3 個方法 × 2024–2026,對答案用原本的標籤)。
-「提升」看 9 個扣成本報酬的平均;連續 --patience 個門檻都沒有超過目前最好的平均就停,
+每個門檻都跑 backtest_top3 的 6 個回測(34 檔、只做多前 3 檔,2 個方法 × 2024–2026,對答案用原本的標籤)。
+「提升」看 6 個扣成本報酬的平均;連續 --patience 個門檻都沒有超過目前最好的平均就停,
 或某個門檻訓練不起來(某一類的訓練點太少)也停。另外記錄每個門檻的訓練點數(主軸 4 年、Stacking 的 B 1 年,每類)。
 注意:這是直接看測試年選門檻,沒有驗證期。
 --grid:不提早停,每個方法、每一年都跑 --start ~ --max;某一年訓練不起來(某一類 0 個訓練點)就記下原因,那個門檻不算 3 年平均
@@ -25,7 +25,7 @@ import stacking as S  # noqa: E402
 import backtest_top3 as T  # noqa: E402
 from learn5_trade6 import UP, DOWN  # noqa: E402
 
-COLORS = {"主軸": "#2a78d6", "Stacking 邏輯迴歸": "#eb6834", "Stacking 門檻": "#1baf7a"}
+COLORS = {"主軸": "#2a78d6", "Stacking 邏輯迴歸": "#eb6834"}
 INK, MUTED, GRID, SURF = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
 plt.rcParams["axes.unicode_minus"] = False
@@ -56,8 +56,8 @@ def summary(years):
 def figure(res, out):
     ths = [r["amp"] for r in res["sweep"]]
     fig, axes = plt.subplots(1, 2, figsize=(15, 6), dpi=160, facecolor=SURF)
-    for ax, key, title in ((axes[0], "method_mean_net", "扣成本報酬:3 年平均(各方法)與 9 個平均"),
-                           (axes[1], None, "每年交易筆數(9 個平均)與最少的訓練點(每類)")):
+    for ax, key, title in ((axes[0], "method_mean_net", "扣成本報酬:3 年平均(各方法)與 6 個平均"),
+                           (axes[1], None, "每年交易筆數(6 個平均)與最少的訓練點(每類)")):
         ax.set_facecolor(SURF)
         for k in ("top", "right"):
             ax.spines[k].set_visible(False)
@@ -75,9 +75,9 @@ def figure(res, out):
         ax.plot(ths, v, color=col, lw=2, marker="o", ms=6, mec=SURF, mew=1.5, label=n)
         ax.annotate(n, (ths[-1], v[-1]), xytext=(6, 0), textcoords="offset points", va="center", fontsize=10, color=INK)
     m = [r["summary"]["mean_net"] for r in res["sweep"]]
-    ax.plot(ths, m, color=INK, lw=2.4, marker="s", ms=6, mec=SURF, mew=1.5, label="9 個平均")
+    ax.plot(ths, m, color=INK, lw=2.4, marker="s", ms=6, mec=SURF, mew=1.5, label="6 個平均")
     b = res["best_amp"]
-    ax.annotate(f"9 個平均最好:{b:g}%({max(m):+.1f}%)", (b, max(m)), xytext=(0, 14), textcoords="offset points", ha="center", fontsize=10, color=INK)
+    ax.annotate(f"6 個平均最好:{b:g}%({max(m):+.1f}%)", (b, max(m)), xytext=(0, 14), textcoords="offset points", ha="center", fontsize=10, color=INK)
     ax.axhline(0, color=MUTED, lw=0.8, ls=":")
     ax.set_ylabel("扣成本報酬(%)", color=MUTED, fontsize=10)
     ax.legend(frameon=False, fontsize=10, labelcolor=INK, loc="upper left")
@@ -90,7 +90,7 @@ def figure(res, out):
         ax.annotate(f"{v}", (x, v), xytext=(0, -14), textcoords="offset points", ha="center", fontsize=9, color=INK)
     ax.set_ylabel("筆數 / 個數", color=MUTED, fontsize=10)
     ax.legend(frameon=False, fontsize=10, labelcolor=INK, loc="upper right")
-    fig.suptitle("訓練門檻每次 +1%(34 檔、只做多前 3 檔、3 個方法 × 2024–2026;直接看測試年,沒有驗證期)",
+    fig.suptitle("訓練門檻每次 +1%(34 檔、只做多前 3 檔、2 個方法 × 2024–2026;直接看測試年,沒有驗證期)",
                  x=0.02, ha="left", fontsize=14, color=INK, y=0.99)
     fig.tight_layout(rect=(0, 0, 1, 0.95), w_pad=3)
     fig.savefig(out, facecolor=SURF)
@@ -205,7 +205,7 @@ def main():
         sm = summary(years)
         res["sweep"].append({"amp": amp, "summary": sm, "train_counts": counts, "years": years})
         mn = min(min(c["主軸 4 年"] + c["Stacking B"]) for c in counts.values())
-        print(f"{amp:>2}%  9 個平均 {sm['mean_net']:+6.2f}%(沒扣 {sm['mean_gross']:+6.2f}%,{sm['n_positive']} 個為正)  "
+        print(f"{amp:>2}%  6 個平均 {sm['mean_net']:+6.2f}%(沒扣 {sm['mean_gross']:+6.2f}%,{sm['n_positive']} 個為正)  "
               + "  ".join(f"{n} {sm['method_mean_net'][n]:+6.2f}" for n in T.SOURCES)
               + f"  最少訓練點 {mn}  ({time.time() - t0:.0f}s)", flush=True)
         if sm["mean_net"] > best:

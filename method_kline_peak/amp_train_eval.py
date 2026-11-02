@@ -2,7 +2,7 @@
 
 訓練:兩邊幅度 ≥ 3% 的點才當高點 / 低點,其餘改成非極值(主軸的 OC-SVM、Stacking 的基底層與元學習器都一樣)。
 對答案:測試期用原本的標籤(只要是 11 天的最高 / 最低就算對)。
-三個方法(主軸、Stacking 邏輯迴歸、Stacking 門檻)× 測試 2024、2025、2026;對照目前的 0%(不設門檻)。
+兩個方法(主軸、Stacking 邏輯迴歸)× 測試 2024、2025、2026;對照目前的 0%(不設門檻)。
 用法: python method_kline_peak/amp_train_eval.py [--min-amp 3]
 輸出: results/amp_train_eval.json
 """
@@ -18,7 +18,7 @@ from confusion import summarize
 from paper_aeocsvm import NAMES
 
 YEARS = (2024, 2025, 2026)
-SOURCES = ["主軸", "Stacking 邏輯迴歸", "Stacking 門檻"]
+SOURCES = ["主軸", "Stacking 邏輯迴歸"]
 KEY = "confusion_rows_true_cols_pred(漲,不漲不跌,跌)"
 
 
