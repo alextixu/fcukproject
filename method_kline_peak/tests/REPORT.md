@@ -69,8 +69,8 @@
 | 63 | System | `test_system_reproducible` | Given 同一份資料與種子 42 / When 把高點模型從頭再訓練一次 / Then 2024 每一天的高點判斷完全一樣(結果可重現) | 通過 |
 | 64 | System | `test_system_metrics_match_report` | Given 2024 測試期的判斷 / When 計算混淆矩陣與 macro-F1 / Then 混淆矩陣加總 = 12,098 天、macro-F1 與 sklearn 一致; 規則 54.20%、模型(種子 42)53.96%,與簡報和 README 的數字相同 | 通過 |
 | 65 | System | `test_system_data_quality` | Given TW50 50 檔還原日 K / When 清理後檢查 / Then 沒有零量日、最高 ≥ 開收、最低 ≤ 開收; 每年「開盤 ÷ 前日收盤」中位數在 0.98 ~ 1.02(開盤和收盤用同一套還原,沒有錯位) | 通過 |
-| 66 | Module | `test_module_pool_excludes_low_vol` | Given 完整 TW50 50 檔與使用者剔除的 16 檔 / When 讀主軸的股票池 / Then 剩 34 檔,剔除的一檔都不在,其餘都是 TW50 成分股 | 通過 |
-| 67 | Module | `test_module_excluded_are_lowest_volatility` | Given 2020-01 以後每檔的每日漲跌幅(絕對值)中位數 / When 由低到高排序 / Then 剔除的 16 檔正好是最低的 16 檔(中華電 ~ 中信金) | 通過 |
+| 66 | Module | `test_module_rule_reproduces_tw50_drop` | Given 完整 TW50 50 檔 / When 用門檻 0.725%(每日漲跌幅中位數)找低波動股 / Then 正好是 2026-11-02 使用者在 TW50 剔除的 16 檔(中華電 ~ 中信金) | 通過 |
+| 67 | Module | `test_module_pool_is_tw100_minus_low_vol` | Given TW100(有資料的 95 檔) / When 讀主軸的股票池 / Then 剩 73 檔:每一檔的每日漲跌幅中位數都 ≥ 0.725%, TW50 剔除的 16 檔都不在裡面,TW50 其餘 34 檔都在 | 通過 |
 | 68 | Module | `test_module_reversal_long_short_long` | Given 第 0 天判高點、第 3 天判低點、第 6 天判高點 / When 反手交易 / Then 第 1 天開盤(101)做多 → 第 4 天開盤(104)賣出並反手放空 → 第 7 天開盤(107)回補並反手做多 → 最後一天收盤(111.5)平倉; 每筆報酬照成本手算,期末資產 = 100 萬 + 損益加總 | 通過 |
 | 69 | Module | `test_module_reversal_waits_for_first_high` | Given 第 0 天判低點、第 2 天判高點 / When 反手交易 / Then 第一個高點之前的低點不理會:第 3 天開盤才第一次做多,持有到期末 | 通過 |
 | 70 | Module | `test_module_reversal_repeated_signals_ignored` | Given 第 0、2、4 天都判高點 / When 反手交易 / Then 做多中再判高點不加碼也不重買:只有一筆做多,第 1 天買、期末賣 | 通過 |

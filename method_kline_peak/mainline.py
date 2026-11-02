@@ -61,10 +61,10 @@ import kline.autoencoder as KA  # noqa: E402   (ae_ocsvm 已把 method_kline 加
 
 OUT = os.path.join(HERE, "results")
 LOG = os.path.join(OUT, "experiments.csv")
-POOL = "tw50"
-# 2026-11-02 使用者剔除:2020-01 ~ 2026-09 每日漲跌幅中位數最低的 16 檔(0.43% ~ 0.72%,標籤多是小起伏)
-EXCLUDE = ("2412.TW", "3045.TW", "5880.TW", "2633.TW", "2892.TW", "4904.TW", "2880.TW", "2886.TW",
-           "2912.TW", "2884.TW", "1102.TW", "2887.TW", "1216.TW", "2890.TW", "1101.TW", "2891.TW")
+POOL = "tw100"                                    # 2026-11-02 起(分支 claude/kline-peak-predict-tool):TW100,之前為 TW50
+# 剔除低波動股:2020-01 以後每日漲跌幅(絕對值)中位數 < MIN_MOVE(%)。
+# 0.725% 介於 TW50 第 16 低(中信金 0.719%)與第 17 低(和碩 0.731%)之間,套在 TW50 正好是 2026-11-02 使用者剔除的 16 檔
+MIN_MOVE, MOVE_FROM = 0.725, "2020-01-01"
 VOL_MA = 10                                       # 量的基準均量天數(2026-10-19 改為 10,之前為 20)
 ARCH, LATENT = "shallow", 16                      # AE 編碼器 29 → 16 一層(2026-10-19 起;之前為原系統 29 → 58 → 8 → 4)
 CAND = {DOWN: "cand_hi", UP: "cand_lo"}
@@ -128,9 +128,22 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
     return panel.reset_index(drop=True), feat_cols
 
 
-def load_data(start=START, end=END, exclude=EXCLUDE):
-    """主軸的股票池:TW50 剔除 EXCLUDE(目前 34 檔)。"""
-    return {tk: df for tk, df in load_pool(POOL, start, end).items() if tk not in exclude}
+def daily_move(df):
+    """2020-01 以後每日收盤漲跌幅(絕對值)的中位數(%)。"""
+    return float(clean(df)["close"].loc[MOVE_FROM:].pct_change().abs().median() * 100)
+
+
+def low_vol(data, min_move=MIN_MOVE):
+    """低波動股:每日漲跌幅中位數 < min_move(%)的代號,由低到高。"""
+    med = {tk: daily_move(df) for tk, df in data.items()}
+    return sorted((tk for tk, m in med.items() if m < min_move), key=med.get)
+
+
+def load_data(start=START, end=END, pool=POOL, min_move=MIN_MOVE):
+    """主軸的股票池:POOL(目前 TW100,有資料的 95 檔)剔除低波動股(目前剩 73 檔)。"""
+    data = load_pool(pool, start, end)
+    drop = set(low_vol(data, min_move))
+    return {tk: df for tk, df in data.items() if tk not in drop}
 
 
 def split(panel, sp, half=5):

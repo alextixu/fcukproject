@@ -80,6 +80,23 @@ macro-F1(找到 高 / 低,命中 高 / 低,%):
 
 每筆交易:`results/reversal_2379_2025.json`;圖:`results/reversal_2379_2025.png`。
 
+### 分支 claude/kline-peak-predict-tool:股票池擴大到 TW100(2026-11-02 使用者要求)
+
+`mainline.POOL = "tw100"`(有資料的 95 檔),剔除每日漲跌幅中位數 < 0.725% 的低波動股(`mainline.low_vol`;
+同一個門檻套在 TW50 正好是之前剔除的 16 檔),剩 **73 檔**。34 檔版本存在分支 `claude/kline-peak-34stocks-2methods`。
+測試仍固定用完整 TW50。
+
+2024–2026 混淆矩陣(`python report/confusion_2024_2026.py --plain`,圖 `results/confusion_2024_2026_tw100.png`),macro-F1:34 檔 → TW100 73 檔
+
+| 方法 | 2024 | 2025 | 2026(1–9 月) |
+|---|---|---|---|
+| 規則 | 52.10 → **53.62**(命中 低 28%) | 53.30 → **54.09**(命中 低 29%) | 54.22 → **54.27**(命中 低 33%) |
+| ① 主軸 | 51.95 → **53.31**(命中 低 27%) | 53.14 → **53.75**(命中 低 29%) | 52.93 → **53.43**(命中 低 33%) |
+| ② Stacking 邏輯迴歸 | 48.54 → **50.18**(命中 低 26%) | 49.43 → **49.87**(命中 低 27%) | 49.45 → **50.15**(命中 低 30%) |
+
+- 測試天數約 2.1 倍(2024:8,228 → 17,664 天)。兩個方法的 macro-F1 都升 0.4–1.6 點,但規則也跟著升(股票組成變了),
+  和規則的差距沒有縮小:主軸仍比規則低 0.3–0.8 點、Stacking 低 3.4–4.2 點。
+
 ### 判高點買、判低點賣(只做多、不反手),只交易瑞昱 2025(`reversal_single.py --long-only`;2026-11-02 使用者要求)
 
 沒持有時判高點 → 隔天開盤全部資金買進;持有中判低點 → 隔天開盤賣出後空手,等下一個判高點再買;年底收盤平倉;成本同前。
@@ -701,7 +718,7 @@ python method_kline_peak/confusion.py --pool tw50 --labels peak --folds train202
 python method_kline_peak/ae_ocsvm.py --pool tw50           # AE + OC-SVM 混淆矩陣(需要 torch)
 python method_kline_peak/paper_aeocsvm.py                  # 論文標籤 + AE + OC-SVM(TW50,約 1 分鐘)
 python method_kline_peak/paper_rule_aeocsvm.py             # 論文規則框架 + AE + OC-SVM 否決假候選(約 40 秒)
-python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 88 項(約 1 分鐘),報告寫到 tests/REPORT.md
+python -m pytest method_kline_peak/tests -q                  # 主軸、回測與 Stacking 行為測試 88 項(約 1 分鐘,固定用 TW50),報告寫到 tests/REPORT.md
 python method_kline_peak/backtest_years.py                   # 逐年回測 2020–2026(約 5 分鐘)
 python method_kline_peak/backtest_top3.py                    # 只做多前 3 檔,兩個方法 × 2024–2026(約 1 分鐘;--short-slots 3 加做空)
 python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資料 → windows_data.json(給網頁)

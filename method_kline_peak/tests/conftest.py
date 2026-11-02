@@ -25,8 +25,8 @@ ARGS = Namespace(weight="purity", gamma="scale", nu=[NU])
 
 @pytest.fixture(scope="session")
 def data():
-    """測試固定用完整 TW50 50 檔(不套 mainline.EXCLUDE),回歸數字不隨股票池調整而改變。"""
-    return load_pool(ML.POOL, START, END)
+    """測試固定用完整 TW50 50 檔(不剔除低波動股),回歸數字不隨股票池調整而改變。"""
+    return load_pool("tw50", START, END)
 
 
 @pytest.fixture(scope="session")
