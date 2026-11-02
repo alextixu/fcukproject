@@ -64,8 +64,11 @@ def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES, years=Y
         for name in sources:
             sig, n_train = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name](), train_min_amp=amp, train_min_side=side)
             lo, hi = sig[sig.pred == UP][COLS], sig[sig.pred == DOWN][COLS]
-            net = result(BY.simulate(prices, lo, start, end, rule, shorts=hi))
-            gross = result(BY.simulate(prices, lo, start, end, no_cost, shorts=hi))
+            sim_n = BY.simulate(prices, lo, start, end, rule, shorts=hi)
+            sim_g = BY.simulate(prices, lo, start, end, no_cost, shorts=hi)
+            net, gross = result(sim_n), result(sim_g)
+            for r, sm in ((net, sim_n), (gross, sim_g)):                 # 每日資產曲線(相對 100 萬的報酬 %)
+                r["curve"] = {d.strftime("%Y-%m-%d"): round(v / rule.init_cash * 100 - 100, 3) for d, v in sm["equity"].items()}
             cm = cls_metrics(sig)
             out[str(y)][name] = {"n_train": n_train, "n_low_signals": len(lo), "n_high_signals": len(hi),
                                    "分類": cm, "扣成本": net, "沒扣成本": gross}

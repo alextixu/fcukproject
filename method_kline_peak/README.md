@@ -89,7 +89,7 @@ macro-F1(找到 高 / 低,命中 高 / 低,%):
 | ② Stacking 邏輯迴歸 | -45.0% → **-32.2%**(-12.1%,134 筆) | -11.9% → **-19.5%**(+1.6%,119 筆) | +0.5% → **-5.5%**(+11.7%,86 筆) | -18.8% → -19.1% |
 
 - 主軸的判斷幾乎沒變(macro-F1 差 0.0–0.1 點),Stacking 降 0.4–1.0 點;6 個回測 2 個變好、4 個變差,平均 -19.3% → -21.0%。
-- 結果:`results/backtest_long_only_side3.json`、`results/confusion_2024_2026_side3.json`。
+- 結果:`results/backtest_long_only_side3.json`、`results/confusion_2024_2026_side3.json`;資產曲線 `results/backtest_long_only_side3_curves.png`。
 
 ### 股票池剔除 16 檔低波動股(`mainline.EXCLUDE`、`mainline.load_data()`;2026-11-02 使用者要求)
 
@@ -695,6 +695,7 @@ python method_kline_peak/export_windows.py --out <資料夾>   # 主軸逐日資
 | `report/label_shapes.py` | 現在的標籤長怎樣:對方向的天數(前 5 天漲 + 後 5 天跌,高點;低點反之)分布與例子(圖) |
 | `report/label_side_filter.py` | 做法 2「每邊至少 N 天對方向」會保留 / 刪掉哪些標籤:例子與前 5 天 × 後 5 天分布(`--min-side`,預設 3;只畫圖) |
 | `report/one_window.py` | 單一天的 11 天 K 線,標出每天收盤漲跌與是否對方向(`python report/one_window.py 2379.TW 2023-05-29`) |
+| `report/equity_curves.py` | backtest_top3 結果檔的資產曲線(方法 × 年;實線扣成本、虛線沒扣成本) |
 | `report/confusion_2024_2026.py` | 2024–2026 混淆矩陣:規則、主軸、Stacking 邏輯迴歸,訓練門檻 0% 與 `--amp`(預設 8%) |
 | `amp_sweep.py` | 訓練門檻每次 +1%:6 個平均沒提升就停(預設),或 `--grid` 每個方法跑到訓練點不夠為止(圖 + json) |
 | `amp_train_eval.py` | 用幅度門檻訓練(`--min-amp`,預設 3%)、用原本的標籤對答案,兩個方法 × 2024–2026,對照 0% |
