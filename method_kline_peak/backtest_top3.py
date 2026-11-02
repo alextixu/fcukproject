@@ -53,35 +53,45 @@ def cls_metrics(sig):
             "precision_pct": {k: round((s["precision"][k] or 0) * 100, 1) for k in ("高點", "低點")}}
 
 
+def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES):
+    """3 個方法 × YEARS 的回測;回傳 {年: {方法: 結果}}。amp = 訓練門檻(%),k = 做空格數。"""
+    rule, no_cost = BY.TradeRule(slots=3, short_slots=k), BY.TradeRule(slots=3, short_slots=k, **BY.NO_COST)
+    t0, years = time.time(), {}
+    for y in YEARS:
+        start, end = f"{y}-01-01", min(f"{y}-12-31", END)
+        years[str(y)] = {"period": [start, end]}
+        for name in sources:
+            sig, n_train = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name](), train_min_amp=amp)
+            lo, hi = sig[sig.pred == UP][COLS], sig[sig.pred == DOWN][COLS]
+            net = result(BY.simulate(prices, lo, start, end, rule, shorts=hi))
+            gross = result(BY.simulate(prices, lo, start, end, no_cost, shorts=hi))
+            cm = cls_metrics(sig)
+            years[str(y)][name] = {"n_train": n_train, "n_low_signals": len(lo), "n_high_signals": len(hi),
+                                   "分類": cm, "扣成本": net, "沒扣成本": gross}
+            log(f"{y} {name:<12} 扣成本 {net['total_return_pct']:+7.2f}%(多 {net['做多']['pnl_pct_of_init']:+.2f} / 空 {net['做空']['pnl_pct_of_init']:+.2f})"
+                f"  沒扣成本 {gross['total_return_pct']:+7.2f}%(多 {gross['做多']['pnl_pct_of_init']:+.2f} / 空 {gross['做空']['pnl_pct_of_init']:+.2f})"
+                f"  {net['n_trades']} 筆(多 {net['做多']['n_trades']} / 空 {net['做空']['n_trades']}),勝 {net['win_rate_pct']}%,"
+                f"回撤 {net['max_dd_pct']}%  macro-F1 {cm['macro_f1_pct']}  找到 高/低 {cm['recall_pct']['高點']}/{cm['recall_pct']['低點']}"
+                f"  命中 高/低 {cm['precision_pct']['高點']}/{cm['precision_pct']['低點']}  ({time.time() - t0:.0f}s)")
+    return years
+
+
+def load():
+    data = ML.load_data()
+    panel, fc = ML.build_panel(data, 6, [])
+    return data, panel, fc, {tk: clean(df)[["open", "close"]] for tk, df in data.items()}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--short-slots", type=int, default=0, choices=[0, 3])
     ap.add_argument("--train-min-amp", type=float, default=0.0)
     a = ap.parse_args()
     k, amp = a.short_slots, a.train_min_amp
-    rule, no_cost = BY.TradeRule(slots=3, short_slots=k), BY.TradeRule(slots=3, short_slots=k, **BY.NO_COST)
     out_path = os.path.join(ML.OUT, ("backtest_long_short" if k else "backtest_long_only") + (f"_amp{amp:g}" if amp else "") + ".json")
-    t0 = time.time()
-    data = ML.load_data()
-    panel, fc = ML.build_panel(data, 6, [])
-    prices = {tk: clean(df)[["open", "close"]] for tk, df in data.items()}
-    res = {"rule": asdict(rule), "train_min_amp": amp, "pool": sorted(data), "excluded": list(ML.EXCLUDE), "years": {}}
-    for y in YEARS:
-        start, end = f"{y}-01-01", min(f"{y}-12-31", END)
-        res["years"][str(y)] = {"period": [start, end]}
-        for name in SOURCES:
-            sig, n_train = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name](), train_min_amp=amp)
-            lo, hi = sig[sig.pred == UP][COLS], sig[sig.pred == DOWN][COLS]
-            net = result(BY.simulate(prices, lo, start, end, rule, shorts=hi))
-            gross = result(BY.simulate(prices, lo, start, end, no_cost, shorts=hi))
-            cm = cls_metrics(sig)
-            res["years"][str(y)][name] = {"n_train": n_train, "n_low_signals": len(lo), "n_high_signals": len(hi),
-                                          "分類": cm, "扣成本": net, "沒扣成本": gross}
-            print(f"{y} {name:<12} 扣成本 {net['total_return_pct']:+7.2f}%(多 {net['做多']['pnl_pct_of_init']:+.2f} / 空 {net['做空']['pnl_pct_of_init']:+.2f})"
-                  f"  沒扣成本 {gross['total_return_pct']:+7.2f}%(多 {gross['做多']['pnl_pct_of_init']:+.2f} / 空 {gross['做空']['pnl_pct_of_init']:+.2f})"
-                  f"  {net['n_trades']} 筆(多 {net['做多']['n_trades']} / 空 {net['做空']['n_trades']}),勝 {net['win_rate_pct']}%,"
-                  f"回撤 {net['max_dd_pct']}%  macro-F1 {cm['macro_f1_pct']}  找到 高/低 {cm['recall_pct']['高點']}/{cm['recall_pct']['低點']}"
-                  f"  命中 高/低 {cm['precision_pct']['高點']}/{cm['precision_pct']['低點']}  ({time.time() - t0:.0f}s)", flush=True)
+    data, panel, fc, prices = load()
+    res = {"rule": asdict(BY.TradeRule(slots=3, short_slots=k)), "train_min_amp": amp, "pool": sorted(data), "excluded": list(ML.EXCLUDE),
+           "years": run_all(panel, fc, prices, amp, k, log=lambda m: print(m, flush=True))}
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1, default=str)
     print(f"記錄於 {out_path}")
