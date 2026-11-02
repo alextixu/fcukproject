@@ -21,6 +21,7 @@
     53.14,
     52.93
    ],
+   "failed": {},
    "mean_net": -19.87,
    "mean_gross": 1.58
   },
@@ -45,6 +46,7 @@
     53.08,
     52.69
    ],
+   "failed": {},
    "mean_net": -21.82,
    "mean_gross": -1.03
   },
@@ -69,6 +71,7 @@
     53.18,
     53.08
    ],
+   "failed": {},
    "mean_net": -18.16,
    "mean_gross": 3.72
   },
@@ -93,6 +96,7 @@
     52.55,
     53.5
    ],
+   "failed": {},
    "mean_net": -16.95,
    "mean_gross": 5.37
   },
@@ -117,6 +121,7 @@
     52.35,
     52.88
    ],
+   "failed": {},
    "mean_net": -24.88,
    "mean_gross": -5.92
   },
@@ -141,6 +146,7 @@
     48.82,
     51.49
    ],
+   "failed": {},
    "mean_net": -17.5,
    "mean_gross": 1.76
   },
@@ -165,6 +171,7 @@
     45.25,
     46.33
    ],
+   "failed": {},
    "mean_net": 2.12,
    "mean_gross": 18.98
   },
@@ -189,6 +196,7 @@
     42.56,
     41.37
    ],
+   "failed": {},
    "mean_net": 2.69,
    "mean_gross": 13.7
   },
@@ -213,6 +221,7 @@
     39.09,
     37.47
    ],
+   "failed": {},
    "mean_net": 14.23,
    "mean_gross": 24.7
   },
@@ -237,6 +246,7 @@
     34.67,
     35.99
    ],
+   "failed": {},
    "mean_net": -0.64,
    "mean_gross": 6.72
   },
@@ -261,6 +271,7 @@
     33.9,
     44.29
    ],
+   "failed": {},
    "mean_net": -0.03,
    "mean_gross": 6.93
   },
@@ -285,6 +296,7 @@
     33.39,
     42.27
    ],
+   "failed": {},
    "mean_net": 1.18,
    "mean_gross": 5.11
   },
@@ -309,6 +321,7 @@
     40.76,
     42.6
    ],
+   "failed": {},
    "mean_net": 5.65,
    "mean_gross": 10.19
   },
@@ -333,8 +346,184 @@
     38.29,
     39.12
    ],
+   "failed": {},
    "mean_net": 2.59,
    "mean_gross": 3.3
+  },
+  "14": {
+   "net": [
+    1.33,
+    0.0,
+    6.45
+   ],
+   "gross": [
+    1.54,
+    0.0,
+    8.35
+   ],
+   "trades": [
+    1,
+    0,
+    9
+   ],
+   "macro_f1": [
+    34.87,
+    35.83,
+    37.2
+   ],
+   "failed": {},
+   "mean_net": 2.59,
+   "mean_gross": 3.3
+  },
+  "15": {
+   "net": [
+    1.33,
+    0.0,
+    6.45
+   ],
+   "gross": [
+    1.54,
+    0.0,
+    8.35
+   ],
+   "trades": [
+    1,
+    0,
+    9
+   ],
+   "macro_f1": [
+    34.71,
+    35.64,
+    37.17
+   ],
+   "failed": {},
+   "mean_net": 2.59,
+   "mean_gross": 3.3
+  },
+  "16": {
+   "net": [
+    1.33,
+    0.0,
+    28.49
+   ],
+   "gross": [
+    1.54,
+    0.0,
+    29.23
+   ],
+   "trades": [
+    1,
+    0,
+    3
+   ],
+   "macro_f1": [
+    34.99,
+    35.54,
+    35.77
+   ],
+   "failed": {},
+   "mean_net": 9.94,
+   "mean_gross": 10.26
+  },
+  "17": {
+   "net": [
+    1.33,
+    0.0,
+    28.49
+   ],
+   "gross": [
+    1.54,
+    0.0,
+    29.23
+   ],
+   "trades": [
+    1,
+    0,
+    3
+   ],
+   "macro_f1": [
+    35.07,
+    35.54,
+    35.77
+   ],
+   "failed": {},
+   "mean_net": 9.94,
+   "mean_gross": 10.26
+  },
+  "18": {
+   "net": [
+    1.33,
+    0.0,
+    0.0
+   ],
+   "gross": [
+    1.54,
+    0.0,
+    0.0
+   ],
+   "trades": [
+    1,
+    0,
+    0
+   ],
+   "macro_f1": [
+    33.81,
+    34.75,
+    30.82
+   ],
+   "failed": {},
+   "mean_net": 0.44,
+   "mean_gross": 0.51
+  },
+  "19": {
+   "net": [
+    1.33,
+    0.0,
+    0.0
+   ],
+   "gross": [
+    1.54,
+    0.0,
+    0.0
+   ],
+   "trades": [
+    1,
+    0,
+    0
+   ],
+   "macro_f1": [
+    33.82,
+    34.6,
+    30.82
+   ],
+   "failed": {},
+   "mean_net": 0.44,
+   "mean_gross": 0.51
+  },
+  "20": {
+   "net": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "gross": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "trades": [
+    0,
+    0,
+    0
+   ],
+   "macro_f1": [
+    33.65,
+    34.36,
+    30.82
+   ],
+   "failed": {},
+   "mean_net": 0.0,
+   "mean_gross": 0.0
   }
  },
  "Stacking 邏輯迴歸": {
@@ -359,6 +548,7 @@
     49.43,
     49.45
    ],
+   "failed": {},
    "mean_net": -18.82,
    "mean_gross": 1.61
   },
@@ -383,6 +573,7 @@
     49.64,
     49.37
    ],
+   "failed": {},
    "mean_net": -19.41,
    "mean_gross": 0.9
   },
@@ -407,6 +598,7 @@
     49.56,
     49.8
    ],
+   "failed": {},
    "mean_net": -12.48,
    "mean_gross": 9.08
   },
@@ -431,6 +623,7 @@
     48.84,
     48.26
    ],
+   "failed": {},
    "mean_net": -1.51,
    "mean_gross": 21.56
   },
@@ -455,6 +648,7 @@
     47.39,
     48.27
    ],
+   "failed": {},
    "mean_net": -4.83,
    "mean_gross": 15.23
   },
@@ -479,6 +673,7 @@
     46.04,
     47.58
    ],
+   "failed": {},
    "mean_net": 10.25,
    "mean_gross": 30.56
   },
@@ -503,6 +698,7 @@
     44.78,
     46.69
    ],
+   "failed": {},
    "mean_net": 5.29,
    "mean_gross": 21.4
   },
@@ -527,6 +723,7 @@
     42.52,
     45.42
    ],
+   "failed": {},
    "mean_net": -9.39,
    "mean_gross": 2.14
   },
@@ -551,6 +748,7 @@
     40.61,
     45.13
    ],
+   "failed": {},
    "mean_net": -9.04,
    "mean_gross": 0.85
   },
@@ -575,6 +773,7 @@
     40.1,
     45.06
    ],
+   "failed": {},
    "mean_net": -6.64,
    "mean_gross": 2.46
   },
@@ -599,6 +798,7 @@
     38.79,
     43.01
    ],
+   "failed": {},
    "mean_net": 4.03,
    "mean_gross": 12.73
   },
@@ -623,6 +823,7 @@
     38.62,
     41.72
    ],
+   "failed": {},
    "mean_net": -3.46,
    "mean_gross": 3.49
   },
@@ -647,6 +848,7 @@
     37.21,
     40.77
    ],
+   "failed": {},
    "mean_net": 1.02,
    "mean_gross": 7.3
   },
@@ -671,8 +873,203 @@
     34.93,
     40.7
    ],
+   "failed": {},
    "mean_net": 2.3,
    "mean_gross": 8.83
+  },
+  "14": {
+   "net": [
+    null,
+    9.53,
+    56.38
+   ],
+   "gross": [
+    null,
+    10.59,
+    68.01
+   ],
+   "trades": [
+    null,
+    5,
+    37
+   ],
+   "macro_f1": [
+    null,
+    34.85,
+    36.38
+   ],
+   "failed": {
+    "2024": "ZeroDivisionError: float division by zero"
+   },
+   "mean_net": null,
+   "mean_gross": null
+  },
+  "15": {
+   "net": [
+    null,
+    9.53,
+    37.3
+   ],
+   "gross": [
+    null,
+    10.59,
+    45.21
+   ],
+   "trades": [
+    null,
+    5,
+    29
+   ],
+   "macro_f1": [
+    null,
+    33.83,
+    34.57
+   ],
+   "failed": {
+    "2024": "ZeroDivisionError: float division by zero"
+   },
+   "mean_net": null,
+   "mean_gross": null
+  },
+  "16": {
+   "net": [
+    null,
+    11.99,
+    36.82
+   ],
+   "gross": [
+    null,
+    12.83,
+    43.84
+   ],
+   "trades": [
+    null,
+    4,
+    26
+   ],
+   "macro_f1": [
+    null,
+    33.05,
+    34.44
+   ],
+   "failed": {
+    "2024": "ZeroDivisionError: float division by zero"
+   },
+   "mean_net": null,
+   "mean_gross": null
+  },
+  "17": {
+   "net": [
+    null,
+    11.99,
+    38.42
+   ],
+   "gross": [
+    null,
+    12.83,
+    45.31
+   ],
+   "trades": [
+    null,
+    4,
+    25
+   ],
+   "macro_f1": [
+    null,
+    33.05,
+    34.18
+   ],
+   "failed": {
+    "2024": "ZeroDivisionError: float division by zero"
+   },
+   "mean_net": null,
+   "mean_gross": null
+  },
+  "18": {
+   "net": [
+    null,
+    11.99,
+    null
+   ],
+   "gross": [
+    null,
+    12.83,
+    null
+   ],
+   "trades": [
+    null,
+    4,
+    null
+   ],
+   "macro_f1": [
+    null,
+    33.05,
+    null
+   ],
+   "failed": {
+    "2024": "ValueError: This solver needs samples of at least 2 classes in the data, but the data contains only one class: np.int64(0)",
+    "2026": "ZeroDivisionError: float division by zero"
+   },
+   "mean_net": null,
+   "mean_gross": null
+  },
+  "19": {
+   "net": [
+    null,
+    null,
+    null
+   ],
+   "gross": [
+    null,
+    null,
+    null
+   ],
+   "trades": [
+    null,
+    null,
+    null
+   ],
+   "macro_f1": [
+    null,
+    null,
+    null
+   ],
+   "failed": {
+    "2024": "ValueError: This solver needs samples of at least 2 classes in the data, but the data contains only one class: np.int64(0)",
+    "2025": "ZeroDivisionError: float division by zero",
+    "2026": "ZeroDivisionError: float division by zero"
+   },
+   "mean_net": null,
+   "mean_gross": null
+  },
+  "20": {
+   "net": [
+    null,
+    null,
+    null
+   ],
+   "gross": [
+    null,
+    null,
+    null
+   ],
+   "trades": [
+    null,
+    null,
+    null
+   ],
+   "macro_f1": [
+    null,
+    null,
+    null
+   ],
+   "failed": {
+    "2024": "ValueError: This solver needs samples of at least 2 classes in the data, but the data contains only one class: np.int64(0)",
+    "2025": "ZeroDivisionError: float division by zero",
+    "2026": "ValueError: num_samples should be a positive integer value, but got num_samples=0"
+   },
+   "mean_net": null,
+   "mean_gross": null
   }
  },
  "Stacking 門檻": {
@@ -697,6 +1094,7 @@
     48.88,
     48.01
    ],
+   "failed": {},
    "mean_net": -24.22,
    "mean_gross": -4.07
   },
@@ -721,6 +1119,7 @@
     48.19,
     48.82
    ],
+   "failed": {},
    "mean_net": -26.05,
    "mean_gross": -6.5
   },
@@ -745,6 +1144,7 @@
     49.21,
     50.25
    ],
+   "failed": {},
    "mean_net": -23.03,
    "mean_gross": -3.52
   },
@@ -769,6 +1169,7 @@
     48.72,
     49.39
    ],
+   "failed": {},
    "mean_net": -10.49,
    "mean_gross": 11.79
   },
@@ -793,6 +1194,7 @@
     44.52,
     48.44
    ],
+   "failed": {},
    "mean_net": -20.38,
    "mean_gross": -3.51
   },
@@ -817,6 +1219,7 @@
     44.66,
     43.32
    ],
+   "failed": {},
    "mean_net": -3.45,
    "mean_gross": 13.68
   },
@@ -841,6 +1244,7 @@
     39.54,
     41.84
    ],
+   "failed": {},
    "mean_net": 6.85,
    "mean_gross": 21.14
   },
@@ -865,6 +1269,7 @@
     39.76,
     39.68
    ],
+   "failed": {},
    "mean_net": 7.19,
    "mean_gross": 20.72
   },
@@ -889,6 +1294,7 @@
     35.49,
     41.38
    ],
+   "failed": {},
    "mean_net": -8.42,
    "mean_gross": 1.84
   },
@@ -913,6 +1319,7 @@
     36.23,
     41.17
    ],
+   "failed": {},
    "mean_net": -9.95,
    "mean_gross": -2.39
   },
@@ -937,6 +1344,7 @@
     37.18,
     40.48
    ],
+   "failed": {},
    "mean_net": -9.35,
    "mean_gross": -2.53
   },
@@ -961,6 +1369,7 @@
     38.29,
     40.92
    ],
+   "failed": {},
    "mean_net": -6.76,
    "mean_gross": -0.26
   },
@@ -985,6 +1394,7 @@
     37.61,
     36.45
    ],
+   "failed": {},
    "mean_net": -6.48,
    "mean_gross": -0.54
   },
@@ -1009,8 +1419,186 @@
     39.07,
     41.02
    ],
+   "failed": {},
    "mean_net": -3.52,
    "mean_gross": 4.59
+  },
+  "14": {
+   "net": [
+    -19.99,
+    -12.51,
+    40.08
+   ],
+   "gross": [
+    -12.01,
+    -10.48,
+    46.81
+   ],
+   "trades": [
+    49,
+    12,
+    24
+   ],
+   "macro_f1": [
+    35.72,
+    37.32,
+    39.69
+   ],
+   "failed": {},
+   "mean_net": 2.53,
+   "mean_gross": 8.11
+  },
+  "15": {
+   "net": [
+    -20.71,
+    -12.51,
+    22.96
+   ],
+   "gross": [
+    -12.8,
+    -10.48,
+    27.61
+   ],
+   "trades": [
+    49,
+    12,
+    19
+   ],
+   "macro_f1": [
+    36.03,
+    37.4,
+    35.79
+   ],
+   "failed": {},
+   "mean_net": -3.42,
+   "mean_gross": 1.44
+  },
+  "16": {
+   "net": [
+    -20.77,
+    -12.51,
+    25.9
+   ],
+   "gross": [
+    -12.86,
+    -10.48,
+    30.22
+   ],
+   "trades": [
+    49,
+    12,
+    17
+   ],
+   "macro_f1": [
+    36.08,
+    39.14,
+    36.44
+   ],
+   "failed": {},
+   "mean_net": -2.46,
+   "mean_gross": 2.29
+  },
+  "17": {
+   "net": [
+    -21.81,
+    -12.51,
+    25.9
+   ],
+   "gross": [
+    -14.17,
+    -10.48,
+    30.22
+   ],
+   "trades": [
+    48,
+    12,
+    17
+   ],
+   "macro_f1": [
+    36.11,
+    39.15,
+    36.44
+   ],
+   "failed": {},
+   "mean_net": -2.81,
+   "mean_gross": 1.86
+  },
+  "18": {
+   "net": [
+    -20.77,
+    -12.51,
+    25.9
+   ],
+   "gross": [
+    -12.86,
+    -10.48,
+    30.22
+   ],
+   "trades": [
+    49,
+    12,
+    17
+   ],
+   "macro_f1": [
+    36.18,
+    38.52,
+    37.03
+   ],
+   "failed": {},
+   "mean_net": -2.46,
+   "mean_gross": 2.29
+  },
+  "19": {
+   "net": [
+    -21.71,
+    -12.51,
+    19.17
+   ],
+   "gross": [
+    -14.08,
+    -10.48,
+    23.93
+   ],
+   "trades": [
+    48,
+    12,
+    20
+   ],
+   "macro_f1": [
+    36.0,
+    38.52,
+    37.0
+   ],
+   "failed": {},
+   "mean_net": -5.02,
+   "mean_gross": -0.21
+  },
+  "20": {
+   "net": [
+    -23.26,
+    -13.46,
+    null
+   ],
+   "gross": [
+    -15.61,
+    -11.12,
+    null
+   ],
+   "trades": [
+    49,
+    14,
+    null
+   ],
+   "macro_f1": [
+    35.86,
+    36.16,
+    null
+   ],
+   "failed": {
+    "2026": "ValueError: num_samples should be a positive integer value, but got num_samples=0"
+   },
+   "mean_net": null,
+   "mean_gross": null
   }
  },
  "_counts": {
@@ -1459,6 +2047,230 @@
     "Stacking B": [
      5,
      29
+    ]
+   }
+  },
+  "14": {
+   "2024": {
+    "主軸 4 年": [
+     18,
+     27
+    ],
+    "Stacking B": [
+     1,
+     0
+    ]
+   },
+   "2025": {
+    "主軸 4 年": [
+     19,
+     16
+    ],
+    "Stacking B": [
+     3,
+     3
+    ]
+   },
+   "2026": {
+    "主軸 4 年": [
+     9,
+     31
+    ],
+    "Stacking B": [
+     3,
+     25
+    ]
+   }
+  },
+  "15": {
+   "2024": {
+    "主軸 4 年": [
+     16,
+     22
+    ],
+    "Stacking B": [
+     1,
+     0
+    ]
+   },
+   "2025": {
+    "主軸 4 年": [
+     16,
+     13
+    ],
+    "Stacking B": [
+     2,
+     2
+    ]
+   },
+   "2026": {
+    "主軸 4 年": [
+     5,
+     26
+    ],
+    "Stacking B": [
+     1,
+     22
+    ]
+   }
+  },
+  "16": {
+   "2024": {
+    "主軸 4 年": [
+     12,
+     18
+    ],
+    "Stacking B": [
+     1,
+     0
+    ]
+   },
+   "2025": {
+    "主軸 4 年": [
+     12,
+     10
+    ],
+    "Stacking B": [
+     1,
+     1
+    ]
+   },
+   "2026": {
+    "主軸 4 年": [
+     3,
+     21
+    ],
+    "Stacking B": [
+     1,
+     19
+    ]
+   }
+  },
+  "17": {
+   "2024": {
+    "主軸 4 年": [
+     11,
+     17
+    ],
+    "Stacking B": [
+     1,
+     0
+    ]
+   },
+   "2025": {
+    "主軸 4 年": [
+     12,
+     9
+    ],
+    "Stacking B": [
+     1,
+     1
+    ]
+   },
+   "2026": {
+    "主軸 4 年": [
+     3,
+     19
+    ],
+    "Stacking B": [
+     1,
+     17
+    ]
+   }
+  },
+  "18": {
+   "2024": {
+    "主軸 4 年": [
+     7,
+     15
+    ],
+    "Stacking B": [
+     0,
+     0
+    ]
+   },
+   "2025": {
+    "主軸 4 年": [
+     8,
+     8
+    ],
+    "Stacking B": [
+     1,
+     1
+    ]
+   },
+   "2026": {
+    "主軸 4 年": [
+     1,
+     17
+    ],
+    "Stacking B": [
+     0,
+     15
+    ]
+   }
+  },
+  "19": {
+   "2024": {
+    "主軸 4 年": [
+     6,
+     14
+    ],
+    "Stacking B": [
+     0,
+     0
+    ]
+   },
+   "2025": {
+    "主軸 4 年": [
+     7,
+     7
+    ],
+    "Stacking B": [
+     1,
+     0
+    ]
+   },
+   "2026": {
+    "主軸 4 年": [
+     1,
+     15
+    ],
+    "Stacking B": [
+     0,
+     14
+    ]
+   }
+  },
+  "20": {
+   "2024": {
+    "主軸 4 年": [
+     5,
+     9
+    ],
+    "Stacking B": [
+     0,
+     0
+    ]
+   },
+   "2025": {
+    "主軸 4 年": [
+     6,
+     5
+    ],
+    "Stacking B": [
+     1,
+     0
+    ]
+   },
+   "2026": {
+    "主軸 4 年": [
+     1,
+     12
+    ],
+    "Stacking B": [
+     0,
+     12
     ]
    }
   }

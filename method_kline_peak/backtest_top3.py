@@ -53,27 +53,27 @@ def cls_metrics(sig):
             "precision_pct": {k: round((s["precision"][k] or 0) * 100, 1) for k in ("高點", "低點")}}
 
 
-def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES):
+def run_all(panel, fc, prices, amp=0.0, k=0, log=print, sources=SOURCES, years=YEARS):
     """3 個方法 × YEARS 的回測;回傳 {年: {方法: 結果}}。amp = 訓練門檻(%),k = 做空格數。"""
     rule, no_cost = BY.TradeRule(slots=3, short_slots=k), BY.TradeRule(slots=3, short_slots=k, **BY.NO_COST)
-    t0, years = time.time(), {}
-    for y in YEARS:
+    t0, out = time.time(), {}
+    for y in years:
         start, end = f"{y}-01-01", min(f"{y}-12-31", END)
-        years[str(y)] = {"period": [start, end]}
+        out[str(y)] = {"period": [start, end]}
         for name in sources:
             sig, n_train = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[name](), train_min_amp=amp)
             lo, hi = sig[sig.pred == UP][COLS], sig[sig.pred == DOWN][COLS]
             net = result(BY.simulate(prices, lo, start, end, rule, shorts=hi))
             gross = result(BY.simulate(prices, lo, start, end, no_cost, shorts=hi))
             cm = cls_metrics(sig)
-            years[str(y)][name] = {"n_train": n_train, "n_low_signals": len(lo), "n_high_signals": len(hi),
+            out[str(y)][name] = {"n_train": n_train, "n_low_signals": len(lo), "n_high_signals": len(hi),
                                    "分類": cm, "扣成本": net, "沒扣成本": gross}
             log(f"{y} {name:<12} 扣成本 {net['total_return_pct']:+7.2f}%(多 {net['做多']['pnl_pct_of_init']:+.2f} / 空 {net['做空']['pnl_pct_of_init']:+.2f})"
                 f"  沒扣成本 {gross['total_return_pct']:+7.2f}%(多 {gross['做多']['pnl_pct_of_init']:+.2f} / 空 {gross['做空']['pnl_pct_of_init']:+.2f})"
                 f"  {net['n_trades']} 筆(多 {net['做多']['n_trades']} / 空 {net['做空']['n_trades']}),勝 {net['win_rate_pct']}%,"
                 f"回撤 {net['max_dd_pct']}%  macro-F1 {cm['macro_f1_pct']}  找到 高/低 {cm['recall_pct']['高點']}/{cm['recall_pct']['低點']}"
                 f"  命中 高/低 {cm['precision_pct']['高點']}/{cm['precision_pct']['低點']}  ({time.time() - t0:.0f}s)")
-    return years
+    return out
 
 
 def load():
