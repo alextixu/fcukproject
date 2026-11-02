@@ -104,11 +104,14 @@ def test_module_engine_buy_t1_open_sell_t5_close():
     assert out["equity"].iloc[-1] == pytest.approx(RULE.init_cash + tr.pnl.sum())
 
 
-def test_module_engine_limit_up_skip():
-    """Given 第 0 天收盤 100 出現訊號,第 1 天開盤 110(≥ 漲停 109.5) / When 回測 / Then 買不到,放棄,沒有交易"""
+def test_module_engine_limit_up_still_buys():
+    """Given 第 0 天收盤 100 出現訊號,第 1 天開盤 110(漲停價) / When 回測 /
+    Then 照樣在第 1 天開盤用 110 買進(已取消「漲停買不到」),第 5 天收盤賣出"""
     p = {"A": px([100, 110] + [110] * 10)}
     out = run(p, buys((0, "A", 1.0)))
-    assert out["trades"].empty and out["skipped"]["漲停買不到"] == 1
+    tr = out["trades"]
+    assert len(tr) == 1 and tr.entry[0] == DAYS[1] and tr.buy_px[0] == 110 and tr.exit[0] == DAYS[5]
+    assert "漲停買不到" not in out["skipped"]
 
 
 def test_module_engine_no_add_when_held():
@@ -148,6 +151,59 @@ def test_module_engine_too_expensive_skip():
     assert out["trades"].empty and out["skipped"]["錢不夠一股"] == 1
 
 
+# 做多前 3 檔 + 做空前 3 檔(2026-11-02 使用者要求)
+LS = TradeRule(slots=3, short_slots=3)
+
+
+def test_module_engine_short_t1_open_cover_t5_close():
+    """Given 做多 3 格 + 做空 3 格、A 股第 0 天收盤出現高點訊號,第 1 天開盤 100、第 5 天收盤 90 / When 回測 /
+    Then 第 1 天開盤用總資產 1/6 放空,第 5 天收盤回補;放空付賣出手續費 + 稅、回補付買進手續費,跌 10% 賺錢,現金帳一致"""
+    p = {"A": px([100] * 5 + [90] * 7, [100] * 5 + [90] * 7)}
+    out = simulate(p, buys(), DAYS[0], DAYS[11], LS, shorts=buys((0, "A", 1.0)))
+    tr = out["trades"]
+    sh = math.floor(1_000_000 / 6 / 100)
+    assert len(tr) == 1 and tr.side[0] == "做空" and tr.entry[0] == DAYS[1] and tr.exit[0] == DAYS[5] and tr.shares[0] == sh
+    pnl = sh * (100 * (1 - LS.sell_fee - LS.tax) - 90 * (1 + LS.buy_fee))
+    assert tr.pnl[0] == pytest.approx(pnl) and tr.net_ret[0] == pytest.approx(pnl / (sh * 100)) and pnl > 0
+    assert out["equity"].iloc[-1] == pytest.approx(LS.init_cash + pnl)
+
+
+def test_module_engine_short_loses_when_price_rises():
+    """Given 放空後股價從 100 漲到 110 / When 回測 / Then 這筆做空虧錢(net_ret < 0),期末資產 = 100 萬 + 損益"""
+    p = {"A": px([100] * 5 + [110] * 7, [100] * 5 + [110] * 7)}
+    out = simulate(p, buys(), DAYS[0], DAYS[11], LS, shorts=buys((0, "A", 1.0)))
+    tr = out["trades"]
+    assert len(tr) == 1 and tr.net_ret[0] < 0 and out["equity"].iloc[-1] == pytest.approx(LS.init_cash + tr.pnl[0])
+
+
+def test_module_engine_long_short_slots_separate():
+    """Given 同一天 4 檔低點訊號(分數 4 / 3 / 2 / 1)與 4 檔高點訊號 / When 用做多 3 格 + 做空 3 格回測 /
+    Then 做多買分數最高的 3 檔、做空放空分數最高的 3 檔,總共持有 6 檔,另外 2 檔沒有空位;每檔資金約 1/6"""
+    p = {tk: px([100] * 12) for tk in "ABCDEFGH"}
+    lo = buys((0, "A", 4), (0, "B", 3), (0, "C", 2), (0, "D", 1))
+    hi = buys((0, "E", 4), (0, "F", 3), (0, "G", 2), (0, "H", 1))
+    out = simulate(p, lo, DAYS[0], DAYS[11], LS, shorts=hi)
+    tr = out["trades"]
+    assert sorted(tr.ticker[tr.side == "做多"]) == ["A", "B", "C"] and sorted(tr.ticker[tr.side == "做空"]) == ["E", "F", "G"]
+    assert out["skipped"]["沒有空位"] == 2 and (tr.shares == math.floor(1_000_000 / 6 / (100 * (1 + LS.buy_fee)))).sum() == 3
+
+
+def test_module_engine_one_position_per_stock():
+    """Given A 股第 0 天出現低點訊號(做多中),第 1 天又出現高點訊號 / When 回測 / Then 不會同時放空 A(已持有),只有一筆做多"""
+    p = {"A": px([100] * 12)}
+    out = simulate(p, buys((0, "A", 1.0)), DAYS[0], DAYS[11], LS, shorts=buys((1, "A", 1.0)))
+    assert list(out["trades"].side) == ["做多"] and out["skipped"]["已持有"] == 1
+
+
+def test_module_engine_no_short_by_default():
+    """Given 預設規則(做空 0 格)但傳入高點訊號 / When 回測 / Then 不做空,結果和沒傳高點訊號完全相同"""
+    p = {tk: px([100] * 5 + [90] * 7) for tk in "AB"}
+    a = simulate(p, buys((0, "A", 1.0)), DAYS[0], DAYS[11], RULE, shorts=buys((0, "B", 1.0)))
+    b = simulate(p, buys((0, "A", 1.0)), DAYS[0], DAYS[11], RULE)
+    assert (a["trades"].side == "做多").all()
+    pd.testing.assert_series_equal(a["equity"], b["equity"])
+
+
 # ─────────────────────────── System ───────────────────────────
 def test_system_interface_reproduces_mainline(panel, run2024):
     """Given 介面版的主軸(MainlineSource,種子 42) / When 用 2020–2023 訓練、預測 2024 / Then 每一天的判斷都和原本測過的主軸相同"""
@@ -172,3 +228,23 @@ def test_system_backtest_2024_bookkeeping(data, panel):
     held = [((tr.entry <= d) & (tr.exit >= d)).sum() for d in eq.index]
     assert max(held) <= RULE.slots and tr.exit.max() <= eq.index[-1]
     assert eq.iloc[-1] == pytest.approx(RULE.init_cash + tr.pnl.sum()) and (eq > 0).all()
+
+
+def test_system_long_short_2024_bookkeeping(data, panel):
+    """Given 2024 主軸的低點與高點訊號 / When 做多前 3 檔 + 做空前 3 檔跑全年 / Then 每筆都是 t+1 開盤進場、最多持有到 t+5,
+    任何一天做多 ≤ 3 檔、做空 ≤ 3 檔(總共 ≤ 6 檔),同一檔不會同時多空,期末資產 = 100 萬 + 每筆損益加總、資產從不為負"""
+    df, fc = panel
+    sig, _ = WF.run_year(df, fc, 2024, WF.MainlineSource())
+    prices = {tk: clean(x)[["open", "close"]] for tk, x in data.items()}
+    col = ["date", "ticker", "score"]
+    out = simulate(prices, sig[sig.pred == UP][col], "2024-01-01", "2024-12-31", LS, shorts=sig[sig.pred == DOWN][col])
+    tr, eq = out["trades"], out["equity"]
+    assert set(tr.side) == {"做多", "做空"}
+    for t in tr.itertuples():
+        idx = prices[t.ticker].index
+        i = idx.get_loc(t.signal)
+        assert idx[i + 1] == t.entry and t.exit <= idx[min(i + 5, len(idx) - 1)]
+    for d in eq.index:
+        on = tr[(tr.entry <= d) & (tr.exit >= d)]
+        assert (on.side == "做多").sum() <= 3 and (on.side == "做空").sum() <= 3 and on.ticker.is_unique
+    assert eq.iloc[-1] == pytest.approx(LS.init_cash + tr.pnl.sum()) and (eq > 0).all()
