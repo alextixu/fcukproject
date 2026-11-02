@@ -234,6 +234,7 @@ def publish(data, cal, check, log=print):
     _w(os.path.join(out, "meta.json"), _clean_nan({
         "asof": latest["date"], "source": latest.get("source"), "created": latest.get("created"),
         "published": time.strftime("%Y-%m-%d %H:%M"), "check": check, "model": latest.get("model"),
+        "profile": C.profile_info(sum(1 for r in latest["rows"] if r["status"] == U.POOL)),
         "counts": {s: sum(1 for r in latest["rows"] if r["status"] == s) for s in (U.POOL, U.OUT, U.LOWVOL, U.NODATA, "halted")},
         "rules": {"hold": C.HOLD, "cost_pct": C.COST_PCT, "top_n": C.TOP_N, "min_move": C.MIN_MOVE}}))
     log(f"網頁資料完成:{len(rows)} 檔  ({time.time() - t0:.0f}s)")

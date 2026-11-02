@@ -1,7 +1,8 @@
 """每日判斷與對答案的存檔。兩種檔案都是「寫過就不再改」:用獨佔建立(open 'x'),檔案已存在就不寫。
 
-  data/days/<日期>.json     當天收盤後的判斷(所有計算的股票),之後不重算
-  data/grades/<日期>.json   t+5 收盤後的答案(每檔:真實類別、t+1 開 → t+5 收 扣成本報酬)
+  data/<設定>/days/<日期>.json     當天收盤後的判斷(所有計算的股票),之後不重算
+  data/<設定>/grades/<日期>.json   t+5 收盤後的答案(每檔:真實類別、t+1 開 → t+5 收 扣成本報酬)
+  <設定> = 股票池 + 訓練門檻,例:tw100、tw200_amp3(config.profile)
 """
 import json
 import os
@@ -16,7 +17,7 @@ class AlreadyFrozen(Exception):
 
 
 def _dir(kind):
-    d = C.data_dir(kind)
+    d = C.profile_dir(kind)
     os.makedirs(d, exist_ok=True)
     return d
 

@@ -118,3 +118,29 @@ def test_research_numbers_are_read_not_recomputed():
     assert bt[("TW100 73 檔", "2025", "main")] == -42.17
     cl = {(c["year"], c["method"]): c for c in r["classification"]}
     assert cl[("2025", "main")]["prec_low"] == 29.0 and cl[("2025", "stack")]["macro_f1"] == 49.87
+
+
+def test_day_file_format(ran_daily):
+    """Given 每日批次存的判斷檔 / When 檢查格式 / Then 每檔都有代號與分類;有判斷的股票兩個方法都有 pred(低點 / 高點 / 非極值),
+    判非極值時分數與信心是空的、其餘有分數與信心(高 / 中 / 低);Stacking 三類機率加起來是 1;只有池內 / 池外 / 低波動股有判斷"""
+    day = ST.read_day(DATE)
+    assert day["date"] == str(DATE.date()) and day["source"] == "daily" and day["model"]["year"] == 2026
+    statuses = {U.POOL, U.OUT, U.LOWVOL, U.NOSUP, U.NODATA, "halted"}
+    n_judged = 0
+    for r in day["rows"]:
+        assert set(r) >= {"code", "status"} and r["status"] in statuses
+        if "main" not in r:
+            assert r["status"] in {U.NOSUP, U.NODATA, "halted"}
+            continue
+        n_judged += 1
+        assert r["status"] in {U.POOL, U.OUT, U.LOWVOL} and isinstance(r["close"], float)
+        for method in C.METHODS:
+            m = r[method]
+            assert m["pred"] in {"low", "high", "none"}
+            if m["pred"] == "none":
+                assert m["score"] is None and m["level"] is None
+            else:
+                assert isinstance(m["score"], float) and m["level"] in MD.LEVELS
+        s = r["stack"]
+        assert s["p_low"] + s["p_none"] + s["p_high"] == pytest.approx(1, abs=1e-3)
+    assert n_judged > 100

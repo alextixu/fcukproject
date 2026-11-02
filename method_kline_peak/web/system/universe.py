@@ -2,7 +2,7 @@
 
 - 支援範圍:上市(TWSE)普通股,代號 4 位數字、不是 0 開頭。ETF、上櫃、興櫃、特別股、存託憑證都不支援。
   名稱與市場別來自 backtest/ncku/backtest/stock_api/stock_symbol_map.json。
-- 池內:訓練用的股票池(TW100 剔除低波動股,2026 年為 73 檔,存在模型檔裡)。
+- 池內:訓練用的股票池(設定值 config.POOL,預設 TW100;剔除低波動股後 2026 年為 73 檔,存在模型檔裡)。
 - 低波動:2020-01 起每日收盤漲跌幅(絕對值)中位數 < 0.725%(同 mainline.low_vol),判斷不適用。
 - 池外:其餘支援的股票,判斷照算,但沒有驗證過。
 """
@@ -92,17 +92,19 @@ def classify(code, df, pool, upto=None):
     return OUT, move
 
 
-def pool_for_year(year, store=None):
-    """year 年使用的股票池。2026:研究結果的 73 檔(results/backtest_long_only_tw100.json);
-    之後的年份:TW100 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。"""
-    if year == 2026:
-        with open(os.path.join(C.RESULTS, "backtest_long_only_tw100.json"), encoding="utf-8") as f:
+def pool_for_year(year, store=None, pool=None):
+    """year 年使用的股票池(.TW 代號)。pool 預設為設定值 config.POOL。
+    2026 年且研究結果檔有這個股票池:直接用結果檔記錄的清單(TW100 73 檔、TW200 168 檔、台灣50 34 檔),和研究完全相同;
+    其他情況:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。"""
+    pool = pool or C.POOL
+    if year == 2026 and pool in C.RESEARCH_POOL_FILES:
+        with open(os.path.join(C.RESULTS, C.RESEARCH_POOL_FILES[pool]), encoding="utf-8") as f:
             return sorted(json.load(f)["pool"])
     import mainline as ML
     from data_loader import TICKER_SETS  # noqa: E402
     from .datasource import PriceStore
     store = store or PriceStore()
-    data = store.load_many(TICKER_SETS[ML.POOL], end=f"{year - 1}-12-31")
+    data = store.load_many(TICKER_SETS[pool], end=f"{year - 1}-12-31")
     data = {tk: df for tk, df in data.items() if len(df) >= 250}
     drop = set(ML.low_vol(data))
     return sorted(tk for tk in data if tk not in drop)

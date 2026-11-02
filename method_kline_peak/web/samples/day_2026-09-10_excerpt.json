@@ -1,0 +1,194 @@
+{
+ "date": "2026-09-10",
+ "created": "2026-11-02 21:52:15",
+ "source": "daily",
+ "model": {
+  "year": 2026,
+  "train": [
+   "2022-01-03",
+   "2025-12-23"
+  ],
+  "n_train": 70306,
+  "n_pool": 73,
+  "created": "2026-11-02 21:33",
+  "seed": 42
+ },
+ "check": {
+  "asof": "2026-09-10",
+  "missing_pool": [],
+  "stale": false,
+  "online": false,
+  "checked": "2026-09-10 00:00",
+  "update": {
+   "online": false
+  }
+ },
+ "rows_total": 1072,
+ "rows(節錄)": [
+  {
+   "code": "1301",
+   "status": "pool",
+   "move": 0.914,
+   "close": 65.6,
+   "chg_pct": -1.649,
+   "main": {
+    "pred": "none",
+    "score": null,
+    "s_high": -19.373,
+    "s_low": 17.2489,
+    "level": null
+   },
+   "stack": {
+    "pred": "none",
+    "score": null,
+    "p_low": 0.1744,
+    "p_none": 0.802,
+    "p_high": 0.0236,
+    "level": null
+   }
+  },
+  {
+   "code": "1303",
+   "status": "pool",
+   "move": 1.028,
+   "close": 244.0,
+   "chg_pct": 3.171,
+   "main": {
+    "pred": "high",
+    "score": 18.8041,
+    "s_high": 18.8041,
+    "s_low": -48.4324,
+    "level": "中"
+   },
+   "stack": {
+    "pred": "high",
+    "score": 0.6135,
+    "p_low": 0.0013,
+    "p_none": 0.3851,
+    "p_high": 0.6135,
+    "level": "中"
+   }
+  },
+  {
+   "code": "1326",
+   "status": "pool",
+   "move": 0.846,
+   "close": 71.3,
+   "chg_pct": -0.696,
+   "main": {
+    "pred": "none",
+    "score": null,
+    "s_high": -9.5223,
+    "s_low": -5.7594,
+    "level": null
+   },
+   "stack": {
+    "pred": "none",
+    "score": null,
+    "p_low": 0.0541,
+    "p_none": 0.8615,
+    "p_high": 0.0844,
+    "level": null
+   }
+  },
+  {
+   "code": "1477",
+   "status": "pool",
+   "move": 1.18,
+   "close": 197.5,
+   "chg_pct": 0.0,
+   "main": {
+    "pred": "none",
+    "score": null,
+    "s_high": 15.4214,
+    "s_low": -6.6777,
+    "level": null
+   },
+   "stack": {
+    "pred": "none",
+    "score": null,
+    "p_low": 0.0199,
+    "p_none": 0.8043,
+    "p_high": 0.1758,
+    "level": null
+   }
+  },
+  {
+   "code": "1504",
+   "status": "pool",
+   "move": 0.979,
+   "close": 70.6,
+   "chg_pct": -0.423,
+   "main": {
+    "pred": "none",
+    "score": null,
+    "s_high": -18.7432,
+    "s_low": 19.6605,
+    "level": null
+   },
+   "stack": {
+    "pred": "none",
+    "score": null,
+    "p_low": 0.1954,
+    "p_none": 0.7842,
+    "p_high": 0.0204,
+    "level": null
+   }
+  },
+  {
+   "code": "1213",
+   "status": "out",
+   "move": 1.186,
+   "close": 7.3,
+   "chg_pct": -3.821,
+   "main": {
+    "pred": "none",
+    "score": null,
+    "s_high": -59.9497,
+    "s_low": -17.5652,
+    "level": null
+   },
+   "stack": {
+    "pred": "none",
+    "score": null,
+    "p_low": 0.3212,
+    "p_none": 0.6666,
+    "p_high": 0.0122,
+    "level": null
+   }
+  },
+  {
+   "code": "1101",
+   "status": "lowvol",
+   "move": 0.629,
+   "close": 24.8,
+   "chg_pct": 0.202,
+   "main": {
+    "pred": "none",
+    "score": null,
+    "s_high": -34.4088,
+    "s_low": -26.818,
+    "level": null
+   },
+   "stack": {
+    "pred": "none",
+    "score": null,
+    "p_low": 0.0573,
+    "p_none": 0.8467,
+    "p_high": 0.096,
+    "level": null
+   }
+  },
+  {
+   "code": "1589",
+   "status": "halted",
+   "move": 1.145,
+   "close": 5.54,
+   "chg_pct": 0.0
+  },
+  {
+   "code": "2634",
+   "status": "nodata"
+  }
+ ]
+}

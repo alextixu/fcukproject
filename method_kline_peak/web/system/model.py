@@ -1,7 +1,8 @@
 """正式模型:訓練、存檔、推論。
 
-- 用在 Y 年的模型 = 研究 walk-forward 的 Y 年模型:股票池 pool_for_year(Y),訓練 Y−4 ~ Y−1,
-  訓練期最後 5 個交易日剔除(標籤會看到 Y 年),種子 42。
+- 用在 Y 年的模型 = 研究 walk-forward 的 Y 年模型:股票池 pool_for_year(Y)(設定值 config.POOL),訓練 Y−4 ~ Y−1,
+  訓練期最後 5 個交易日剔除(標籤會看到 Y 年),種子 42,訓練門檻 config.TRAIN_MIN_AMP(預設 0%)。
+- 每組設定(股票池 + 門檻)的模型分開存在 data/<設定>/models/。
   主軸 = walkforward.MainlineSource;Stacking = stacking.StackingSource("lr", "score")。程式碼直接引用研究的類別。
 - 訓練要用到 Y 年至少 5 個交易日的資料(剔除規則要知道 Y 年第一天在哪),所以 1 月第 6 個交易日之後才能重訓;
   在那之前沿用 Y−1 年的模型。
@@ -28,7 +29,7 @@ LEVELS = ("高", "中", "低")
 
 
 def model_path(year):
-    return C.data_dir("models", f"model_{year}.joblib")
+    return C.profile_dir("models", f"model_{year}.joblib")
 
 
 class NotEnoughData(Exception):
@@ -48,9 +49,9 @@ def level(score, cuts):
     return "高" if score >= cuts[0] else "中" if score >= cuts[1] else "低"
 
 
-def train(year, store, log=print):
-    """訓練 year 年要用的模型並存檔;回傳模型 dict。"""
-    t0 = time.time()
+def training_set(year, store):
+    """year 年模型的訓練資料:(訓練期 panel, 特徵欄, 股票池)。訓練門檻 config.TRAIN_MIN_AMP > 0 時,
+    兩邊幅度未達門檻的高點 / 低點在訓練時改成非極值(walkforward.relabel,同研究的 --train-min-amp)。"""
     pool = pool_for_year(year, store)
     data = store.load_many(pool, end=f"{year}-01-31")
     data = {tk: df.loc[ML.START:] for tk, df in data.items() if len(df) >= 250}
@@ -58,14 +59,22 @@ def train(year, store, log=print):
     if sum(len(f) >= C.HOLD for f in first) < len(data) * 0.8:
         raise NotEnoughData(f"{year} 年的交易日還不到 {C.HOLD} 天,先沿用 {year - 1} 年的模型")
     panel, fc = ML.build_panel(data, 6, [])
-    d = WF.year_split(panel, year, C.TRAIN_YEARS)
-    tr = d["train"]
-    log(f"訓練 {year} 年模型:{len(data)} 檔,{tr.date.min().date()} ~ {tr.date.max().date()},{len(tr):,} 筆")
+    tr = WF.relabel(WF.year_split(panel, year, C.TRAIN_YEARS)["train"], C.TRAIN_MIN_AMP)
+    return tr, fc, sorted(data)
+
+
+def train(year, store, log=print):
+    """訓練 year 年要用的模型並存檔;回傳模型 dict。"""
+    t0 = time.time()
+    tr, fc, pool = training_set(year, store)
+    log(f"訓練 {year} 年模型({C.profile()}):{len(pool)} 檔,{tr.date.min().date()} ~ {tr.date.max().date()},{len(tr):,} 筆,"
+        f"訓練門檻 {C.TRAIN_MIN_AMP:g}%")
     main = WF.MainlineSource(C.SEED)
     main.fit(tr, fc)
     stack = S.StackingSource("lr", "score", seed=C.SEED)
     stack.fit(tr, fc)
-    m = {"main": main, "stack": stack, "fc": fc, "pool": sorted(data), "year": year,
+    m = {"main": main, "stack": stack, "fc": fc, "pool": pool, "year": year, "profile": C.profile(),
+         "pool_name": C.POOL, "train_min_amp": C.TRAIN_MIN_AMP,
          "train": [str(tr.date.min().date()), str(tr.date.max().date())], "n_train": len(tr),
          "created": time.strftime("%Y-%m-%d %H:%M")}
     ins = predict(m, tr)                                                      # 訓練期內的分數 → 信心等級切點
@@ -99,7 +108,8 @@ def ensure(year, store, log=print):
 
 def info(m):
     return {"year": m["year"], "train": m["train"], "n_train": m["n_train"], "n_pool": len(m["pool"]),
-            "created": m["created"], "seed": C.SEED}
+            "created": m["created"], "seed": C.SEED, "pool_name": m.get("pool_name", "tw100"),
+            "train_min_amp": m.get("train_min_amp", 0.0)}
 
 
 def predict(m, frame):

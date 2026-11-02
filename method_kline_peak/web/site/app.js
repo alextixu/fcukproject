@@ -21,12 +21,18 @@ async function j(path) { const r = await fetch(path, {cache: 'no-store'}); if (!
 function disc() {
   return `<div class="disc">本網站為研究模型輸出展示,非證券投資顧問服務,不構成買賣建議。模型命中率約 3 成,依研究回測規則操作多數年度扣成本後為虧損。<a href="#about">完整免責聲明</a></div>`;
 }
-function researchBT(method, pool = 'TW100 73 檔') {
+/* 目前的設定(股票池、訓練門檻)來自 meta.json 的 profile;預設 TW100 剔除低波動股、門檻 0% */
+const PF = () => D.meta?.profile || {pool: 'tw100', pool_label: 'TW100', n_pool: 73, train_min_amp: 0};
+const poolDesc = () => `${PF().pool_label} 剔除低波動股,${PF().n_pool} 檔${PF().train_min_amp ? `,訓練門檻 ${PF().train_min_amp}%` : ''}`;
+const BT_POOL = {tw100: 'TW100 73 檔', tw200: 'TW200 168 檔'};
+function researchBT(method, pool = BT_POOL[PF().pool]) {
   return (D.research?.backtest || []).filter(r => r.pool === pool && r.method === method).sort((a, b) => a.year.localeCompare(b.year));
 }
 function btText(method) {
   const r = researchBT(method);
-  return `${r.map(x => x.year + (x.year === '2026' ? '(1–9 月)' : '')).join(' / ')} 扣成本為 <b>${r.map(x => (x.ret_pct >= 0 ? '+' : '') + fmt(x.ret_pct, 1) + '%').join(' / ')}</b>`;
+  if (!r.length) return `研究沒有 ${esc(PF().pool_label)} 股票池的回測結果`;
+  return `${r.map(x => x.year + (x.year === '2026' ? '(1–9 月)' : '')).join(' / ')} 扣成本為 <b>${r.map(x => (x.ret_pct >= 0 ? '+' : '') + fmt(x.ret_pct, 1) + '%').join(' / ')}</b>`
+    + (PF().train_min_amp ? '(研究回測的訓練門檻為 0%)' : '');
 }
 function trk(method, kind) { return D.track?.methods?.[method]?.[kind] || {}; }
 function lvHit(h) { return h && h.n >= 20 ? `同等級歷史命中 <b>${pct(h.pct)}</b>(${h.n} 筆)` : h && h.n ? `同等級命中 ${pct(h.pct)}(只有 ${h.n} 筆,僅供參考)` : '同等級尚無對答案紀錄'; }
@@ -74,7 +80,7 @@ function pageToday() {
   <div class="grid2">${listCard('low')}${listCard('high')}</div>
   <div class="note" style="margin-top:16px"><b>怎麼看這份清單</b><br>
   「判低點」10 次大約只有 3 次真的是低點,錯的大多是普通日子。研究回測的規則是:<b>判低點分數前 3 檔、下一個交易日開盤買、第 5 個交易日收盤賣</b>,
-  ${btText(METHOD)}(研究結果,TW100 ${MNAME[METHOD]})。分數只在同一個方法裡比大小。<a href="#about">看完整說明</a></div>
+  ${btText(METHOD)}(研究結果,${esc(PF().pool_label)} ${MNAME[METHOD]})。分數只在同一個方法裡比大小。<a href="#about">看完整說明</a></div>
   ${disc()}`;
 }
 
@@ -149,7 +155,7 @@ function classBlocks(t) {
     ${bar('高點', s.p_high, 'var(--high)', fmt(s.p_high))}${bar('低點', s.p_low, 'var(--low)', fmt(s.p_low))}${bar('非極值', s.p_none, '#9aa3ad', fmt(s.p_none))}</div></div>`;
 }
 function pageSearch() {
-  return `<h1>個股查詢</h1><p class="sub">輸入上市股票代號或名稱。池內 ${D.meta.counts.pool} 檔有完整驗證;池外股票會顯示警示;低波動股不適用。</p>${searchBox()}
+  return `<h1>個股查詢</h1><p class="sub">輸入上市股票代號或名稱。池內 ${D.meta.counts.pool} 檔(${esc(poolDesc())})是訓練用的股票;池外股票會顯示警示;低波動股不適用。</p>${searchBox()}
   <div class="grid4 k2">${[['池內', 't-ok', `${D.meta.counts.pool} 檔,模型訓練用的股票`], ['池外', 't-warn', `${D.meta.counts.out} 檔,可查,但判斷沒有驗證過`], ['低波動', 't-none', `${D.meta.counts.lowvol} 檔,每日漲跌太小,判斷不適用`], ['不支援', 't-bad', 'ETF、上櫃、興櫃、特別股']].map(([a, c, d]) => `<div class="card"><span class="tag ${c}">${a}</span><div class="info" style="margin-top:6px">${d}</div></div>`).join('')}</div>${disc()}`;
 }
 async function pageStock(code) {
@@ -161,7 +167,7 @@ async function pageStock(code) {
   const t = S.today, m = t.main || {}, s = t.stack || {}, p = m.pred || 'none', ps = s.pred || 'none';
   let pre = '';
   const outHit = trk('main', 'low').out_pool;
-  if (S.status === 'out') pre = `<div class="warnbox"><b>⚠ 這檔不在訓練股票池(TW100 剔除低波動股,${D.meta.counts.pool} 檔)。</b>判斷照算,但準不準沒有直接驗證過。參考:回放期間池外股票的判低點命中率 <b>${pct(outHit?.pct)}</b>(${outHit?.n || 0} 筆)。</div>`;
+  if (S.status === 'out') pre = `<div class="warnbox"><b>⚠ 這檔不在訓練股票池(${esc(poolDesc())})。</b>判斷照算,但準不準沒有直接驗證過。參考:回放期間池外股票的判低點命中率 <b>${pct(outHit?.pct)}</b>(${outHit?.n || 0} 筆)。</div>`;
   if (S.status === 'lowvol') pre = `<div class="mutebox"><b>這檔是低波動股,判斷不適用。</b>2020 年起每日漲跌幅中位數 ${fmt(S.move)}%,低於門檻 ${D.meta.rules.min_move}%。這類股票的「11 天最低」常常只差一兩檔,判斷沒有參考價值,研究時已經剔除。
    <details style="margin-top:6px"><summary style="cursor:pointer">仍要看模型輸出</summary><div style="margin-top:6px">主軸:${LBL[p]}${m.score != null ? `(分數 ${fmt(m.score, 1)})` : ''};Stacking:${LBL[ps]}。</div></details></div>`;
   if (S.status === 'halted') pre = `<div class="badbox"><b>這檔 ${S.date} 沒有交易資料</b>(停牌、處置或資料未更新),今天沒有判斷。</div>`;
@@ -171,7 +177,7 @@ async function pageStock(code) {
   const hit = S.status === 'pool' ? trk('main', p).levels?.[m.level] : null;   // 等級命中率只統計池內;池外看上方警示的池外命中率
   const icon = p === 'low' ? '↓' : p === 'high' ? '↑' : '–';
   const sug = !t.main ? '今天沒有判斷。' : p === 'low' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最低點</b>,信心 <b>${m.level}</b>(分數 ${fmt(m.score, 1)})。${hit?.n ? `過去同等級的判低點,<b>${pct(hit.pct)}</b> 真的是低點(${hit.n} 筆),其餘大多是普通日子。` : ''}<br><br>
-     研究回測的對應規則是 <b>下一個交易日開盤買、第 5 個交易日收盤賣</b>(判低點分數前 3 檔);${btText('main')}(TW100 主軸)。
+     研究回測的對應規則是 <b>下一個交易日開盤買、第 5 個交易日收盤賣</b>(判低點分數前 3 檔);${btText('main')}(${esc(PF().pool_label)} 主軸)。
      「低點」只代表 11 天內最低,不代表之後會漲多少。`
     : p === 'high' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最高點</b>,信心 <b>${m.level}</b>(分數 ${fmt(m.score, 1)})。${hit?.n ? `過去同等級的判高點,<b>${pct(hit.pct)}</b> 真的是高點(${hit.n} 筆)。` : ''}<br><br>
      研究沒有回測過「判高點就賣出」的規則,這個判斷只當提醒:短期可能不宜追高。`
@@ -194,8 +200,8 @@ async function pageStock(code) {
    <div class="card"><h3>兩方法比較</h3><table class="cmp"><tr><th></th><th>① 主軸</th><th>② Stacking</th></tr>
      <tr><td>今天判斷</td><td><span class="tag ${tagCls(p)}">${LBL[p]}</span></td><td><span class="tag ${tagCls(ps)}">${LBL[ps]}</span></td></tr>
      <tr><td>分數 / 信心</td><td>${p === 'none' ? '—' : fmt(m.score, 1) + ' / ' + m.level}</td><td>${ps === 'none' ? '—' : fmt(s.score) + ' / ' + s.level}</td></tr>
-     <tr><td>判低點命中率<br><span class="lbl">研究結果 2026 1–9 月</span></td><td>${pct(rr('main').prec_low)}</td><td>${pct(rr('stack').prec_low)}</td></tr>
-     <tr><td>真低點找到率<br><span class="lbl">研究結果 2026 1–9 月</span></td><td>${pct(rr('main').rec_low)}</td><td>${pct(rr('stack').rec_low)}</td></tr>
+     <tr><td>判低點命中率<br><span class="lbl">研究結果 TW100 2026 1–9 月</span></td><td>${pct(rr('main').prec_low)}</td><td>${pct(rr('stack').prec_low)}</td></tr>
+     <tr><td>真低點找到率<br><span class="lbl">研究結果 TW100 2026 1–9 月</span></td><td>${pct(rr('main').rec_low)}</td><td>${pct(rr('stack').rec_low)}</td></tr>
      <tr><td>這檔判低點對答案<br><span class="lbl">回放 + 實際追蹤</span></td><td>${S.low_stats?.main?.n ? `${S.low_stats.main.hits} / ${S.low_stats.main.n} 對` : '—'}</td><td>${S.low_stats?.stack?.n ? `${S.low_stats.stack.hits} / ${S.low_stats.stack.n} 對` : '—'}</td></tr></table>
      <div class="lbl" style="margin-top:8px">主軸判得多、找到的真低點多;Stacking 判得少。兩者命中率差不多。</div></div>
   </div>` : ''}
@@ -272,7 +278,7 @@ function pageAbout() {
    <div class="step"><b>1. 規則挑候選</b>今天收盤是近 6 天最高 → 高點候選;最低 → 低點候選。其他直接判非極值。</div>
    <div class="step"><b>2a. ① 主軸</b>候選點再經過 AE + OC-SVM 檢查,形狀像過去的真高 / 低點才保留。分數 = decision_function。</div>
    <div class="step"><b>2b. ② Stacking</b>不用規則:兩個 AE / OC-SVM 的分數交給邏輯迴歸,輸出三類機率。判得比較少。</div></div>
-   <div class="lbl" style="margin-top:8px">特徵:6 根 K 線的開高低收 ÷ 今天收盤、量 ÷ 10 日均量,共 29 個數字。目前的模型:${mi.year} 年用,訓練 ${(mi.train || []).join(' ~ ')}(${fmt(mi.n_train, 0)} 筆),股票池 ${mi.n_pool} 檔,種子 ${mi.seed}。每年 1 月第 6 個交易日後自動重訓。</div></div>
+   <div class="lbl" style="margin-top:8px">特徵:6 根 K 線的開高低收 ÷ 今天收盤、量 ÷ 10 日均量,共 29 個數字。目前的模型:${mi.year} 年用,訓練 ${(mi.train || []).join(' ~ ')}(${fmt(mi.n_train, 0)} 筆),股票池 ${esc(poolDesc())},訓練門檻 ${PF().train_min_amp || 0}%,種子 ${mi.seed}。每年 1 月第 6 個交易日後自動重訓。</div></div>
   <div class="card"><h2>歷史命中率(研究結果,TW100 剔除低波動股)</h2><div class="tblwrap"><table class="tbl">
    <tr><th>方法</th><th>年</th><th>macro-F1</th><th>判低點命中</th><th>判高點命中</th><th>真低點找到</th><th>真高點找到</th><th>隨機猜中低點</th></tr>
    ${C.map(r => `<tr><td>${MNAME[r.method]}</td><td>${r.year}${r.year === '2026' ? '(1–9 月)' : ''}</td><td>${pct(r.macro_f1, 2)}</td><td>${pct(r.prec_low)}</td><td>${pct(r.prec_high)}</td><td>${pct(r.rec_low)}</td><td>${pct(r.rec_high)}</td><td>${pct(r.base_low)}</td></tr>`).join('')}</table></div>
@@ -298,7 +304,7 @@ const NAV = [['today', '今日判斷', 'M3 12h4l3-8 4 16 3-8h4'], ['stock', '個
 function go(h) { location.hash = h; }
 function header() {
   const M = D.meta, c = M.check || {};
-  document.getElementById('hmeta').innerHTML = `判斷基準日 <b>${dlabel(M.asof)}收盤</b> ・ 產生於 ${esc((M.created || '').slice(5, 16))}<br>模型:訓練 ${(M.model?.train || []).map(d => d.slice(0, 4)).join('–')} ・ 股票池 ${M.model?.n_pool} 檔`;
+  document.getElementById('hmeta').innerHTML = `判斷基準日 <b>${dlabel(M.asof)}收盤</b> ・ 產生於 ${esc((M.created || '').slice(5, 16))}<br>模型:訓練 ${(M.model?.train || []).map(d => d.slice(0, 4)).join('–')} ・ 股票池 ${esc(poolDesc())}`;
   const b = [];
   if (c.stale) b.push(`<div class="badbox"><b>今天的資料還沒更新。</b>畫面是 ${M.asof} 的判斷;資料來源晚到時批次會在稍後補跑。</div>`);
   if ((c.missing_pool || []).length) b.push(`<div class="warnbox">股票池有 ${c.missing_pool.length} 檔沒有 ${M.asof} 的資料(${c.missing_pool.slice(0, 8).join('、')}${c.missing_pool.length > 8 ? '…' : ''}),這幾檔今天沒有判斷。</div>`);

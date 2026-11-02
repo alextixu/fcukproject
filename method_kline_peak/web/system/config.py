@@ -24,6 +24,38 @@ def data_dir(*parts):
     return os.path.join(DATA, *parts)
 
 
+# ── 股票池與訓練門檻:設定值(環境變數或 run.py 的 --pool / --train-min-amp),改了不用改程式 ──
+# 每組設定的存檔(判斷、答案、模型)放在 data/<設定名稱>/ 底下,互不混用;K 線快取共用 data/prices/
+POOL = os.environ.get("KPWEB_POOL", "tw100")                           # data_loader.TICKER_SETS 的名稱,再剔除低波動股
+TRAIN_MIN_AMP = float(os.environ.get("KPWEB_TRAIN_MIN_AMP", "0"))       # 訓練門檻(%):同 walkforward.relabel,對答案仍用原本的標籤
+# 研究結果檔裡記錄的股票池清單:2026 年直接用這份,和研究完全相同
+RESEARCH_POOL_FILES = {"tw100": "backtest_long_only_tw100.json", "tw200": "backtest_long_only_tw200.json",
+                       "tw50": "backtest_long_only.json"}
+POOL_LABELS = {"tw50": "台灣50", "tw100": "TW100", "tw200": "TW200", "tw500": "TW500"}
+
+
+def set_profile(pool=None, train_min_amp=None):
+    global POOL, TRAIN_MIN_AMP
+    if pool is not None:
+        POOL = pool
+    if train_min_amp is not None:
+        TRAIN_MIN_AMP = float(train_min_amp)
+
+
+def profile():
+    """目前這組設定的名稱,例:tw100、tw200_amp3。"""
+    return POOL + (f"_amp{TRAIN_MIN_AMP:g}" if TRAIN_MIN_AMP else "")
+
+
+def profile_dir(*parts):
+    return data_dir(profile(), *parts)
+
+
+def profile_info(n_pool=None):
+    return {"name": profile(), "pool": POOL, "pool_label": POOL_LABELS.get(POOL, POOL.upper()),
+            "n_pool": n_pool, "train_min_amp": TRAIN_MIN_AMP}
+
+
 SEED = 42
 TRAIN_YEARS = 4                       # 每年 1 月重訓:用前 4 年
 HOLD = 5                              # 答案要 t+5 才知道;研究回測規則 t+1 開盤買、t+5 收盤賣

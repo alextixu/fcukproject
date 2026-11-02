@@ -18,6 +18,7 @@ warnings.filterwarnings("ignore")
 
 from system import config as C  # noqa: E402
 
+C.set_profile("tw100", 0.0)                    # 測試固定用預設設定(不受環境變數影響)
 REAL_DATA = C.DATA
 
 
@@ -42,7 +43,7 @@ def real_store():
 def prod_model(real_store):
     import joblib
     from system import model as MD
-    path = os.path.join(REAL_DATA, "models", "model_2026.joblib")
+    path = os.path.join(REAL_DATA, "tw100", "models", "model_2026.joblib")
     m = joblib.load(path) if os.path.exists(path) else None
     if m is None:
         old = C.DATA

@@ -1,0 +1,35 @@
+{
+ "date": "2026-09-03",
+ "grades(節錄)": {
+  "1101": {
+   "truth": "none",
+   "ret_pct": 0.228,
+   "graded_on": "2026-09-10"
+  },
+  "1102": {
+   "truth": "none",
+   "ret_pct": 0.125,
+   "graded_on": "2026-09-10"
+  },
+  "1103": {
+   "truth": "none",
+   "ret_pct": -1.34,
+   "graded_on": "2026-09-10"
+  },
+  "1104": {
+   "truth": "high",
+   "ret_pct": -2.563,
+   "graded_on": "2026-09-10"
+  },
+  "1108": {
+   "truth": "none",
+   "ret_pct": -2.74,
+   "graded_on": "2026-09-10"
+  },
+  "1109": {
+   "truth": "none",
+   "ret_pct": -1.326,
+   "graded_on": "2026-09-10"
+  }
+ }
+}
