@@ -441,6 +441,9 @@ TW200、訓練門檻 7% 的混淆矩陣(兩個方法都用 7%;`python report/con
 | 2026(1–9 月) | ① 主軸 | 50.86% | 43.8% | 37.0% | 25.4% | 32.3% |
 | 2026(1–9 月) | ② Stacking 邏輯迴歸 | 47.67% | 30.1% | 29.8% | 23.4% | 29.6% |
 
+只畫 2024 一年(`--only-amp --amp 7 --pool tw200 --years 2024` → `results/confusion_2024_tw200_amp7.png` / `.json`),
+個數和上表 2024 完全相同。
+
 南電 2024,TW200 模型、訓練門檻 7%(`python report/stock_outputs.py 8046.TW 2024 --pool tw200 --train-min-amp 7`
 → `results/outputs_8046_2024_tw200_amp7.png` / `.csv`;真高點 17、真低點 16):
 
