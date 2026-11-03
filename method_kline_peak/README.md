@@ -328,6 +328,14 @@ tw50 經 `low_vol` 剔除 16 檔後正好 34 檔)→ `results/backtest_long_only
 | ① 主軸 | 2 / 3 | 5 / 12 | 7 次(全部 34 檔共 98 筆) |
 | ② Stacking 邏輯迴歸 | 3 / 6 | 7 / 25 | 8 次(全部 34 檔共 85 筆) |
 
+同一份每日輸出的混淆矩陣(不重新訓練,直接讀 csv;`python report/confusion_stock.py results/outputs_8046_2024_34_amp6.csv --model "34 檔模型、訓練門檻 6%"`
+→ `results/confusion_8046_2024_34_amp6.png` / `.json`;測試 242 天,對答案用原本的標籤):
+
+| 方法 | macro-F1 | 找到率 高 | 找到率 低 | 命中率 高 | 命中率 低 |
+|---|---|---|---|---|---|
+| ① 主軸 | 46.31% | 11.8% | 31.2% | 40.0% | 29.4% |
+| ② Stacking 邏輯迴歸 | 46.36% | 17.6% | 43.8% | 33.3% | 21.9% |
+
 報告的 34 檔改回訓練門檻 0%(2026-11-03 使用者要求),南電 2024 同一張圖的 0% 版本
 (`python report/stock_outputs.py 8046.TW 2024 --pool tw50 --tag 34 --train-min-amp 0` → `results/outputs_8046_2024_34_amp0.png` / `.csv`;
 全部 34 檔的 2024 筆數 142 / 137 和 `results/backtest_long_only.json` 相同):
