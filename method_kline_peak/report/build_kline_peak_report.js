@@ -67,7 +67,7 @@ const card = (slide, o) => slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { rectR
 const bullets = (items, o = {}) => items.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < items.length - 1,
   paraSpaceAfter: 8, ...o } }));
 
-// ---------- 資料(抄自 claude/kline-peak-predict-tool b324e42 的 backtest_long_only.json,34 檔、訓練門檻 0%) ----------
+// ---------- 34 檔(抄自 claude/kline-peak-predict-tool b324e42 的 backtest_long_only.json,train_min_amp 0) ----------
 // [總報酬, 最大回撤(不用,null), 交易筆數, 勝率]
 const BT = {
   "2024": { main: { net: [-24.82, null, 142, 44.4], gross: [-0.94, null, 142, 51.4] },
@@ -77,14 +77,14 @@ const BT = {
   "2026": { main: { net: [0.09, null, 94, 38.3], gross: [20.19, null, 94, 50.0] },
             stack: { net: [0.5, null, 88, 40.9], gross: [19.18, null, 88, 50.0] } },
 };
-// ---------- TW200(抄自 claude/kline-peak-predict-tool b324e42 的 backtest_long_only_tw200_amp7.json,168 檔、訓練門檻 7%) ----------
+// ---------- TW200(抄自 claude/kline-peak-predict-tool c5f5662 的 backtest_long_only_tw200.json,168 檔、train_min_amp 0) ----------
 const BT200 = {
-  "2024": { main: { net: [-25.57, null, 136, 45.6], gross: [-3.15, null, 136, 48.5] },
-            stack: { net: [-22.83, null, 129, 43.4], gross: [-0.88, null, 129, 45.7] } },
-  "2025": { main: { net: [28.03, null, 139, 48.9], gross: [67.76, null, 139, 52.5] },
-            stack: { net: [-0.87, null, 120, 43.3], gross: [25.13, null, 120, 48.3] } },
-  "2026": { main: { net: [2.39, null, 96, 49.0], gross: [23.32, null, 96, 54.2] },
-            stack: { net: [-4.65, null, 95, 46.3], gross: [14.69, null, 95, 49.5] } },
+  "2024": { main: { net: [-16.52, null, 144, 45.8], gross: [10.58, null, 144, 49.3] },
+            stack: { net: [-10.58, null, 144, 45.8], gross: [18.4, null, 144, 50.0] } },
+  "2025": { main: { net: [-44.02, null, 144, 36.8], gross: [-25.88, null, 144, 43.1] },
+            stack: { net: [-39.46, null, 142, 37.3], gross: [-20.27, null, 142, 42.3] } },
+  "2026": { main: { net: [-17.62, null, 99, 40.4], gross: [-0.1, null, 99, 46.5] },
+            stack: { net: [-15.03, null, 99, 44.4], gross: [3.07, null, 99, 49.5] } },
 };
 const fmtPct = (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%"; // 報酬一律兩位小數
 
@@ -148,21 +148,21 @@ steps.forEach(([h, d], i) => {
   T(s, d, { x: x + 0.3, y: 2.3, w: 3.2, h: 1.1, fontSize: 15 });
   if (i < 2) T(s, "→", { x: x + 3.78, y: 2.2, w: 0.35, h: 0.6, fontSize: 24, bold: true, color: C.accent5, align: "center" });
 });
+// 四項排成 2 × 2:左欄 股票池 / 只做多,右欄 成本 / 資金
 const facts = [
   ["股票池", "34 檔(台灣50 剔除 16 檔低波動股)\nTW200(剔除低波動股後 168 檔)"],
-  ["只做多", "判高點不放空"],
   ["成本 0.585%", "買 0.1425% + 賣 0.1425% + 證交稅 0.3%"],
+  ["只做多", "判高點不放空"],
   ["資金", "每年獨立 100 萬,年底結清"],
-  ["模型", "訓練門檻:34 檔 0%、TW200 7%"],
 ];
-// 第一列股票池(兩行)占滿寬度,其餘四項排成 2 × 2
 facts.forEach(([h, d], i) => {
-  const col = i === 0 ? 0 : (i - 1) % 2, row = i === 0 ? 0 : 1 + Math.floor((i - 1) / 2);
-  const x = 0.6 + col * 5.75, y = 3.85 + row * 0.95;
-  T(s, h, { x, y, w: 1.85, h: 0.8, fontSize: 18, bold: true, valign: "middle" });
-  T(s, d, { x: x + 1.95, y, w: i === 0 ? 10.2 : (col === 0 ? 3.6 : 4.45), h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
+  const col = i % 2, row = Math.floor(i / 2);
+  // 左欄標籤短(3 字),右欄「成本 0.585%」較長;兩欄說明框各留餘裕給正黑體
+  const x = col === 0 ? 0.6 : 6.25, y = 4.0 + row * 1.0, lw = col === 0 ? 1.2 : 1.8;
+  T(s, h, { x, y, w: lw, h: 0.8, fontSize: 18, bold: true, valign: "middle" });
+  T(s, d, { x: x + lw + 0.1, y, w: col === 0 ? 4.15 : 4.6, h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
 });
-s.addNotes("股票池有兩個:34 檔(台灣50 剔除 16 檔低波動股)和 TW200(剔除低波動股後 168 檔);訓練門檻 34 檔用 0%、TW200 用 7%。每天收盤後在股票池中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清。");
+s.addNotes("股票池有兩個:34 檔(台灣50 剔除 16 檔低波動股)和 TW200(剔除低波動股後 168 檔)。每天收盤後在股票池中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清。");
 
 // ======================= 4. 結果表格(34 檔) =======================
 const hdr = (t, o = {}) => ({ text: t, options: { bold: true, fill: { color: HEX.dk1 }, color: "FFFFFF", align: "center", valign: "middle", ...o } });
@@ -193,14 +193,14 @@ const resultTable = (sl, data, poolRow) => {
     border: { type: "solid", pt: 0.75, color: HEX.accent6 } });
 };
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
-s.addText("34 檔回測結果(訓練門檻 0%)", { placeholder: "title" });
+s.addText("34 檔回測結果", { placeholder: "title" });
 resultTable(s, BT, "股票池:34 檔(台灣50 剔除 16 檔低波動股)");
-s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)、訓練門檻 0% 的結果,數字直接抄自 backtest_long_only.json。扣成本後:2024 主軸 -24.82%、Stacking -45.02%;2025 主軸 -34.87%、Stacking -11.94%;2026 到 9/11 主軸 +0.09%、Stacking +0.50%。交易筆數 2024 為 142 / 137、2025 為 140 / 132、2026 為 94 / 88;扣成本和沒扣成本的筆數一樣,差別只在每筆扣 0.585%。");
+s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)的結果,數字直接抄自 backtest_long_only.json。扣成本後:2024 主軸 -24.82%、Stacking -45.02%;2025 主軸 -34.87%、Stacking -11.94%;2026 到 9/11 主軸 +0.09%、Stacking +0.50%。交易筆數 2024 為 142 / 137、2025 為 140 / 132、2026 為 94 / 88;扣成本和沒扣成本的筆數一樣,差別只在每筆扣 0.585%。");
 
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
-s.addText("TW200 回測結果(訓練門檻 7%)", { placeholder: "title" });
+s.addText("TW200 回測結果", { placeholder: "title" });
 resultTable(s, BT200, "股票池:TW200 剔除低波動股後 168 檔");
-s.addNotes("這頁是 TW200 剔除低波動股後 168 檔、訓練門檻 7% 的結果,數字直接抄自 backtest_long_only_tw200_amp7.json。門檻是看測試年選的。扣成本後:2024 主軸 -25.57%、Stacking -22.83%;2025 主軸 +28.03%、Stacking -0.87%;2026 到 9/11 主軸 +2.39%、Stacking -4.65%。交易筆數 2024 為 136 / 129、2025 為 139 / 120、2026 為 96 / 95。");
+s.addNotes("這頁是 TW200 剔除低波動股後 168 檔的結果,交易規則和 34 檔相同,數字直接抄自 backtest_long_only_tw200.json。扣成本後:2024 主軸 -16.52%、Stacking -10.58%;2025 主軸 -44.02%、Stacking -39.46%;2026 到 9/11 主軸 -17.62%、Stacking -15.03%。交易筆數 2024 為 144 / 144、2025 為 144 / 142、2026 為 99 / 99。");
 
 // ======================= 南電(三段合併一頁) =======================
 pres.addSection({ title: "南電 2024" });
@@ -231,9 +231,9 @@ const stockSlide = (title, tag, mainDays, stackDays, mainHL, stackHL, notes) => 
   });
   sl.addNotes(notes);
 };
-stockSlide("南電 2024:34 檔模型(門檻 0%)", "34amp0", "判低點 62 天、判高點 34 天", "判低點 65 天、判高點 23 天",
+stockSlide("南電 2024:34 檔模型", "34amp0", "判低點 62 天、判高點 34 天", "判低點 65 天、判高點 23 天",
   ["對 11 / 錯 23", "對 11 / 錯 51"], ["對 5 / 錯 18", "對 10 / 錯 55"],
-  "南電 8046 的 2024 年,模型是 34 檔、訓練門檻 0%,和第 4 頁回測同一個模型。上段是真實標籤:真高點 17 個、真低點 16 個。中段是主軸:判低點 62 天、判高點 34 天;判高點對 11 錯 23,判低點對 11 錯 51。下段是 Stacking 邏輯迴歸:判低點 65 天、判高點 23 天;判高點對 5 錯 18,判低點對 10 錯 55。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。");
+  "南電 8046 的 2024 年,模型是 34 檔,和第 4 頁回測同一個模型。上段是真實標籤:真高點 17 個、真低點 16 個。中段是主軸:判低點 62 天、判高點 34 天;判高點對 11 錯 23,判低點對 11 錯 51。下段是 Stacking 邏輯迴歸:判低點 65 天、判高點 23 天;判高點對 5 錯 18,判低點對 10 錯 55。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。");
 stockSlide("南電 2024:TW200 模型(門檻 7%)", "tw200amp7", "判低點 29 天、判高點 14 天", "判低點 24 天、判高點 7 天",
   ["對 4 / 錯 10", "對 7 / 錯 22"], ["對 3 / 錯 4", "對 5 / 錯 19"],
   "同一檔南電 2024,換成 TW200(168 檔)、訓練門檻 7% 的模型,和第 5 頁回測同一個模型。真實標籤一樣是真高點 17 個、真低點 16 個。主軸判低點 29 天、判高點 14 天;判高點對 4 錯 10,判低點對 7 錯 22。Stacking 判低點 24 天、判高點 7 天;判高點對 3 錯 4,判低點對 5 錯 19。和第 6 頁 34 檔、門檻 0% 的模型相比,同一檔股票,兩個模型判的天數和對錯都不同。");
