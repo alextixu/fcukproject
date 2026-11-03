@@ -96,7 +96,7 @@ s.addText([
   { text: "南電 8046 個案:真實高低點 vs 兩方法判斷", options: { breakLine: true } },
   { text: "下一步:展示網頁系統 UI/UX" },
 ], { placeholder: "body" });
-s.addNotes("本報告整理兩個方法在 34 檔(台灣50 剔除 16 檔低波動股)與 TW200(剔除低波動股後 168 檔)的只做多回測結果、南電 2024 的個案,以及網頁系統的 UI/UX 示意稿。數字都來自 repo 內既有的結果檔,沒有重跑。");
+s.addNotes("本報告整理兩個方法在 34 檔(台灣50 剔除 16 檔低波動股)與 TW200(剔除低波動股後 168 檔)的只做多回測結果、南電 2024 的個案,以及網頁系統展示版的 UI/UX。數字都來自 repo 內既有的結果檔,沒有重跑。");
 
 // ======================= 2. 兩個方法 + 訓練方式 =======================
 pres.addSection({ title: "方法" });
@@ -256,11 +256,12 @@ flow.forEach(([h, d], i) => {
 T(s, "系統定位", { x: 0.6, y: 4.05, w: 12.15, h: 0.45, fontSize: 18, bold: true });
 T(s, bullets([
   "決策輔助工具:使用者自己決定要不要交易,系統提供判斷與信心值",
-  "接下來兩頁是網頁示意稿(假資料),共四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明",
+  "接下來兩頁是網頁系統展示版(真實模型輸出),共四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明",
+  "展示版資料到 2026-09-10;股票池為 TW100 剔除低波動股;模型與研究結果一致",
 ]), { x: 0.6, y: 4.6, w: 12.15, h: 1.8, fontSize: 15 });
-s.addNotes("系統怎麼用:使用者在網頁輸入股票代號,系統回答今天是高點、低點或非極值,附信心值;5 個交易日後用真實結果對答案,累積命中率。系統定位是決策輔助,交易與否由使用者決定。接下來兩頁是網頁的示意稿,畫面上的數字是假資料。");
+s.addNotes("系統怎麼用:使用者在網頁輸入股票代號,系統回答今天是高點、低點或非極值,附信心值;5 個交易日後用真實結果對答案,累積命中率。系統定位是決策輔助,交易與否由使用者決定。接下來兩頁是網頁系統的展示版,畫面是真實模型輸出:資料到 2026-09-10,股票池為 TW100 剔除低波動股,模型與研究結果一致。");
 
-// ======================= UI/UX 示意稿 =======================
+// ======================= 網頁系統展示版(真實畫面,claude/kline-peak-web-app b3856d7) =======================
 const shot = (sl, file, x, y, w, h, alt) => {
   sl.addShape(pres.shapes.RECTANGLE, { x: x - 0.02, y: y - 0.02, w: w + 0.04, h: h + 0.04, fill: { color: HEX.lt1 },
     line: { color: HEX.accent6, width: 1 }, shadow: { type: "outer", color: "000000", opacity: 0.12, blur: 6, offset: 2, angle: 90 } });
@@ -269,7 +270,7 @@ const shot = (sl, file, x, y, w, h, alt) => {
 const capt = (sl, text, x, y, w) => T(sl, text, { x, y, w, h: 0.3, fontSize: 13, bold: true, color: C.text2, valign: "middle" });
 // 第 1 頁:四個頁面說明 + 今日判斷(桌機、手機)
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
-s.addText("UI/UX 示意稿(假資料):今日判斷", { placeholder: "title" });
+s.addText("網頁系統展示版:今日判斷", { placeholder: "title" });
 const pagesInfo = [
   ["① 今日判斷", "收盤後列出判低點 / 判高點分數最高的前 3 檔,可切換兩方法"],
   ["② 個股查詢", "輸入代號,看今天的判斷、各類分數、兩方法比較與過去訊號對錯"],
@@ -284,24 +285,24 @@ pagesInfo.forEach(([h, d], i) => {
 });
 {
   const y0 = 1.65, h = 4.55, wd = h * 1280 / 1000, wm = h * 780 / 1650, xd = 4.5, xm = 12.75 - wm;
-  capt(s, "① 今日判斷 · 桌機", xd, 1.3, wd);
-  shot(s, "kline_peak_ui_today_desktop.png", xd, y0, wd, h, "今日判斷(桌機)示意稿");
+  capt(s, "① 今日判斷 · 桌機(2026-09-10 收盤,真實模型輸出)", xd, 1.3, wd);
+  shot(s, "kline_peak_ui_today_desktop.png", xd, y0, wd, h, "今日判斷(桌機)展示版畫面");
   capt(s, "手機", xm, 1.3, wm);
-  shot(s, "kline_peak_ui_today_mobile.png", xm, y0, wm, h, "今日判斷(手機)示意稿");
+  shot(s, "kline_peak_ui_today_mobile.png", xm, y0, wm, h, "今日判斷(手機)展示版畫面");
 }
-s.addNotes("網頁有四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明。這頁是今日判斷,收盤後列出判低點和判高點分數最高的前 3 檔,可以切換主軸和 Stacking;左邊是桌機、右邊是手機版。這是示意稿,畫面上的股票判斷、分數和成績都是假資料,截圖只取每頁上半部。");
+s.addNotes("網頁有四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明。這頁是今日判斷的真實畫面(展示版,資料到 2026-09-10 收盤),列出判低點和判高點分數最高的前 3 檔,可以切換主軸和 Stacking;左邊是桌機、右邊是手機版。股票池為 TW100 剔除低波動股,模型與研究結果一致。截圖只取每頁上半部。");
 // 第 2 頁:個股查詢 + 成績追蹤
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
-s.addText("UI/UX 示意稿(假資料):個股查詢、成績追蹤", { placeholder: "title" });
+s.addText("網頁系統展示版:個股查詢、成績追蹤", { placeholder: "title" });
 {
-  const y0 = 1.65, h = 4.6, w1 = h * 1280 / 1180, w2 = h * 1280 / 1000, gap = 0.45;
+  const y0 = 1.65, h = 4.6, w1 = h * 1280 / 1240, w2 = h * 1280 / 1000, gap = 0.45;
   const x1 = 0.6 + (12.15 - w1 - w2 - gap) / 2, x2 = x1 + w1 + gap;
-  capt(s, "② 個股查詢(以 2330 為例)", x1, 1.3, w1);
-  shot(s, "kline_peak_ui_stock_desktop.png", x1, y0, w1, h, "個股查詢(桌機)示意稿");
+  capt(s, "② 個股查詢(以池內 8454 富邦媒為例)", x1, 1.3, w1);
+  shot(s, "kline_peak_ui_stock_desktop.png", x1, y0, w1, h, "個股查詢(桌機)展示版畫面");
   capt(s, "③ 成績追蹤", x2, 1.3, w2);
-  shot(s, "kline_peak_ui_track_desktop.png", x2, y0, w2, h, "成績追蹤(桌機)示意稿");
+  shot(s, "kline_peak_ui_track_desktop.png", x2, y0, w2, h, "成績追蹤(桌機)展示版畫面");
 }
-s.addNotes("左邊是個股查詢,以 2330 為例:輸入代號後看到今天的判斷、各類分數、兩方法比較,下方是 K 線與過去訊號的對錯。右邊是成績追蹤:每天的判斷存檔,5 個交易日後對答案,顯示命中率和每天的明細。方法與說明頁放研究結果、回測摘要和免責說明,這裡沒有附圖。畫面上的數字都是假資料。");
+s.addNotes("左邊是個股查詢,以池內的 8454 富邦媒為例:輸入代號後看到今天的判斷、各類分數、兩方法比較,下方是最近 60 個交易日的 K 線與過去訊號的對錯。右邊是成績追蹤:每天的判斷存檔,5 個交易日後對答案,顯示命中率。兩張都是展示版的真實畫面,資料到 2026-09-10。方法與說明頁放研究結果、回測摘要和免責說明,這裡沒有附圖。");
 
 (async () => {
   await pres.writeFile({ fileName: OUT });
