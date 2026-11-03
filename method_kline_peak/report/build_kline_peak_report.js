@@ -47,6 +47,7 @@ pres.defineSlideMaster({
     { placeholder: { options: { name: "body", type: "body", x: 0.8, y: 3.9, w: 11.7, h: 2.6, fontSize: 18, align: "left",
       color: C.background2, valign: "top", margin: 0 }, text: "" } },
   ],
+  slideNumber: { x: 12.25, y: 6.95, w: 0.5, h: 0.3, fontSize: 10, color: HEX.accent6, align: "right" },
 });
 pres.defineSlideMaster({
   title: "CONTENT",
@@ -85,7 +86,7 @@ const BT200 = {
   "2026": { main: { net: [2.39, null, 96, 49.0], gross: [23.32, null, 96, 54.2] },
             stack: { net: [-4.65, null, 95, 46.3], gross: [14.69, null, 95, 49.5] } },
 };
-const fmtPct = (v) => (v > 0 ? "+" : "") + (Number.isInteger(v) ? v.toFixed(1) : String(v)) + "%";
+const fmtPct = (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%"; // 報酬一律兩位小數
 
 // ======================= 1. 封面 =======================
 pres.addSection({ title: "開場" });
@@ -152,15 +153,16 @@ const facts = [
   ["只做多", "判高點不放空"],
   ["成本 0.585%", "買 0.1425% + 賣 0.1425% + 證交稅 0.3%"],
   ["資金", "每年獨立 100 萬,年底結清"],
-  ["其他假設", "漲停也算買得到;2026 年只到 9/11"],
   ["模型", "訓練門檻:34 檔 6%、TW200 7%"],
 ];
+// 第一列股票池(兩行)占滿寬度,其餘四項排成 2 × 2
 facts.forEach(([h, d], i) => {
-  const x = 0.6 + (i % 2) * 6.15, y = 3.85 + Math.floor(i / 2) * 0.95;
+  const col = i === 0 ? 0 : (i - 1) % 2, row = i === 0 ? 0 : 1 + Math.floor((i - 1) / 2);
+  const x = 0.6 + col * 6.15, y = 3.85 + row * 0.95;
   T(s, h, { x, y, w: 1.9, h: 0.8, fontSize: 18, bold: true, valign: "middle" });
-  T(s, d, { x: x + 2.0, y, w: 3.95, h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
+  T(s, d, { x: x + 2.0, y, w: i === 0 ? 10.1 : 3.95, h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
 });
-s.addNotes("股票池有兩個:34 檔(台灣50 剔除 16 檔低波動股)和 TW200(剔除低波動股後 168 檔);訓練門檻 34 檔用 6%、TW200 用 7%。每天收盤後在股票池中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清;漲停也當作買得到;2026 只到 9 月 11 日。");
+s.addNotes("股票池有兩個:34 檔(台灣50 剔除 16 檔低波動股)和 TW200(剔除低波動股後 168 檔);訓練門檻 34 檔用 6%、TW200 用 7%。每天收盤後在股票池中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清。");
 
 // ======================= 4. 結果表格(34 檔) =======================
 const hdr = (t, o = {}) => ({ text: t, options: { bold: true, fill: { color: HEX.dk1 }, color: "FFFFFF", align: "center", valign: "middle", ...o } });
@@ -184,7 +186,7 @@ const resultTable = (sl, data, poolRow) => {
       rows.push(row);
     });
   });
-  const d = poolRow ? 0.64 : 0.68; // 有股票池列時資料列略矮,以免碰到頁碼
+  const d = 0.64; // 兩張表列高一致(有股票池列時也不會碰到頁碼)
   const rowH = [...(poolRow ? [0.45] : []), 0.45, 0.45, d, d, d, d, d, d];
   sl.addTable(rows, { x: 0.6, y: 1.45, w: 12.15, colW: [1.6, 3.0, 1.6, 1.4, 1.6, 1.4, 1.55],
     rowH, fontSize: 15, fontFace: THEME.bodyFontFace, color: HEX.dk1,
@@ -236,10 +238,10 @@ stockSlide("南電 2024:TW200 模型(門檻 7%)", "tw200amp7", "判低點 29 天
   ["對 4 / 錯 10", "對 7 / 錯 22"], ["對 3 / 錯 4", "對 5 / 錯 19"],
   "同一檔南電 2024,換成 TW200(168 檔)、訓練門檻 7% 的模型,和第 5 頁回測同一個模型。真實標籤一樣是真高點 17 個、真低點 16 個。主軸判低點 29 天、判高點 14 天;判高點對 4 錯 10,判低點對 7 錯 22。Stacking 判低點 24 天、判高點 7 天;判高點對 3 錯 4,判低點對 5 錯 19。同一檔股票,兩個模型判的天數和對錯都不同。");
 
-// ======================= 下一步:展示 UI/UX =======================
+// ======================= 展示網頁 =======================
 pres.addSection({ title: "下一步" });
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
-s.addText("下一步:展示 UI/UX", { placeholder: "title" });
+s.addText("展示網頁", { placeholder: "title" });
 const flow = [
   ["輸入代號", "使用者在網頁輸入股票代號"],
   ["看今天的判斷", "今天是 高點 / 低點 / 非極值,附信心值"],
@@ -259,7 +261,7 @@ T(s, bullets([
   "接下來兩頁是網頁系統展示版(真實模型輸出),共四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明",
   "展示版資料到 2026-09-10;股票池為 TW100 剔除低波動股;模型與研究結果一致",
 ]), { x: 0.6, y: 4.6, w: 12.15, h: 1.8, fontSize: 15 });
-s.addNotes("系統怎麼用:使用者在網頁輸入股票代號,系統回答今天是高點、低點或非極值,附信心值;5 個交易日後用真實結果對答案,累積命中率。系統定位是決策輔助,交易與否由使用者決定。接下來兩頁是網頁系統的展示版,畫面是真實模型輸出:資料到 2026-09-10,股票池為 TW100 剔除低波動股,模型與研究結果一致。");
+s.addNotes("接下來展示網頁系統。系統怎麼用:使用者在網頁輸入股票代號,系統回答今天是高點、低點或非極值,附信心值;5 個交易日後用真實結果對答案,累積命中率。系統定位是決策輔助,交易與否由使用者決定。接下來兩頁是網頁系統的展示版,畫面是真實模型輸出:資料到 2026-09-10,股票池為 TW100 剔除低波動股,模型與研究結果一致。");
 
 // ======================= 網頁系統展示版(真實畫面,claude/kline-peak-web-app b3856d7) =======================
 const shot = (sl, file, x, y, w, h, alt) => {
@@ -304,8 +306,22 @@ s.addText("網頁系統展示版:個股查詢、成績追蹤", { placeholder: "t
 }
 s.addNotes("左邊是個股查詢,以池內的 8454 富邦媒為例:輸入代號後看到今天的判斷、各類分數、兩方法比較,下方是最近 60 個交易日的 K 線與過去訊號的對錯。右邊是成績追蹤:每天的判斷存檔,5 個交易日後對答案,顯示命中率。兩張都是展示版的真實畫面,資料到 2026-09-10。方法與說明頁放研究結果、回測摘要和免責說明,這裡沒有附圖。");
 
+// 主題的東亞字型(ea)預設是空的,繁中(Hant)會落到新細明體;改成正黑體,中文字才會用 Microsoft JhengHei
+async function fixEastAsianFont(file, face) {
+  const fs = require("fs");
+  const JSZip = require("jszip");
+  const zip = await JSZip.loadAsync(fs.readFileSync(file));
+  const name = Object.keys(zip.files).find((n) => /^ppt\/theme\/theme\d+\.xml$/.test(n));
+  let xml = await zip.file(name).async("string");
+  xml = xml.replace(/<a:ea typeface="[^"]*"\/>/g, `<a:ea typeface="${face}"/>`)
+           .replace(/<a:font script="Hant" typeface="[^"]*"\/>/g, `<a:font script="Hant" typeface="${face}"/>`);
+  zip.file(name, xml);
+  fs.writeFileSync(file, await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" }));
+}
+
 (async () => {
   await pres.writeFile({ fileName: OUT });
   await applyTheme(OUT, THEME);
+  await fixEastAsianFont(OUT, THEME.bodyFontFace);
   console.log("wrote", OUT);
 })();
