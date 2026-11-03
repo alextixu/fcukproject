@@ -104,18 +104,18 @@ pres.addSection({ title: "方法" });
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "方法" });
 s.addText("兩個方法與訓練方式", { placeholder: "title" });
 // 特徵條
-card(s, { x: 0.6, y: 1.45, w: 12.15, h: 0.95, fill: { color: C.background2 }, objectName: "feat-card" });
-T(s, "特徵 29 維", { x: 0.85, y: 1.55, w: 2.2, h: 0.75, fontSize: 18, bold: true, valign: "middle" });
+card(s, { x: 0.6, y: 1.8, w: 12.15, h: 0.95, fill: { color: C.background2 }, objectName: "feat-card" });
+T(s, "特徵 29 維", { x: 0.85, y: 1.9, w: 2.2, h: 0.75, fontSize: 18, bold: true, valign: "middle" });
 T(s, "t-5 ~ t 共 6 根 K 線:開、高、低、收 ÷ t 收盤 取 log;成交量 ÷ 10 日均量 取 log", {
-  x: 3.1, y: 1.55, w: 9.4, h: 0.75, fontSize: 15, valign: "middle" });
+  x: 3.1, y: 1.9, w: 9.4, h: 0.75, fontSize: 15, valign: "middle" });
 // 兩方法卡片
 const mcard = (x, color, num, name, lines) => {
-  card(s, { x, y: 2.7, w: 5.95, h: 2.75, fill: { color: C.background1 }, line: { color: HEX.accent6, width: 1 },
+  card(s, { x, y: 3.05, w: 5.95, h: 2.0, fill: { color: C.background1 }, line: { color: HEX.accent6, width: 1 },
     objectName: `method-${num}` });
-  s.addShape(pres.shapes.OVAL, { x: x + 0.25, y: 2.92, w: 0.55, h: 0.55, fill: { color }, line: { type: "none" } });
-  T(s, num, { x: x + 0.25, y: 2.92, w: 0.55, h: 0.55, fontSize: 18, bold: true, color: C.background1, align: "center", valign: "middle" });
-  T(s, name, { x: x + 0.95, y: 2.92, w: 4.8, h: 0.55, fontSize: 20, bold: true, valign: "middle" });
-  T(s, bullets(lines), { x: x + 0.3, y: 3.65, w: 5.4, h: 1.7, fontSize: 15 });
+  s.addShape(pres.shapes.OVAL, { x: x + 0.25, y: 3.27, w: 0.55, h: 0.55, fill: { color }, line: { type: "none" } });
+  T(s, num, { x: x + 0.25, y: 3.27, w: 0.55, h: 0.55, fontSize: 18, bold: true, color: C.background1, align: "center", valign: "middle" });
+  T(s, name, { x: x + 0.95, y: 3.27, w: 4.8, h: 0.55, fontSize: 20, bold: true, valign: "middle" });
+  T(s, bullets(lines), { x: x + 0.25, y: 4.0, w: 5.55, h: 0.95, fontSize: 14 });
 };
 mcard(0.6, C.accent3, "1", "主軸", [
   "規則先挑候選(t 收盤是 t-5 ~ t 最高 / 最低)",
@@ -129,7 +129,7 @@ mcard(6.8, C.accent4, "2", "Stacking 邏輯迴歸", [
 T(s, [
   { text: "訓練方式:", options: { bold: true } },
   { text: "walk-forward,用前 4 年訓練、測下一年(2024、2025、2026 各一次),種子 42" },
-], { x: 0.6, y: 5.75, w: 12.15, h: 0.5, fontSize: 16 });
+], { x: 0.6, y: 5.35, w: 12.15, h: 0.5, fontSize: 16 });
 s.addNotes("兩個方法用同一組 29 維特徵。主軸是規則候選加上每類一組線性 AE 與 OC-SVM;Stacking 把 AE/OC-SVM 的分數交給邏輯迴歸。walk-forward,前 4 年訓練、測下一年,種子 42。");
 
 // ======================= 4. 回測規則 =======================
@@ -158,9 +158,9 @@ const facts = [
 // 第一列股票池(兩行)占滿寬度,其餘四項排成 2 × 2
 facts.forEach(([h, d], i) => {
   const col = i === 0 ? 0 : (i - 1) % 2, row = i === 0 ? 0 : 1 + Math.floor((i - 1) / 2);
-  const x = 0.6 + col * 6.15, y = 3.85 + row * 0.95;
-  T(s, h, { x, y, w: 1.9, h: 0.8, fontSize: 18, bold: true, valign: "middle" });
-  T(s, d, { x: x + 2.0, y, w: i === 0 ? 10.1 : 3.95, h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
+  const x = 0.6 + col * 5.75, y = 3.85 + row * 0.95;
+  T(s, h, { x, y, w: 1.85, h: 0.8, fontSize: 18, bold: true, valign: "middle" });
+  T(s, d, { x: x + 1.95, y, w: i === 0 ? 10.2 : (col === 0 ? 3.6 : 4.45), h: 0.8, fontSize: 15, valign: "middle", color: C.text2 });
 });
 s.addNotes("股票池有兩個:34 檔(台灣50 剔除 16 檔低波動股)和 TW200(剔除低波動股後 168 檔);訓練門檻 34 檔用 6%、TW200 用 7%。每天收盤後在股票池中挑判低點、分數最高的 3 檔,隔天開盤買、第 5 天收盤賣,每檔三分之一資金。一筆來回成本 0.585%。每年獨立 100 萬、年底結清。");
 
@@ -186,7 +186,7 @@ const resultTable = (sl, data, poolRow) => {
       rows.push(row);
     });
   });
-  const d = 0.64; // 兩張表列高一致(有股票池列時也不會碰到頁碼)
+  const d = 0.64; // 兩張表列高一致
   const rowH = [...(poolRow ? [0.45] : []), 0.45, 0.45, d, d, d, d, d, d];
   sl.addTable(rows, { x: 0.6, y: 1.45, w: 12.15, colW: [1.6, 3.0, 1.6, 1.4, 1.6, 1.4, 1.55],
     rowH, fontSize: 15, fontFace: THEME.bodyFontFace, color: HEX.dk1,
@@ -194,7 +194,7 @@ const resultTable = (sl, data, poolRow) => {
 };
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
 s.addText("34 檔回測結果(訓練門檻 6%)", { placeholder: "title" });
-resultTable(s, BT, null);
+resultTable(s, BT, "股票池:34 檔(台灣50 剔除 16 檔低波動股)");
 s.addNotes("這頁是 34 檔(台灣50 剔除 16 檔低波動股)、訓練門檻 6% 的結果,數字直接抄自 backtest_long_only_34_amp6.json。門檻是看測試年選的。扣成本後:2024 主軸 -13.22%、Stacking -18.69%;2025 主軸 +11.92%、Stacking +22.01%;2026 到 9/11 主軸 +7.66%、Stacking +12.55%。交易筆數 2024 為 98 / 85、2025 為 75 / 71、2026 為 66 / 67;扣成本和沒扣成本的筆數一樣,差別只在每筆扣 0.585%。");
 
 s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
@@ -244,15 +244,15 @@ s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "下一步" });
 s.addText("展示網頁", { placeholder: "title" });
 const flow = [
   ["輸入代號", "使用者在網頁輸入股票代號"],
-  ["看今天的判斷", "今天是 高點 / 低點 / 非極值,附信心值"],
-  ["5 天後對答案", "5 個交易日後用真實結果對答案,累積命中率"],
+  ["看今天的判斷", "今天是 高點 / 低點 / 非極值,\n附信心值"],
+  ["5 天後對答案", "5 個交易日後用真實結果對答案,\n累積命中率"],
 ];
 flow.forEach(([h, d], i) => {
   const x = 0.6 + i * 4.15;
   s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.5, w: 3.75, h: 2.1, rectRadius: 0.08,
     fill: { color: i === 2 ? HEX.dk1 : HEX.lt2 }, line: { type: "none" }, objectName: `flow-${i}` });
-  T(s, h, { x: x + 0.3, y: 1.7, w: 3.2, h: 0.5, fontSize: 20, bold: true, color: i === 2 ? C.background1 : C.accent2 });
-  T(s, d, { x: x + 0.3, y: 2.3, w: 3.2, h: 1.1, fontSize: 15, color: i === 2 ? C.background1 : C.text1 });
+  T(s, h, { x: x + 0.2, y: 1.7, w: 3.45, h: 0.5, fontSize: 20, bold: true, color: i === 2 ? C.background1 : C.accent2 });
+  T(s, d, { x: x + 0.2, y: 2.3, w: 3.45, h: 1.1, fontSize: 14, color: i === 2 ? C.background1 : C.text1 });
   if (i < 2) T(s, "→", { x: x + 3.78, y: 2.25, w: 0.35, h: 0.6, fontSize: 24, bold: true, color: C.accent5, align: "center" });
 });
 T(s, "系統定位", { x: 0.6, y: 4.05, w: 12.15, h: 0.45, fontSize: 18, bold: true });
