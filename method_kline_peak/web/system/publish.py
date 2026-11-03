@@ -51,6 +51,15 @@ def _rate(hits, n):
     return {"hits": int(hits), "n": int(n), "pct": round(hits / n * 100, 1) if n else None}
 
 
+def _public_row(r):
+    """網頁用的單檔判斷:不顯示等級的方法拿掉 level 欄位(存檔本身不改)。"""
+    r = {k: (dict(v) if isinstance(v, dict) else v) for k, v in r.items()}
+    for m in C.METHODS:
+        if m not in C.LEVEL_METHODS and isinstance(r.get(m), dict):
+            r[m].pop("level", None)
+    return r
+
+
 # ───────────────────────── 成績 ─────────────────────────
 def top_picks(tab, method, kind, n=C.TOP_N):
     """每天池內判 kind 的股票依分數取前 n 檔。"""
@@ -60,12 +69,21 @@ def top_picks(tab, method, kind, n=C.TOP_N):
 
 
 def level_hits(tab, method, kind):
+    """各信心等級的命中率(池內);不顯示等級的方法(config.LEVEL_METHODS 以外)回傳空的。"""
+    if method not in C.LEVEL_METHODS:
+        return {}
     t = tab[(tab.status == U.POOL) & (tab[f"{method}_pred"] == kind) & tab.truth.notna()]
     return {lv: _rate((g.truth == kind).sum(), len(g)) for lv, g in t.groupby(f"{method}_level")}
 
 
+def both_hits(tab, kind):
+    """兩個方法都判 kind 的池內股票日,事後真的是 kind 的比例。"""
+    t = tab[(tab.status == U.POOL) & (tab.main_pred == kind) & (tab.stack_pred == kind) & tab.truth.notna()]
+    return _rate((t.truth == kind).sum(), len(t))
+
+
 def track(tab):
-    out = {"methods": {}, "dates": {}}
+    out = {"methods": {}, "dates": {}, "both": {}}
     if not len(tab):
         return out
     graded_dates = sorted(tab.loc[tab.truth.notna(), "date"].unique())
@@ -76,6 +94,7 @@ def track(tab):
                     "live_start": live.index.min() if len(live) else None}
     pool_g = tab[(tab.status == U.POOL) & tab.truth.notna()]
     year = str(tab.date.max())[:4]
+    out["both"] = {kind: both_hits(tab, kind) for kind in KINDS}
     for method in C.METHODS:
         out["methods"][method] = {}
         for kind in KINDS:
@@ -113,7 +132,7 @@ def track(tab):
                 "all_ytd": _rate((ytd.truth == kind).sum(), len(ytd)) | {"year": year},
                 "all": _rate((allsig.truth == kind).sum(), len(allsig)),
                 "base_rate": _rate((pool_g.truth == kind).sum(), len(pool_g)),
-                "levels": level_hits(tab, method, kind),
+                "levels": level_hits(tab, method, kind), "both": out["both"][kind],
                 "out_pool": _rate((outs.truth == kind).sum(), len(outs)),
                 "low_vol": _rate((low_v.truth == kind).sum(), len(low_v)),
                 "series": series, "daily": daily}
@@ -172,7 +191,8 @@ def publish(data, cal, check, log=print):
     def lv_hit(method, kind, lv):
         return tr["methods"].get(method, {}).get(kind, {}).get("levels", {}).get(lv)
 
-    today = {"date": latest["date"], "source": latest.get("source"), "methods": {}}
+    today = {"date": latest["date"], "source": latest.get("source"), "methods": {}, "both_hit": tr.get("both", {}),
+             "hit": {m: {k: tr["methods"].get(m, {}).get(k, {}).get("all") for k in KINDS} for m in C.METHODS}}
     for method in C.METHODS:
         today["methods"][method] = {}
         for kind in KINDS:
@@ -183,7 +203,9 @@ def publish(data, cal, check, log=print):
                     continue
                 other = r.get("stack" if method == "main" else "main") or {}
                 items.append({"code": r["code"], "name": U.name_of(r["code"]), "close": r.get("close"), "chg_pct": r.get("chg_pct"),
-                              "score": mm["score"], "level": mm["level"], "level_hit": lv_hit(method, kind, mm["level"]),
+                              "score": mm["score"],
+                              "level": mm["level"] if method in C.LEVEL_METHODS else None,
+                              "level_hit": lv_hit(method, kind, mm["level"]) if method in C.LEVEL_METHODS else None,
                               "both": other.get("pred") == kind})
             items.sort(key=lambda x: -(x["score"] if x["score"] is not None else -1e9))
             for it in items[:C.TOP_N * 2]:
@@ -213,14 +235,14 @@ def publish(data, cal, check, log=print):
         if g is not None:
             first = bars[0][0] if bars else latest["date"]
             for _, s in g[g.date >= first].iterrows():
-                sig.append({"date": s.date, "main": s.main_pred, "main_score": s.main_score, "main_level": s.main_level,
+                sig.append({"date": s.date, "main": s.main_pred, "main_score": s.main_score,
                             "stack": s.stack_pred, "truth": s.truth, "ret_pct": s.ret_pct, "source": s.source})
             for method in C.METHODS:
                 gm = g[(g[f"{method}_pred"] == "low") & g.truth.notna()]
                 stats[method] = _rate((gm.truth == "low").sum(), len(gm))
         _w(os.path.join(out, "stocks", f"{code}.json"), _clean_nan({
             "code": code, "name": U.name_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
-            "today": r, "bars": bars, "signals": sig[-40:], "low_stats": stats}))
+            "today": _public_row(r), "bars": bars, "signals": sig[-40:], "low_stats": stats}))
 
     # 自動完成清單
     idx = []

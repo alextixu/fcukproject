@@ -67,4 +67,7 @@ CHART_BARS = 60                       # 個股頁 K 線根數
 HISTORY_START = "2016-01-01"
 METHODS = ("main", "stack")
 METHOD_NAMES = {"main": "① 主軸", "stack": "② Stacking"}
+# 畫面上顯示信心等級(高 / 中 / 低)的方法。2026-11-03 使用者決定:主軸的三個等級命中率幾乎一樣(回放期 34.1 / 31.6 / 32.8%),
+# 拿掉等級,只顯示分數和整體命中率;Stacking 等級有差(33.1 / 30.9 / 25.2%),保留。存檔裡仍保留兩個方法的等級欄位(格式不變)
+LEVEL_METHODS = ("stack",)
 KIND = {"low": "低點", "high": "高點", "none": "非極值"}

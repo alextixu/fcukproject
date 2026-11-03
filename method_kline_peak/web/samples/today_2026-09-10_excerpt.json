@@ -10,12 +10,8 @@
      "close": 234.0,
      "chg_pct": -1.887,
      "score": 25.3843,
-     "level": "高",
-     "level_hit": {
-      "hits": 224,
-      "n": 656,
-      "pct": 34.1
-     },
+     "level": null,
+     "level_hit": null,
      "both": true,
      "spark": [
       262.5,
@@ -46,12 +42,8 @@
      "close": 405.0,
      "chg_pct": -2.878,
      "score": 22.7567,
-     "level": "高",
-     "level_hit": {
-      "hits": 224,
-      "n": 656,
-      "pct": 34.1
-     },
+     "level": null,
+     "level_hit": null,
      "both": true,
      "spark": [
       480.0,
@@ -82,12 +74,8 @@
      "close": 30.4,
      "chg_pct": -1.459,
      "score": 21.684,
-     "level": "高",
-     "level_hit": {
-      "hits": 224,
-      "n": 656,
-      "pct": 34.1
-     },
+     "level": null,
+     "level_hit": null,
      "both": false,
      "spark": [
       30.97,
@@ -118,12 +106,8 @@
      "close": 27.75,
      "chg_pct": -1.596,
      "score": 21.0834,
-     "level": "高",
-     "level_hit": {
-      "hits": 224,
-      "n": 656,
-      "pct": 34.1
-     },
+     "level": null,
+     "level_hit": null,
      "both": false,
      "spark": [
       29.8,
@@ -156,12 +140,8 @@
      "close": 545.0,
      "chg_pct": 0.368,
      "score": 32.0864,
-     "level": "高",
-     "level_hit": {
-      "hits": 176,
-      "n": 686,
-      "pct": 25.7
-     },
+     "level": null,
+     "level_hit": null,
      "both": false,
      "spark": [
       512.0,
@@ -192,12 +172,8 @@
      "close": 650.0,
      "chg_pct": 1.562,
      "score": 29.0689,
-     "level": "高",
-     "level_hit": {
-      "hits": 176,
-      "n": 686,
-      "pct": 25.7
-     },
+     "level": null,
+     "level_hit": null,
      "both": true,
      "spark": [
       616.0,
@@ -228,12 +204,8 @@
      "close": 108.0,
      "chg_pct": 2.857,
      "score": 27.2661,
-     "level": "高",
-     "level_hit": {
-      "hits": 176,
-      "n": 686,
-      "pct": 25.7
-     },
+     "level": null,
+     "level_hit": null,
      "both": true,
      "spark": [
       111.12,
@@ -264,12 +236,8 @@
      "close": 73.5,
      "chg_pct": 1.519,
      "score": 20.0081,
-     "level": "中",
-     "level_hit": {
-      "hits": 148,
-      "n": 588,
-      "pct": 25.2
-     },
+     "level": null,
+     "level_hit": null,
      "both": true,
      "spark": [
       78.14,
@@ -589,6 +557,44 @@
      ]
     }
    ]
+  }
+ },
+ "both_hit": {
+  "low": {
+   "hits": 305,
+   "n": 895,
+   "pct": 34.1
+  },
+  "high": {
+   "hits": 279,
+   "n": 1150,
+   "pct": 24.3
+  }
+ },
+ "hit": {
+  "main": {
+   "low": {
+    "hits": 564,
+    "n": 1712,
+    "pct": 32.9
+   },
+   "high": {
+    "hits": 475,
+    "n": 1945,
+    "pct": 24.4
+   }
+  },
+  "stack": {
+   "low": {
+    "hits": 435,
+    "n": 1461,
+    "pct": 29.8
+   },
+   "high": {
+    "hits": 371,
+    "n": 1655,
+    "pct": 22.4
+   }
   }
  },
  "both": {

@@ -35,6 +35,9 @@ function btText(method) {
     + (PF().train_min_amp ? '(研究回測的訓練門檻為 0%)' : '');
 }
 function trk(method, kind) { return D.track?.methods?.[method]?.[kind] || {}; }
+const HAS_LEVEL = {main: false, stack: true};   // 2026-11-03:主軸拿掉信心等級(三個等級命中率幾乎一樣),Stacking 保留
+function allHit(method, kind) { const h = trk(method, kind).all; return h?.n ? `${MNAME[method]}判${LBL[kind]}整體命中 <b>${pct(h.pct)}</b>(${h.n} 筆)` : `${MNAME[method]}尚無對答案紀錄`; }
+function bothTag(kind) { const h = D.today?.both_hit?.[kind] || D.track?.both?.[kind]; return `<span class="tag t-both">兩方法一致${h?.n ? `・一致時命中 ${pct(h.pct)}` : ''}</span>`; }
 function lvHit(h) { return h && h.n >= 20 ? `同等級歷史命中 <b>${pct(h.pct)}</b>(${h.n} 筆)` : h && h.n ? `同等級命中 ${pct(h.pct)}(只有 ${h.n} 筆,僅供參考)` : '同等級尚無對答案紀錄'; }
 function spark(vals, w = 86, h = 28) {
   if (!vals || vals.length < 2) return '';
@@ -51,8 +54,8 @@ function seg(cur, opts, setter) {
 function pickRow(s, i, kind) {
   const color = kind === 'low' ? 'var(--low)' : 'var(--high)';
   return `<div class="pick" onclick="go('stock/${s.code}')"><div class="rank">${i + 1}</div>
-  <div><div class="nm">${s.code}<span>${esc(s.name)}</span> ${s.both ? '<span class="tag t-both">兩方法一致</span>' : ''}</div>
-  <div class="info">分數 ${fmt(s.score, METHOD === 'main' ? 1 : 2)} ・ 信心 <b>${s.level || '—'}</b> ・ ${lvHit(s.level_hit)}</div></div>
+  <div><div class="nm">${s.code}<span>${esc(s.name)}</span> ${s.both ? bothTag(kind) : ''}</div>
+  <div class="info">分數 ${fmt(s.score, METHOD === 'main' ? 1 : 2)} ・ ${HAS_LEVEL[METHOD] ? `信心 <b>${s.level || '—'}</b> ・ ${lvHit(s.level_hit)}` : allHit(METHOD, kind)}</div></div>
   <div class="right"><div class="px">${fmt(s.close)}</div>${chg(s.chg_pct)}<div class="hide-m">${spark(s.spark)}</div></div></div>`;
 }
 function listCard(kind) {
@@ -62,8 +65,8 @@ function listCard(kind) {
   <div class="lbl" style="margin:-4px 0 6px">${isLow ? '今天收盤可能是前後 11 天最低' : '今天收盤可能是前後 11 天最高 ── 只當提醒,研究沒有回測過賣出規則'}</div>
   ${top.length ? top.map((s, i) => pickRow(s, i, kind)).join('') : '<div class="mutebox">今天沒有股票被判為' + LBL[kind] + '。</div>'}
   ${rest.length ? `<details class="more"><summary>還有 ${rest.length} 檔也${isLow ? '判低點' : '判高點'}(分數較低)</summary>
-  <table class="minitable"><tr><th>代號</th><th>名稱</th><th>收盤</th><th>分數</th><th>信心</th></tr>
-  ${rest.map(s => `<tr onclick="go('stock/${s.code}')" style="cursor:pointer"><td>${s.code}</td><td>${esc(s.name)}</td><td>${fmt(s.close)}</td><td>${fmt(s.score, METHOD === 'main' ? 1 : 2)}</td><td>${s.level || '—'}</td></tr>`).join('')}</table></details>` : ''}</div>`;
+  <table class="minitable"><tr><th>代號</th><th>名稱</th><th>收盤</th><th>分數</th><th>${HAS_LEVEL[METHOD] ? '信心' : '兩方法一致'}</th></tr>
+  ${rest.map(s => `<tr onclick="go('stock/${s.code}')" style="cursor:pointer"><td>${s.code}</td><td>${esc(s.name)}</td><td>${fmt(s.close)}</td><td>${fmt(s.score, METHOD === 'main' ? 1 : 2)}</td><td>${HAS_LEVEL[METHOD] ? (s.level || '—') : (s.both ? '是' : '')}</td></tr>`).join('')}</table></details>` : ''}</div>`;
 }
 function pageToday() {
   const T = D.today, lo = T.methods[METHOD].low || [], hi = T.methods[METHOD].high || [];
@@ -74,7 +77,7 @@ function pageToday() {
   <div class="summary">
    <div class="card"><div class="lbl">判低點</div><div class="kpi" style="color:var(--low)">${lo.length} <small>檔</small></div></div>
    <div class="card"><div class="lbl">判高點</div><div class="kpi" style="color:var(--high)">${hi.length} <small>檔</small></div></div>
-   <div class="card"><div class="lbl">兩方法一致(低 / 高)</div><div class="kpi" style="color:#5a3fc0">${T.both.low} / ${T.both.high} <small>檔</small></div></div>
+   <div class="card"><div class="lbl">兩方法一致(低 / 高)</div><div class="kpi" style="color:#5a3fc0">${T.both.low} / ${T.both.high} <small>檔</small></div><div class="info">一致時命中 低 ${pct(T.both_hit?.low?.pct)} / 高 ${pct(T.both_hit?.high?.pct)}</div></div>
    <div class="card"><div class="lbl">${MNAME[METHOD]} 判低點前 3 檔命中率(近 60 天)</div><div class="kpi">${pct(t60.pct)} <small>隨機約 ${pct(base.pct, 0)}</small></div></div>
   </div>
   <div class="grid2">${listCard('low')}${listCard('high')}</div>
@@ -174,12 +177,12 @@ async function pageStock(code) {
   if (S.status === 'nodata') pre = `<div class="mutebox"><b>資料不足</b>,至少要 ${16} 個交易日的 K 線才能判斷。</div>`;
   const dim = S.status === 'lowvol' ? 'opacity:.45;filter:grayscale(1)' : '';
   const last = S.bars[S.bars.length - 1] || [];
-  const hit = S.status === 'pool' ? trk('main', p).levels?.[m.level] : null;   // 等級命中率只統計池內;池外看上方警示的池外命中率
+  const hit = S.status === 'pool' ? trk('main', p).all : null;   // 主軸不分等級:池內整體命中率;池外看上方警示的池外命中率
   const icon = p === 'low' ? '↓' : p === 'high' ? '↑' : '–';
-  const sug = !t.main ? '今天沒有判斷。' : p === 'low' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最低點</b>,信心 <b>${m.level}</b>(分數 ${fmt(m.score, 1)})。${hit?.n ? `過去同等級的判低點,<b>${pct(hit.pct)}</b> 真的是低點(${hit.n} 筆),其餘大多是普通日子。` : ''}<br><br>
+  const sug = !t.main ? '今天沒有判斷。' : p === 'low' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最低點</b>(分數 ${fmt(m.score, 1)})。${hit?.n ? `過去主軸判低點的池內股票,<b>${pct(hit.pct)}</b> 真的是低點(${hit.n} 筆),其餘大多是普通日子。` : ''}${ps === 'low' && D.track?.both?.low?.n ? `今天兩個方法都判低點;過去兩方法一致時,<b>${pct(D.track.both.low.pct)}</b> 真的是低點(${D.track.both.low.n} 筆)。` : ''}<br><br>
      研究回測的對應規則是 <b>下一個交易日開盤買、第 5 個交易日收盤賣</b>(判低點分數前 3 檔);${btText('main')}(${esc(PF().pool_label)} 主軸)。
      「低點」只代表 11 天內最低,不代表之後會漲多少。`
-    : p === 'high' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最高點</b>,信心 <b>${m.level}</b>(分數 ${fmt(m.score, 1)})。${hit?.n ? `過去同等級的判高點,<b>${pct(hit.pct)}</b> 真的是高點(${hit.n} 筆)。` : ''}<br><br>
+    : p === 'high' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最高點</b>(分數 ${fmt(m.score, 1)})。${hit?.n ? `過去主軸判高點的池內股票,<b>${pct(hit.pct)}</b> 真的是高點(${hit.n} 筆)。` : ''}${ps === 'high' && D.track?.both?.high?.n ? `今天兩個方法都判高點;過去兩方法一致時,<b>${pct(D.track.both.high.pct)}</b> 真的是高點(${D.track.both.high.n} 筆)。` : ''}<br><br>
      研究沒有回測過「判高點就賣出」的規則,這個判斷只當提醒:短期可能不宜追高。`
     : `模型判斷今天是 <b>非極值</b>(一般日子)。${m.s_high == null ? '' : '今天收盤若不是近 6 天的最高或最低,就不是候選;是候選但形狀不像過去的真高 / 低點,也會判非極值。'}`;
   const R = (D.research?.classification || []).filter(r => r.year === '2026');
@@ -193,13 +196,13 @@ async function pageStock(code) {
   ${t.main ? `<div class="grid2" style="${dim}">
    <div class="card"><div class="verdict"><div class="vicon" style="background:${p === 'low' ? 'var(--low-bg)' : p === 'high' ? 'var(--high-bg)' : 'var(--mute-bg)'};color:${p === 'low' ? 'var(--low)' : p === 'high' ? 'var(--high)' : 'var(--ink3)'}">${icon}</div>
      <div><div class="lbl">今天的判斷(① 主軸)</div><div class="vtitle">${p === 'none' ? '非極值・一般日子' : '今天可能是' + LBL[p]}</div>
-     ${p !== 'none' ? `<div class="info">信心 <b>${m.level}</b> ・ 分數 ${fmt(m.score, 1)} ・ ${S.status === 'pool' ? lvHit(hit) : (STATUS[S.status] || ['池外'])[0] + '股票沒有分等級的命中率'}</div>` : ''}
-     ${p !== 'none' && p === ps ? '<div style="margin-top:4px"><span class="tag t-both">兩方法一致</span></div>' : ''}</div></div>
+     ${p !== 'none' ? `<div class="info">分數 ${fmt(m.score, 1)} ・ ${S.status === 'pool' ? allHit('main', p) : (STATUS[S.status] || ['池外'])[0] + '股票的命中率見上方說明'}</div>` : ''}
+     ${p !== 'none' && p === ps ? `<div style="margin-top:4px">${bothTag(p)}</div>` : ''}</div></div>
      <h3 style="margin-top:16px">各類分數</h3>${classBlocks(t)}
      <div class="lbl" style="margin-top:6px">主軸分數是 OC-SVM 的 decision_function;Stacking 是邏輯迴歸機率。兩者不能直接比大小。</div></div>
    <div class="card"><h3>兩方法比較</h3><table class="cmp"><tr><th></th><th>① 主軸</th><th>② Stacking</th></tr>
      <tr><td>今天判斷</td><td><span class="tag ${tagCls(p)}">${LBL[p]}</span></td><td><span class="tag ${tagCls(ps)}">${LBL[ps]}</span></td></tr>
-     <tr><td>分數 / 信心</td><td>${p === 'none' ? '—' : fmt(m.score, 1) + ' / ' + m.level}</td><td>${ps === 'none' ? '—' : fmt(s.score) + ' / ' + s.level}</td></tr>
+     <tr><td>分數</td><td>${p === 'none' ? '—' : fmt(m.score, 1)}</td><td>${ps === 'none' ? '—' : fmt(s.score) + '(信心 ' + s.level + ')'}</td></tr>
      <tr><td>判低點命中率<br><span class="lbl">研究結果 TW100 2026 1–9 月</span></td><td>${pct(rr('main').prec_low)}</td><td>${pct(rr('stack').prec_low)}</td></tr>
      <tr><td>真低點找到率<br><span class="lbl">研究結果 TW100 2026 1–9 月</span></td><td>${pct(rr('main').rec_low)}</td><td>${pct(rr('stack').rec_low)}</td></tr>
      <tr><td>這檔判低點對答案<br><span class="lbl">回放 + 實際追蹤</span></td><td>${S.low_stats?.main?.n ? `${S.low_stats.main.hits} / ${S.low_stats.main.n} 對` : '—'}</td><td>${S.low_stats?.stack?.n ? `${S.low_stats.stack.hits} / ${S.low_stats.stack.n} 對` : '—'}</td></tr></table>
@@ -235,7 +238,7 @@ function pageTrack() {
   }
   const R = (D.research?.classification || []).find(r => r.year === '2026' && r.method === TM) || {};
   const k = (lbl, r, extra) => `<div class="card"><div class="lbl">${lbl}</div><div class="kpi">${pct(r?.pct)}</div><div class="info">${r?.n ? `${r.hits} / ${r.n} 檔次` : '尚無資料'}${extra ? ' ・ ' + extra : ''}</div></div>`;
-  const lv = T.levels || {};
+  const lv = T.levels || {}, BH = D.track.both?.[TK];
   return `<div class="row" style="margin-bottom:14px"><div><h1>成績追蹤</h1><p class="sub" style="margin:0">每天的判斷當天就存檔,不會事後修改;5 個交易日後自動對答案。資料 ${dates.first || ''} ~ ${dates.last || ''},已對答案 ${dates.n_graded || 0} 天${dates.live_start ? `,${dates.live_start} 起為實際追蹤` : ',目前都是回放'}。</p></div><div class="sp"></div>
    ${seg(TM, [['main', '① 主軸'], ['stack', '② Stacking']], 'TM')} ${seg(TK, [['low', '判低點'], ['high', '判高點']], 'TK')}</div>
   <div class="grid4 k2" style="margin-bottom:16px">
@@ -246,10 +249,11 @@ function pageTrack() {
   <div class="card" style="margin-bottom:16px"><div class="row"><h3 style="margin:0">命中率(池內全部判斷,60 天移動)</h3></div>
    ${series.length > 1 ? `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}</svg></div>` : '<div class="mutebox">對答案的天數還不夠畫圖(至少 20 天)。</div>'}</div>
   <div class="grid2" style="margin-bottom:16px">
-   <div class="card"><h3>各信心等級的命中率(池內)</h3><table class="tbl lvtable"><tr><th>信心</th><th>命中率</th><th>對 / 判斷數</th></tr>
-    ${['高', '中', '低'].map(l => `<tr><td>${l}</td><td>${pct(lv[l]?.pct)}</td><td>${lv[l] ? `${lv[l].hits} / ${lv[l].n}` : '—'}</td></tr>`).join('')}
-    <tr><td>全部</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr></table>
-    <div class="lbl" style="margin-top:6px">信心等級 = 訓練期內分數的三等分。三個等級的命中率如果差不多,代表分數高低對命中率幫助不大。</div></div>
+   <div class="card"><h3>${HAS_LEVEL[TM] ? '各信心等級的命中率(池內)' : '命中率(池內)'}</h3><table class="tbl lvtable"><tr><th>${HAS_LEVEL[TM] ? '信心' : '判斷'}</th><th>命中率</th><th>對 / 判斷數</th></tr>
+    ${HAS_LEVEL[TM] ? ['高', '中', '低'].map(l => `<tr><td>${l}</td><td>${pct(lv[l]?.pct)}</td><td>${lv[l] ? `${lv[l].hits} / ${lv[l].n}` : '—'}</td></tr>`).join('') : ''}
+    <tr><td>全部</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr>
+    <tr><td>兩方法一致(主軸、Stacking 都判${LBL[TK]})</td><td>${pct(BH?.pct)}</td><td>${BH ? `${BH.hits} / ${BH.n}` : '—'}</td></tr></table>
+    <div class="lbl" style="margin-top:6px">${HAS_LEVEL[TM] ? '信心等級 = 訓練期內分數的三等分。' : '主軸不分信心等級:回放期三個等級的命中率幾乎一樣,分等級沒有參考價值。'}「兩方法一致」兩個方法看的是同一批股票日,所以切換方法時數字相同。</div></div>
    <div class="card"><h3>池外與低波動股</h3><table class="tbl lvtable"><tr><th>股票</th><th>命中率</th><th>對 / 判斷數</th></tr>
     <tr><td>池內(參考)</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr>
     <tr><td>池外</td><td>${pct(T.out_pool?.pct)}</td><td>${T.out_pool ? `${T.out_pool.hits} / ${T.out_pool.n}` : '—'}</td></tr>

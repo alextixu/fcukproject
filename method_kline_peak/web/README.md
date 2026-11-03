@@ -67,9 +67,9 @@ KPWEB_POOL=tw100 KPWEB_TRAIN_MIN_AMP=3 python method_kline_peak/web/run.py start
 ## 測試
 
 ```bash
-python -m pytest method_kline_peak/web/tests        # 網頁系統 38 項
+python -m pytest method_kline_peak/web/tests        # 網頁系統 41 項
 python -m pytest method_kline_peak/tests            # 研究程式碼原本的測試
 ```
 
 網頁系統的測試涵蓋:資料更新(增量、還原價變動重抓、網路失敗、休市)、判斷存檔不覆蓋、5 天後才對答案、
-池內 / 池外 / 低波動 / 不支援判定、判斷檔格式、股票池與訓練門檻設定、特徵不偷看未來、每日批次與回放結果相同、正式模型重現研究 2026 年的成績。
+池內 / 池外 / 低波動 / 不支援判定、判斷檔格式、股票池與訓練門檻設定、兩方法一致命中率與信心等級、特徵不偷看未來、每日批次與回放結果相同、正式模型重現研究 2026 年的成績。
