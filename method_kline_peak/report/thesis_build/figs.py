@@ -155,6 +155,9 @@ for k, v in T.items():
         for cell in row:
             assert "訓練門檻" not in cell, (k, cell)
 
+# 南電 2024(TW200 模型)Stacking 原始判斷:判斷天數、對錯、當天 / 前後 2 天內抓到
+data["nd_cmp"] = J("compare_8046_2024_tw200.json")["methods"]["Stacking 邏輯迴歸"]["A0 原始"]
+
 with open(os.path.join(OUT, "data.json"), "w", encoding="utf-8") as fh:
     json.dump(data, fh, ensure_ascii=False, indent=1)
 
@@ -180,12 +183,12 @@ fig, ax = plt.subplots(figsize=(7.2, 9.4))
 ax.set_xlim(0, 10); ax.set_ylim(0, 13.2); ax.axis("off")
 steps = [
     ("資料蒐集", "台股日 K 線(還原價)2016-01 ~ 2026-09"),
-    ("股票池", "34 檔(台灣50 剔除 16 檔低波動股)\nTW200 剔除低波動股後 168 檔"),
+    ("股票池", "TW200 剔除低波動股後 168 檔"),
     ("標籤", "11 天視窗,t = 第 6 天\n高點 / 低點 / 非極值"),
     ("特徵", "t-5 ~ t 六根 K 線,29 維"),
     ("模型", "Stacking 第一層:高點、低點兩組 AE + OC-SVM\n對每一天打分數 → 第二層邏輯迴歸輸出三類機率"),
     ("walk-forward 評估", "前 4 年訓練(第一層 3 年、第二層 1 年)、測下一年\n混淆矩陣、macro-F1、找到率、命中率"),
-    ("交易模擬", "只做多前 3 檔回測、個案、後處理分析"),
+    ("個案分析", "南電(8046)2024 年:真實高低點與 Stacking 判斷"),
     ("系統實作", "網頁系統:每日判斷、個股查詢、成績追蹤"),
 ]
 y = 12.2
@@ -259,53 +262,27 @@ def crop(src, dst, top=0.0, bottom=0.0, left=0, right=0, abs_top=None, abs_botto
     im.crop((left, t, w - right, b)).save(os.path.join(FIG, dst), optimize=True)
 
 
-# 混淆矩陣:用簡報已裁掉標題、重排成 3 × 2 的版本
-# 只取下排 Stacking(y ≥ 705)
-crop(os.path.join(REPORT, "kline_peak_confusion_tw50.png"), "fig4_1_conf_34.png", abs_top=705)
+# 混淆矩陣:TW200,只取下排 Stacking(y ≥ 705),標題前的「②」編號塗白
 crop(os.path.join(REPORT, "kline_peak_confusion_tw200.png"), "fig4_2_conf_tw200.png", abs_top=705)
-# 標題前的「②」編號塗白(報告只剩 Stacking 一個方法)
 from PIL import ImageDraw
-for fn in ("fig4_1_conf_34.png", "fig4_2_conf_tw200.png"):
-    im = Image.open(os.path.join(FIG, fn)).convert("RGB")
-    dr = ImageDraw.Draw(im)
-    import numpy as np
-    g = np.asarray(im.convert("L"))[0:34]          # 第一行標題(macro-F1 那行在下面,不動)
-    dark = (g < 160).any(axis=0)
-    for c0 in (60, 740, 1420):                     # 三欄各自找第一個字(②)的 x 範圍
-        x = c0 + int(np.argmax(dark[c0:c0 + 200]))
-        x1 = x
-        while dark[x1 + 1] or dark[x1 + 2] or dark[x1 + 3]:
-            x1 += 1
-        dr.rectangle((x - 1, 0, x1 + 1, 39), fill="white")
-    im.save(os.path.join(FIG, fn), optimize=True)
-# 資產曲線、南電、後處理、低點進高點出:裁掉最上方標題列(含「訓練門檻」字樣)
-# 資產曲線只取下排 Stacking(y ≥ 820)
-crop(os.path.join(RES, "backtest_long_only_curves.png"), "fig4_4_curves_34.png", abs_top=820)
-crop(os.path.join(RES, "backtest_long_only_tw200_curves.png"), "fig4_5_curves_tw200.png", abs_top=820)
+import numpy as np
+im = Image.open(os.path.join(FIG, "fig4_2_conf_tw200.png")).convert("RGB")
+dr = ImageDraw.Draw(im)
+g = np.asarray(im.convert("L"))[0:34]
+dark = (g < 160).any(axis=0)
+for c0 in (60, 740, 1420):
+    x = c0 + int(np.argmax(dark[c0:c0 + 200]))
+    x1 = x
+    while dark[x1 + 1] or dark[x1 + 2] or dark[x1 + 3]:
+        x1 += 1
+    dr.rectangle((x - 1, 0, x1 + 1, 39), fill="white")
+im.save(os.path.join(FIG, "fig4_2_conf_tw200.png"), optimize=True)
 
 
-# 南電每日判斷:只留「真實標籤」與「Stacking」兩段及圖下說明
-def stack_panels(src, dst):
+def stitch(src, ranges, dst, box=None):
     im = Image.open(src).convert("RGB")
-    w, h = im.size
-    parts = [im.crop((0, 205, w, 705)), im.crop((0, 1372, w, 1895)), im.crop((0, 2045, w, h))]
-    c = Image.new("RGB", (w, sum(p.size[1] for p in parts)), "white")
-    y = 0
-    for p in parts:
-        c.paste(p, (0, y)); y += p.size[1]
-    c.save(os.path.join(FIG, dst), optimize=True)
-
-
-stack_panels(os.path.join(RES, "outputs_8046_2024_34_amp0.png"), "fig4_6_nandian_34.png")
-stack_panels(os.path.join(RES, "outputs_8046_2024_tw200_amp0.png"), "fig4_7_nandian_tw200.png")
-crop(os.path.join(RES, "compare_8046_2024_tw200_stack.png"), "fig4_8_post_nandian.png", abs_top=62)
-crop(os.path.join(RES, "prob_cut_8046_2024_tw200_stack.png"), "fig4_9_probcut.png", abs_top=62)
-crop(os.path.join(RES, "lohi_compare_8046_2024_tw200_stack.png"), "fig4_10_lohi_nandian.png", abs_top=62)
-
-# 網頁截圖:Stacking 版(分支 claude/kline-peak-web-app 81f2717 的 *_stack.png)。
-# 只取不含方法切換鈕與「兩方法」對照欄位的區塊,以垂直拼接方式略過那些列。
-def stitch(src, ranges, dst):
-    im = Image.open(src).convert("RGB")
+    if box:
+        im = im.crop(box)
     w = im.size[0]
     parts = [im.crop((0, a, w, b)) for a, b in ranges]
     c = Image.new("RGB", (w, sum(p.size[1] for p in parts)), "white")
@@ -315,14 +292,24 @@ def stitch(src, ranges, dst):
     c.save(os.path.join(FIG, dst), optimize=True)
 
 
+# 南電 2024(TW200 模型):收盤與真實標籤 + Stacking 原始判斷 + 月份軸(取自 compare_8046_2024_tw200_stack.png,略過標題列與後處理各段)
+stitch(os.path.join(RES, "compare_8046_2024_tw200_stack.png"), [(70, 430), (555, 880), (3590, 3615)], "fig4_3_nandian.png")
+# 南電 2024 混淆矩陣:只取 Stacking 面板(略過含編號的方法名稱列)
+stitch(os.path.join(RES, "confusion_8046_2024_tw200_amp0.png"), [(197, 940)], "fig4_4_nandian_conf.png", box=(800, 0, 1560, 990))
+
+# 網頁截圖(分支 claude/kline-peak-web-app 881d92d,預設 Stacking)。
+# 方法切換鈕與兩方法對照的區塊含另一方法的名稱,以垂直拼接略過那些列。
 S = lambda f: os.path.join(SHOTS, f)
-# 今日判斷(桌機):導覽列 + 判低點 / 判高點兩欄的前 3 名(略過方法切換鈕與摘要卡)
-stitch(S("today_desktop_stack.png"), [(0, 130), (315, 765)], "fig4_12_web_today.png")
-# 成績追蹤:導覽列 + 命中率卡、60 天命中率圖、信心等級表(到「全部」列為止)
-stitch(S("track_desktop_stack.png"), [(0, 130), (251, 986)], "fig4_14_web_track.png")
+stitch(S("today_desktop.png"), [(0, 130), (205, 1200)], "fig4_5_web_today.png")
+stitch(S("stock_pool_8454_desktop.png"), [(0, 372), (1036, 1500)], "fig4_6_web_stock.png")
+stitch(S("track_desktop.png"), [(0, 130), (250, 986)], "fig4_7_web_track.png")
 # 附錄
-stitch(S("today_mobile_stack.png"), [(0, 470), (1140, 2230)], "appB_today_mobile.png")
+stitch(S("today_mobile.png"), [(0, 480), (625, 2220)], "appB_today_mobile.png")
 crop(S("search_autocomplete_desktop.png"), "appB_search.png")
-stitch(S("track_desktop_stack.png"), [(0, 130), (1100, 2455)], "appB_track.png")
+stitch(S("stock_outpool_2618_desktop.png"), [(0, 440)], "appB_stock_outpool.png")
+stitch(S("stock_lowvol_2412_desktop.png"), [(0, 465)], "appB_stock_lowvol.png")
+stitch(S("track_desktop.png"), [(0, 130), (1100, 2455)], "appB_track.png")
+stitch(S("findings_desktop.png"), [(0, 130), (255, 410)], "appB_findings.png")
+stitch(S("about_desktop.png"), [(0, 460), (1465, 1873)], "appB_about.png")
 
 print("ok", len(os.listdir(FIG)), "figs")
