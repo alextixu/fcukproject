@@ -5,7 +5,9 @@
   track.json       成績追蹤:每日前 3 檔對答案、命中率、各信心等級命中率、池外命中率
   index.json       自動完成用的股票清單(代號、名稱、分類、市場別)
   research.json    研究結果(直接讀 results/ 的既有結果檔,不重算)
-  stocks/<代號>.json  個股:今天兩個方法的判斷、最近 60 根 K 線、過去的判斷與答案
+  stocks/<代號前兩碼>.json  個股(每檔一筆):今天兩個方法的判斷、還沒破底 / 沒創高的訊號、最近 60 根 K 線、過去的判斷與答案
+  findings.json    研究發現頁:直接讀 results/ 的後處理、等確認、機率門檻、低點進高點出結果檔
+  img/             研究發現頁的圖(results/ 的 png 縮小後複製)
 """
 import json
 import os
@@ -15,7 +17,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from . import config as C, store as ST, universe as U
+from . import config as C, signals as SG, store as ST, universe as U
 from feasibility import clean  # noqa: E402
 
 KINDS = ("low", "high")
@@ -171,6 +173,200 @@ def research():
                         "method_kline_peak/results/backtest_long_only_tw200.json"]}
 
 
+def stock_active(g, df, asof):
+    """一檔股票在 asof 那天「還沒破底 / 沒創高」的訊號。g = 這檔的存檔判斷(依日期索引),df = K 線。
+    兩者都只用到 asof(含)為止,之後的資料不影響結果。回傳 (最近 60 天收盤, {方法: {low/high: 訊號}})。"""
+    cl = clean(df.loc[:asof])["close"].tail(60)
+    g = g.loc[:asof]
+    out = {}
+    for method in C.METHODS:
+        for kind in KINDS:
+            a = SG.active_signal(g[f"{method}_pred"], cl, kind)
+            if a is None:
+                continue
+            t = pd.Timestamp(a["date"])
+            other = "stack" if method == "main" else "main"
+            a.update(score=g.loc[t, f"{method}_score"], level=g.loc[t, f"{method}_level"] if method in C.LEVEL_METHODS else None,
+                     both=bool(g.loc[t, f"{other}_pred"] == kind), group=SG.group_of(a["days"]))
+            out.setdefault(method, {})[kind] = a
+    return cl, out
+
+
+def shard_of(code):
+    """個股資料分檔:代號前兩碼(例 2330 → 23)。前端照同一規則讀 stocks/<前兩碼>.json。"""
+    return code[:2]
+
+
+# ───────────────────────── 研究發現(只讀 results/ 的既有結果檔,數字不手抄) ─────────────────────────
+M_KEYS = {"main": "主軸", "stack": "Stacking 邏輯迴歸"}
+K_ZH = {"low": "低點", "high": "高點"}
+FUTURE = "用到未來資訊,實際用不了"
+IMAGES = [("compare_8046_2024_tw200_main.png", "main"), ("compare_8046_2024_tw200_stack.png", "stack"),
+          ("prob_cut_8046_2024_tw200_stack.png", "prob"), ("lohi_compare_8046_2024_tw200_main.png", "lohi")]
+
+
+def _rj(name):
+    with open(os.path.join(C.RESULTS, name), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _mean(xs):
+    xs = [x for x in xs if x is not None]
+    return round(float(np.mean(xs)), 2) if xs else None
+
+
+def confirm_hits():
+    """推薦頁分組用的研究命中率:剛出現 = 原始(A0),已 k 天沒破底 = 等 k 天確認(TW200 168 檔、2024–2026 三年平均)。"""
+    c = _rj("confirm_signals_tw200.json")["classification_三年平均"]
+    out = {"source": "研究結果:TW200 168 檔、訓練門檻 0%、2024–2026 三年平均(results/confirm_signals_tw200.json)"}
+    for m, mk in M_KEYS.items():
+        out[m] = {}
+        for kind in KINDS:
+            z = K_ZH[kind]
+            out[m][kind] = {"k0": c[mk]["A0 原始"][z]["命中率"], "k1": c[mk]["k=1"][z]["命中率"],
+                            "k2": c[mk]["k=2"][z]["命中率"], "k3": c[mk]["k=3"][z]["命中率"],
+                            "base": c[mk]["A0 原始"][z]["隨機基準"]}
+    return out
+
+
+def findings(out=None):
+    pp = _rj("postproc_signals_tw200.json")
+    cf = _rj("confirm_signals_tw200.json")
+    pc = _rj("prob_cut_tw200.json")
+    lo = _rj("lohi_compare_34_2025.json")
+    cmp8 = _rj("compare_8046_2024_tw200.json")
+    lo8 = _rj("lohi_compare_8046_2024_tw200.json")
+    conf = _rj("confusion_2024_2026_tw200_amp0.json")
+    avg = pp["三年平均"]
+    years = sorted(cf["backtest"]["k=0"])
+
+    def bt(k, mk):
+        return _mean([cf["backtest"][f"k={k}"][y][mk]["扣成本"]["total_return_pct"] for y in years])
+
+    def late(k, mk):
+        return _mean([cf["late_entry"][f"k={k}"][y][mk]["差距(晚 − 早)"] for y in years])
+
+    cross = 0
+    for y, v in conf.items():
+        for x in v.values():
+            if isinstance(x, dict) and "confusion_rows_true_cols_pred(漲,不漲不跌,跌)" in x:
+                cm = x["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"]
+                cross += cm[0][2] + cm[2][0]
+    a0, s0 = avg["主軸"]["A0 原始"], avg["Stacking 邏輯迴歸"]["A0 原始"]
+    top50, top10 = avg["主軸"]["2 每天前 50%"], avg["主軸"]["2 每天前 10%"]
+    pa = pc["全部_三年平均"]
+    p0, p7, p8 = pa["不設門檻(原始)"], pa["最大機率 ≥ 0.7"], pa["最大機率 ≥ 0.8"]
+    ca = cf["classification_三年平均"]["主軸"]
+    cards = {
+        "recall": {"low": a0["低點"]["找到率_精確"], "high": a0["高點"]["找到率_精確"],
+                   "low2": a0["低點"]["找到率_±2天"], "high2": a0["高點"]["找到率_±2天"], "cross": int(cross),
+                   "years": sorted(conf)},
+        "precision": {"low": a0["低點"]["命中率"], "high": a0["高點"]["命中率"],
+                      "base_low": a0["低點"]["隨機基準"], "base_high": a0["高點"]["隨機基準"]},
+        "filters": {"orig_hit": a0["低點"]["命中率"], "orig_rec": a0["低點"]["找到率_精確"],
+                    "top50_hit": top50["低點"]["命中率"], "top50_rec": top50["低點"]["找到率_精確"],
+                    "top10_hit": top10["低點"]["命中率"], "top10_rec": top10["低點"]["找到率_精確"],
+                    "s_hit": p0["低點"]["命中率"], "s_rec": p0["低點"]["找到率_精確"],
+                    "p7_hit": p7["低點"]["命中率"], "p7_rec": p7["低點"]["找到率_精確"],
+                    "p8_hit": p8["低點"]["命中率"], "p8_rec": p8["低點"]["找到率_精確"]},
+        "confirm": {"k0_hit": ca["A0 原始"]["低點"]["命中率"], "k1_hit": ca["k=1"]["低點"]["命中率"],
+                    "k3_hit": ca["k=3"]["低點"]["命中率"], "bt0": bt(0, "主軸"), "bt1": bt(1, "主軸"), "bt2": bt(2, "主軸"),
+                    "bt3": bt(3, "主軸"), "sbt0": bt(0, "Stacking 邏輯迴歸"), "sbt3": bt(3, "Stacking 邏輯迴歸"),
+                    "late1": late(1, "主軸"), "late3": late(3, "主軸")},
+    }
+
+    # 後處理比較(TW200 三年平均)
+    post = {}
+    for m, mk in M_KEYS.items():
+        rows = []
+        src = [("A0 原始", "原始(不處理)", avg[mk]["A0 原始"], bt(0, mk), ""),
+               ("1a", "合併連續・事後最高分", avg[mk]["1a 合併連續・事後最高分(上限參考)"], None, FUTURE),
+               ("1b", "合併連續・即時版", avg[mk]["1b 合併連續・即時版"], None, ""),
+               ("top50", "每天只留前 50%", avg[mk]["2 每天前 50%"], None, "")]
+        src += [(f"k{k}", f"等 {k} 天確認", cf["classification_三年平均"][mk][f"k={k}"], bt(k, mk),
+                 f"命中率要等 {k} 天才知道;晚 {k} 天進場") for k in (1, 2, 3)]
+        for key, name, x, b, note in src:
+            rows.append({"key": key, "name": name, "macro_f1": x["macro_f1"], "n_low": round(x["低點"]["訊號數"]),
+                         "hit_low": x["低點"]["命中率"], "rec_low": x["低點"]["找到率_精確"],
+                         "hit_high": x["高點"]["命中率"], "rec_high": x["高點"]["找到率_精確"],
+                         "bt": b, "future": key == "1a", "note": note})
+        post[m] = rows
+
+    # Stacking 機率門檻(TW200 三年平均)
+    prob = [{"name": k, "n_low": round(v["低點"]["訊號數"]), "n_high": round(v["高點"]["訊號數"]),
+             "hit_low": v["低點"]["命中率"], "hit_high": v["高點"]["命中率"],
+             "rec_low": v["低點"]["找到率_精確"], "rec_high": v["高點"]["找到率_精確"], "macro_f1": v["macro_f1"]}
+            for k, v in pa.items()]
+
+    # 34 檔 2025 低點進、高點出
+    lohi = {}
+    for m, mk in M_KEYS.items():
+        rows = []
+        for k, v in lo["methods"][mk].items():
+            if k.startswith("_"):
+                continue
+            rows.append({"name": k.split("(")[0].replace("2-50 ", ""), "future": "未來" in k or k.startswith("1a"),
+                         "ret": v["扣成本_pct"], "gross": v["沒扣成本_pct"], "n": v["n_trades"], "win": v["win_rate_pct"],
+                         "hold": v["avg_hold_days"], "dd": v["max_dd_pct"], "vs": v["vs_等權買進持有"]})
+        lohi[m] = rows
+    lohi_base = {"buy_hold": lo["等權買進持有_pct"], "top3": lo["前3檔持有5天_引用"], "n_stocks": lo["n_stocks"], "year": lo["year"]}
+
+    # 南電 2024 圖的說明(數字從 json 讀)
+    def c8(mk, key, kind):
+        for k, v in cmp8["methods"][mk].items():
+            if k.startswith(key):
+                return v[K_ZH[kind]]
+    m0, m3 = c8("主軸", "A0", "low"), c8("主軸", "確認 k=3", "low")
+    s0_, s3 = c8("Stacking 邏輯迴歸", "A0", "low"), c8("Stacking 邏輯迴歸", "確認 k=3", "low")
+    s1a = c8("Stacking 邏輯迴歸", "1a", "low")
+    pn = pc["南電 2024"]
+    q0, q7, q8 = pn["不設門檻(原始)"]["低點"], pn["最大機率 ≥ 0.7"]["低點"], pn["最大機率 ≥ 0.8"]["低點"]
+    lm = lo8["methods"]["主軸"]
+
+    def l8(prefix):
+        return next(v for k, v in lm.items() if k.startswith(prefix))
+    captions = {
+        "main": ["主軸 · 各種後處理留下的訊號",
+                 f"最上面是南電 2024 的真實高低點。原始判斷把 {m0['判']} 天判成低點,其中 {m0['對']} 天對、{m0['錯']} 天錯;"
+                 f"{m0['真']} 個真低點有 {m0['當天抓到']} 個當天就被提醒到,但一路下跌時幾乎天天喊低點。",
+                 f"往下是幾種減少訊號的方法。等 3 天確認後只剩 {m3['判']} 天({m3['對']} 對 / {m3['錯']} 錯),真低點一個都沒少;"
+                 f"代價是確認的那天(小點)已經晚了 3 天。"],
+        "stack": ["Stacking · 各種後處理留下的訊號",
+                  f"Stacking 判得比較少:原始判低點 {s0_['判']} 天({s0_['對']} 對 / {s0_['錯']} 錯),真低點只抓到 {s0_['當天抓到']} 個。",
+                  f"「事後最高分」那列看起來最好(命中 {s1a['命中率']}%),但要等整段訊號結束才知道哪天最高,實際用不了。"
+                  f"等 3 天確認剩 {s3['判']} 天({s3['對']} 對 / {s3['錯']} 錯)。"],
+        "prob": ["Stacking · 只留最大機率夠高的訊號",
+                 f"不設門檻時判低點 {q0['判']} 天,命中 {q0['命中率']}%。機率 ≥ 0.7 剩 {q7['判']} 天、命中 {q7['命中率']}%;"
+                 f"≥ 0.8 剩 {q8['判']} 天、命中 {q8['命中率']}%。",
+                 f"門檻拉高,錯的訊號少了,對的也一起少了:命中率 {q0['命中率']}% → {q8['命中率']}%,真低點當天抓到 {q0['當天抓到']} → {q8['當天抓到']} 個。"],
+        "lohi": ["主軸 · 南電 2024 低點進場、高點出場",
+                 f"南電 2024 全年下跌,買進持有 {lo8['buy_hold_pct']}%。照原始判斷低點買、高點賣是 {l8('A0')['扣成本_pct']}%,"
+                 f"等 3 天確認是 {l8('確認 k=3')['扣成本_pct']}%。",
+                 f"每一種實際做得到的規則都是虧錢,只是虧得比買進持有少。最上面「真實標籤」的 +{l8('真實標籤')['扣成本_pct']}% "
+                 f"是事先知道答案的上限,實際做不到。"],
+    }
+    imgs = []
+    for fname, key in IMAGES:
+        imgs.append({"file": f"img/{fname}", "title": captions[key][0], "text": captions[key][1:]})
+        if out is not None:
+            _copy_img(fname, os.path.join(out, "img", fname))
+    return {"cards": cards, "post": post, "prob": prob, "prob_median": pc["機率中位數_三年平均"], "lohi": lohi,
+            "lohi_base": lohi_base, "images": imgs, "confirm": confirm_hits(),
+            "sources": ["postproc_signals_tw200.json", "confirm_signals_tw200.json", "prob_cut_tw200.json",
+                        "lohi_compare_34_2025.json", "compare_8046_2024_tw200.json", "lohi_compare_8046_2024_tw200.json",
+                        "confusion_2024_2026_tw200_amp0.json"]}
+
+
+def _copy_img(name, dst, width=1400):
+    """results/ 的圖縮小後複製到網頁資料夾(原圖 2676 px 寬,約 0.7 MB)。"""
+    from PIL import Image
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    im = Image.open(os.path.join(C.RESULTS, name))
+    if im.width > width:
+        im = im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
+    im.convert("RGB").save(dst, optimize=True)
+
+
 # ───────────────────────── 主程式 ─────────────────────────
 def publish(data, cal, check, log=print):
     t0 = time.time()
@@ -191,36 +387,52 @@ def publish(data, cal, check, log=print):
     def lv_hit(method, kind, lv):
         return tr["methods"].get(method, {}).get(kind, {}).get("levels", {}).get(lv)
 
+    # 每檔每個方法最近一次的高 / 低點訊號是否還沒破底 / 沒創高(只用今天以前的存檔與價格)
+    recent = sorted(tab.date.unique())[-40:]
+    rt = tab[tab.date.isin(recent)]
+    preds_by = {c: g.assign(date=pd.to_datetime(g.date)).set_index("date") for c, g in rt.groupby("code")}
+    closes_by, active = {}, {}
+    for code, r in rows.items():
+        df = data.get(U.ticker_of(code))
+        if r["status"] not in (U.POOL, U.OUT, U.LOWVOL) or df is None or code not in preds_by:
+            continue
+        closes_by[code], act = stock_active(preds_by[code], df, asof)
+        if act:
+            active[code] = act
+
+    def lv_hit(method, kind, lv):
+        return tr["methods"].get(method, {}).get(kind, {}).get("levels", {}).get(lv)
+
     today = {"date": latest["date"], "source": latest.get("source"), "methods": {}, "both_hit": tr.get("both", {}),
-             "hit": {m: {k: tr["methods"].get(m, {}).get(k, {}).get("all") for k in KINDS} for m in C.METHODS}}
+             "hit": {m: {k: tr["methods"].get(m, {}).get(k, {}).get("all") for k in KINDS} for m in C.METHODS},
+             "confirm_hit": confirm_hits()}
     for method in C.METHODS:
         today["methods"][method] = {}
         for kind in KINDS:
             items = []
-            for r in latest["rows"]:
-                mm = r.get(method)
-                if r["status"] != U.POOL or not mm or mm["pred"] != kind:
+            for code, a in active.items():
+                x = a.get(method, {}).get(kind)
+                if x is None or rows[code]["status"] != U.POOL:
                     continue
-                other = r.get("stack" if method == "main" else "main") or {}
-                items.append({"code": r["code"], "name": U.name_of(r["code"]), "close": r.get("close"), "chg_pct": r.get("chg_pct"),
-                              "score": mm["score"],
-                              "level": mm["level"] if method in C.LEVEL_METHODS else None,
-                              "level_hit": lv_hit(method, kind, mm["level"]) if method in C.LEVEL_METHODS else None,
-                              "both": other.get("pred") == kind})
-            items.sort(key=lambda x: -(x["score"] if x["score"] is not None else -1e9))
-            for it in items[:C.TOP_N * 2]:
-                df = data.get(U.ticker_of(it["code"]))
-                if df is not None:
-                    it["spark"] = [round(float(v), 2) for v in clean(df.loc[:asof])["close"].tail(20)]
+                r = rows[code]
+                items.append({"code": code, "name": U.name_of(code), "close": r.get("close"), "chg_pct": r.get("chg_pct"),
+                              "score": x["score"], "level": x["level"],
+                              "level_hit": lv_hit(method, kind, x["level"]) if method in C.LEVEL_METHODS else None,
+                              "both": bool(x["both"]), "date": x["date"], "days": x["days"], "run": x["run"], "group": x["group"]})
+            items.sort(key=lambda x: (x["days"], -(x["score"] if x["score"] is not None else -1e9)))
+            for it in items:
+                if it["code"] in closes_by:
+                    it["spark"] = [round(float(v), 2) for v in closes_by[it["code"]].tail(20)]
             today["methods"][method][kind] = items
     today["both"] = {k: sum(1 for r in latest["rows"] if r["status"] == U.POOL and r.get("main") and r["main"]["pred"] == k
                             and r["stack"]["pred"] == k) for k in KINDS}
     today["n_pool"] = sum(1 for r in latest["rows"] if r["status"] == U.POOL)
     _w(os.path.join(out, "today.json"), _clean_nan(today))
 
-    # 個股
+    # 個股:依代號前兩碼分成幾十個檔(Artifact 一次最多發布 255 個檔案)
     hist = tab[(tab.main_pred.isin(KINDS)) | (tab.stack_pred.isin(KINDS))]
     hist_by = {c: g for c, g in hist.groupby("code")}
+    shards = {}
     for code, r in rows.items():
         if r["status"] in (U.NOSUP,):
             continue
@@ -240,9 +452,13 @@ def publish(data, cal, check, log=print):
             for method in C.METHODS:
                 gm = g[(g[f"{method}_pred"] == "low") & g.truth.notna()]
                 stats[method] = _rate((gm.truth == "low").sum(), len(gm))
-        _w(os.path.join(out, "stocks", f"{code}.json"), _clean_nan({
+        shards.setdefault(shard_of(code), {})[code] = _clean_nan({
             "code": code, "name": U.name_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
-            "today": _public_row(r), "bars": bars, "signals": sig[-40:], "low_stats": stats}))
+            "today": _public_row(r), "active": active.get(code, {}), "bars": bars, "signals": sig[-40:], "low_stats": stats})
+    for k, v in shards.items():
+        _w(os.path.join(out, "stocks", f"{k}.json"), v)
+
+    _w(os.path.join(out, "findings.json"), _clean_nan(findings(out)))
 
     # 自動完成清單
     idx = []

@@ -94,19 +94,25 @@ def test_today_lists_only_pool_sorted(ran_daily):
         for kind in ("low", "high"):
             items = t["methods"][method][kind]
             assert all(day[i["code"]]["status"] == U.POOL and day[i["code"]][method]["pred"] == kind for i in items)
-            scores = [i["score"] for i in items]
-            assert scores == sorted(scores, reverse=True)
+            for g in ("new", "d12", "d3"):                                     # 依「沒破底天數」分組,組內依分數由高到低
+                scores = [i["score"] for i in items if i["group"] == g]
+                assert scores == sorted(scores, reverse=True)
+            assert all(i["days"] == 0 and i["run"] == 1 for i in items)         # 只有一天存檔:都是剛出現、連續第 1 天
 
 
 def test_stock_files_and_index(ran_daily):
-    """Given 每日批次產生的網頁資料 / When 檢查個股檔與自動完成清單 / Then 池內、池外、低波動股都有個股檔並標好分類;
-    ETF 0050 沒有個股檔,清單裡標不支援並附原因"""
+    """Given 每日批次產生的網頁資料 / When 檢查個股檔(依代號前兩碼分檔)與自動完成清單 / Then 池內、池外、低波動股都有資料並標好分類;
+    ETF 0050 沒有個股資料,清單裡標不支援並附原因;分檔數量不超過 Artifact 一次發布的上限"""
     out = C.SITE_DATA
+
+    def shard(code):
+        with open(os.path.join(out, "stocks", f"{PB.shard_of(code)}.json"), encoding="utf-8") as f:
+            return json.load(f)
     for code, st in (("2330", U.POOL), ("2618", U.OUT), ("2412", U.LOWVOL)):
-        with open(os.path.join(out, "stocks", f"{code}.json"), encoding="utf-8") as f:
-            s = json.load(f)
+        s = shard(code)[code]
         assert s["status"] == st and len(s["bars"]) == C.CHART_BARS and s["bars"][-1][0] == str(DATE.date())
-    assert not os.path.exists(os.path.join(out, "stocks", "0050.json"))
+    assert "0050" not in shard("0050") if os.path.exists(os.path.join(out, "stocks", "00.json")) else True
+    assert len(os.listdir(os.path.join(out, "stocks"))) <= 100
     with open(os.path.join(out, "index.json"), encoding="utf-8") as f:
         idx = {r[0]: r for r in json.load(f)}
     assert idx["0050"][2] == U.NOSUP and "ETF" in idx["0050"][4]

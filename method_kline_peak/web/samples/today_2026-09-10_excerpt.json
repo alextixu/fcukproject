@@ -13,6 +13,10 @@
      "level": null,
      "level_hit": null,
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       262.5,
       262.0,
@@ -45,6 +49,10 @@
      "level": null,
      "level_hit": null,
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       480.0,
       453.5,
@@ -77,6 +85,10 @@
      "level": null,
      "level_hit": null,
      "both": false,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       30.97,
       31.32,
@@ -109,6 +121,10 @@
      "level": null,
      "level_hit": null,
      "both": false,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       29.8,
       30.2,
@@ -143,6 +159,10 @@
      "level": null,
      "level_hit": null,
      "both": false,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 2,
+     "group": "new",
      "spark": [
       512.0,
       509.0,
@@ -175,6 +195,10 @@
      "level": null,
      "level_hit": null,
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 2,
+     "group": "new",
      "spark": [
       616.0,
       615.0,
@@ -207,6 +231,10 @@
      "level": null,
      "level_hit": null,
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 2,
+     "group": "new",
      "spark": [
       111.12,
       107.26,
@@ -239,6 +267,10 @@
      "level": null,
      "level_hit": null,
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       78.14,
       74.36,
@@ -279,6 +311,10 @@
       "pct": 33.1
      },
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 7,
+     "group": "new",
      "spark": [
       1015.0,
       983.0,
@@ -315,6 +351,10 @@
       "pct": 33.1
      },
      "both": false,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       2300.0,
       2290.0,
@@ -351,6 +391,10 @@
       "pct": 33.1
      },
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       1885.0,
       1885.0,
@@ -387,6 +431,10 @@
       "pct": 33.1
      },
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       1720.0,
       1700.0,
@@ -425,6 +473,10 @@
       "pct": 21.3
      },
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 4,
+     "group": "new",
      "spark": [
       616.0,
       615.0,
@@ -461,6 +513,10 @@
       "pct": 25.4
      },
      "both": false,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 2,
+     "group": "new",
      "spark": [
       121.0,
       121.5,
@@ -497,6 +553,10 @@
       "pct": 25.4
      },
      "both": false,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       70.9,
       71.1,
@@ -533,6 +593,10 @@
       "pct": 25.4
      },
      "both": true,
+     "date": "2026-09-10",
+     "days": 0,
+     "run": 1,
+     "group": "new",
      "spark": [
       111.12,
       107.26,
@@ -594,6 +658,41 @@
     "hits": 371,
     "n": 1655,
     "pct": 22.4
+   }
+  }
+ },
+ "confirm_hit": {
+  "source": "研究結果:TW200 168 檔、訓練門檻 0%、2024–2026 三年平均(results/confirm_signals_tw200.json)",
+  "main": {
+   "low": {
+    "k0": 29.24,
+    "k1": 53.19,
+    "k2": 67.74,
+    "k3": 81.01,
+    "base": 7.24
+   },
+   "high": {
+    "k0": 28.09,
+    "k1": 50.75,
+    "k2": 67.08,
+    "k3": 79.53,
+    "base": 7.18
+   }
+  },
+  "stack": {
+   "low": {
+    "k0": 27.68,
+    "k1": 49.67,
+    "k2": 62.99,
+    "k3": 75.93,
+    "base": 7.24
+   },
+   "high": {
+    "k0": 26.02,
+    "k1": 47.71,
+    "k2": 62.92,
+    "k3": 74.25,
+    "base": 7.18
    }
   }
  },

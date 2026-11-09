@@ -43,3 +43,19 @@ def test_public_row_drops_main_level_only():
     out = PB._public_row(r)
     assert "level" not in out["main"] and out["stack"]["level"] == "中"
     assert r["main"]["level"] == "高"
+
+
+def test_findings_read_from_result_files():
+    """Given 研究結果檔 / When 產生研究發現頁的資料 / Then 數字和結果檔一致(主軸原始判低點命中率 29.24%、等 3 天確認 81.01%、
+    Stacking 機率 ≥ 0.8 命中率 32.81%、34 檔 2025 等權買進持有 +19.16%);用到未來資訊的列(真實標籤、事後最高分)都標成實際用不了"""
+    F = PB.findings()
+    assert F["cards"]["precision"]["low"] == 29.24 and F["cards"]["confirm"]["k3_hit"] == 81.01
+    assert F["cards"]["filters"]["p8_hit"] == 32.81 and F["cards"]["recall"]["cross"] == 0
+    assert F["lohi_base"]["buy_hold"] == 19.16
+    for m in ("main", "stack"):
+        fut = {r["name"] for r in F["post"][m] if r["future"]}
+        assert fut == {"合併連續・事後最高分"}
+        names = {r["name"]: r["future"] for r in F["lohi"][m]}
+        assert names["真實標籤"] and names["1a 合併連續・事後最高分"] and not names["A0 原始"]
+    assert [r["key"] for r in F["post"]["main"]] == ["A0 原始", "1a", "1b", "top50", "k1", "k2", "k3"]
+    assert F["confirm"]["main"]["low"] == {"k0": 29.24, "k1": 53.19, "k2": 67.74, "k3": 81.01, "base": 7.24}

@@ -30,3 +30,4 @@ __pycache__/
 # 網頁系統:每日存檔、模型、K 線快取、前端資料(本機產生,不進 git)
 method_kline_peak/web/data/
 method_kline_peak/web/site/data/
+method_kline_peak/web/dist/

@@ -64,12 +64,35 @@ KPWEB_POOL=tw100 KPWEB_TRAIN_MIN_AMP=3 python method_kline_peak/web/run.py start
 
 `data/` 與 `site/data/` 不進 git。每日存檔是唯一的紀錄,換電腦時要一起搬。
 
+## 頁面
+
+| 頁面 | 網址 | 內容 |
+|---|---|---|
+| 今日判斷 | `#today` | 判低點 / 判高點依「沒破底 / 沒創高」天數分三組(剛出現、已 1–2 天、已 3 天以上),每組附研究命中率;每檔標「連續第 N 天」 |
+| 個股查詢 | `#stock`、`#stock-2330` | 兩方法判斷、最近 5 天內還沒破底 / 沒創高的訊號、K 線與過去訊號對錯 |
+| 成績追蹤 | `#track` | 每天的判斷 5 天後對答案 |
+| 研究發現 | `#findings` | 研究報告:結論卡片、南電 2024 比較圖、後處理 / 機率門檻 / 低點進高點出三張表、「網頁怎麼用」 |
+| 方法與說明 | `#about` | 標籤定義、兩個方法、研究命中率與回測、免責聲明 |
+
+- 「連續第 N 天」「已 M 天沒破底」只用當天以前的存檔與價格(`system/signals.py`,規則同研究 `confirm_signals.py`),產生網頁資料時才算,不改模型、判斷或存檔格式。
+- 研究發現頁的數字全部在產生網頁資料時從 `results/` 的結果檔讀出(`publish.findings()`),圖是 `results/` 的 png 縮小後複製。
+
+## 發布成 claude.ai Artifact
+
+```bash
+python method_kline_peak/web/run.py publish          # 產生 site/data/
+python method_kline_peak/web/build_artifact.py       # 打包成 dist/(index.html 只放頁面內容,其餘檔案原樣複製)
+```
+
+`dist/index.html` 加上 `dist/` 裡的其他檔案(約 77 個、7 MB)發布成一個 Artifact。個股資料依代號前兩碼分檔(`stocks/23.json`),
+因為 Artifact 一次最多發布 255 個檔案。頁面支援淺色 / 深色主題與手機版面。
+
 ## 測試
 
 ```bash
-python -m pytest method_kline_peak/web/tests        # 網頁系統 41 項
+python -m pytest method_kline_peak/web/tests        # 網頁系統 47 項
 python -m pytest method_kline_peak/tests            # 研究程式碼原本的測試
 ```
 
 網頁系統的測試涵蓋:資料更新(增量、還原價變動重抓、網路失敗、休市)、判斷存檔不覆蓋、5 天後才對答案、
-池內 / 池外 / 低波動 / 不支援判定、判斷檔格式、股票池與訓練門檻設定、兩方法一致命中率與信心等級、特徵不偷看未來、每日批次與回放結果相同、正式模型重現研究 2026 年的成績。
+池內 / 池外 / 低波動 / 不支援判定、判斷檔格式、股票池與訓練門檻設定、兩方法一致命中率與信心等級、連續天數與沒破底天數(不偷看未來)、研究發現的數字和結果檔一致、特徵不偷看未來、每日批次與回放結果相同、正式模型重現研究 2026 年的成績。
