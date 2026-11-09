@@ -302,33 +302,27 @@ crop(os.path.join(RES, "compare_8046_2024_tw200_stack.png"), "fig4_8_post_nandia
 crop(os.path.join(RES, "prob_cut_8046_2024_tw200_stack.png"), "fig4_9_probcut.png", abs_top=62)
 crop(os.path.join(RES, "lohi_compare_8046_2024_tw200_stack.png"), "fig4_10_lohi_nandian.png", abs_top=62)
 
-# 網頁截圖
+# 網頁截圖:Stacking 版(分支 claude/kline-peak-web-app 81f2717 的 *_stack.png)。
+# 只取不含方法切換鈕與「兩方法」對照欄位的區塊,以垂直拼接方式略過那些列。
+def stitch(src, ranges, dst):
+    im = Image.open(src).convert("RGB")
+    w = im.size[0]
+    parts = [im.crop((0, a, w, b)) for a, b in ranges]
+    c = Image.new("RGB", (w, sum(p.size[1] for p in parts)), "white")
+    y = 0
+    for p in parts:
+        c.paste(p, (0, y)); y += p.size[1]
+    c.save(os.path.join(FIG, dst), optimize=True)
+
+
 S = lambda f: os.path.join(SHOTS, f)
-crop(S("today_desktop.png"), "fig4_12_web_today.png", abs_bottom=2445 - 1000)
-crop(S("stock_pool_8454_desktop.png"), "fig4_13_web_stock.png", abs_bottom=2123 - 1240)
-crop(S("track_desktop.png"), "fig4_14_web_track.png", abs_bottom=2360 - 1000)
+# 今日判斷(桌機):導覽列 + 判低點 / 判高點兩欄的前 3 名(略過方法切換鈕與摘要卡)
+stitch(S("today_desktop_stack.png"), [(0, 130), (315, 765)], "fig4_12_web_today.png")
+# 成績追蹤:導覽列 + 命中率卡、60 天命中率圖、信心等級表(到「全部」列為止)
+stitch(S("track_desktop_stack.png"), [(0, 130), (251, 986)], "fig4_14_web_track.png")
 # 附錄
-crop(S("today_desktop.png"), "appB_today.png")
-crop(S("today_mobile.png"), "appB_today_mobile.png", abs_bottom=Image.open(S("today_mobile.png")).size[1] - 1650)
+stitch(S("today_mobile_stack.png"), [(0, 470), (1140, 2230)], "appB_today_mobile.png")
 crop(S("search_autocomplete_desktop.png"), "appB_search.png")
-crop(S("stock_pool_8454_desktop.png"), "appB_stock_pool.png")
-crop(S("stock_outpool_2618_desktop.png"), "appB_stock_outpool.png", abs_bottom=2186 - 1100)
-crop(S("stock_lowvol_2412_desktop.png"), "appB_stock_lowvol.png", abs_bottom=2175 - 1100)
-crop(S("track_desktop.png"), "appB_track.png", abs_bottom=2360 - 1250)
-# 方法與說明:略過含「訓練門檻」字樣的小字列(約 y 628–688)
-im = Image.open(S("about_desktop.png")).convert("RGB")
-w, h = im.size
-a, b = im.crop((0, 0, w, 628)), im.crop((0, 690, w, h))
-c = Image.new("RGB", (w, a.size[1] + b.size[1]), "white")
-c.paste(a, (0, 0)); c.paste(b, (0, a.size[1]))
-c.save(os.path.join(FIG, "appB_about.png"), optimize=True)
-# 研究發現:略過開頭含「訓練門檻」的說明列,只取結論卡片
-crop(S("findings_desktop.png"), "appB_findings.png", abs_top=200, abs_bottom=5640 - 700)
-im = Image.open(S("findings_desktop.png")).convert("RGB")
-hdr = im.crop((0, 0, 1280, 120))
-body = im.crop((0, 205, 1280, 700))
-c = Image.new("RGB", (1280, hdr.size[1] + body.size[1]), "white")
-c.paste(hdr, (0, 0)); c.paste(body, (0, hdr.size[1]))
-c.save(os.path.join(FIG, "appB_findings.png"), optimize=True)
+stitch(S("track_desktop_stack.png"), [(0, 130), (1100, 2455)], "appB_track.png")
 
 print("ok", len(os.listdir(FIG)), "figs")
