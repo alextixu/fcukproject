@@ -236,6 +236,58 @@ s.addText("TW200 回測結果", { placeholder: "title" });
 resultTable(s, BT200, "股票池:TW200 剔除低波動股後 168 檔");
 s.addNotes("這頁是 TW200 剔除低波動股後 168 檔的結果,交易規則和 34 檔相同,數字直接抄自 backtest_long_only_tw200.json。扣成本後:2024 主軸 -16.52%、Stacking -10.58%;2025 主軸 -44.02%、Stacking -39.46%;2026 到 9/11 主軸 -17.62%、Stacking -15.03%。交易筆數 2024 為 144 / 144、2025 為 144 / 142、2026 為 99 / 99。");
 
+// ======================= 8. 主軸 vs Stacking =======================
+// 分類:claude/kline-peak-predict-tool 3d7671c 的 confusion_2024_2026_tw50_amp0.json / _tw200_amp0.json(2024–2026 三年平均)
+// 回測:backtest_long_only.json / backtest_long_only_tw200.json 扣成本 total_return_pct 三年平均
+// 下列平均值由 json 逐年數字算出:macro-F1 與報酬取兩位小數,找到率 / 命中率取一位小數
+const CMP = {
+  // [macro-F1 平均, 逐年(2024, 2025, 2026), 找到 低, 找到 高, 命中 低, 命中 高, 回測扣成本報酬平均]
+  m34: ["52.68", ["51.95", "53.14", "52.93"], "77.8%", "70.0%", "29.8%", "25.1%", -19.87],
+  s34: ["49.14", ["48.54", "49.43", "49.45"], "50.6%", "41.0%", "26.8%", "23.4%", -18.82],
+  m200: ["54.08", ["54.31", "53.42", "54.51"], "80.8%", "78.5%", "29.2%", "28.1%", -26.05],
+  s200: ["50.37", ["50.31", "50.37", "50.43"], "48.4%", "41.8%", "27.7%", "26.0%", -21.69],
+};
+s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "回測" });
+s.addText("主軸 vs Stacking:哪個比較準", { placeholder: "title" });
+{
+  const order = ["m34", "s34", "m200", "s200"];
+  const lab = (t, sub) => ({ text: sub ? [{ text: t, options: { breakLine: true } }, { text: sub, options: { fontSize: 11, bold: false, color: HEX.accent5 } }] : t,
+    options: { bold: true, align: "left", valign: "middle", fill: { color: HEX.lt2 } } });
+  const v = (t, o = {}) => ({ text: t, options: { align: "center", valign: "middle", ...o } });
+  const row = (label, idx, o = (k) => ({ bold: k[0] === "m" })) => [label, ...order.map((k) => v(CMP[k][idx], o(k)))];
+  const rows = [
+    [hdr("指標(三年平均)", { rowspan: 2 }), hdr("34 檔", { colspan: 2 }), hdr("TW200", { colspan: 2 })],
+    [hdr("主軸"), hdr("Stacking"), hdr("主軸"), hdr("Stacking")],
+    row(lab("macro-F1"), 0),
+    [lab("macro-F1 逐年", "2024 / 2025 / 2026"), ...order.map((k) => v(CMP[k][1].map((t, n) => ({ text: t, options: { breakLine: n < 2 } })),
+      { fontSize: 11, color: HEX.accent5 }))],
+    row(lab("找到率 低點"), 2), row(lab("找到率 高點"), 3),
+    row(lab("命中率 低點"), 4), row(lab("命中率 高點"), 5),
+    [lab("回測扣成本報酬", "前 3 檔、持有 5 天"), ...order.map((k) => v(fmtPct(CMP[k][6]), { color: "C0392B", bold: k[0] === "s" }))],
+  ];
+  s.addTable(rows, { x: 0.6, y: 1.4, w: 8.2, colW: [2.2, 1.5, 1.5, 1.5, 1.5], rowH: [0.42, 0.42, 0.48, 0.78, 0.44, 0.44, 0.44, 0.44, 0.66],
+    fontSize: 14, fontFace: THEME.bodyFontFace, color: HEX.dk1, border: { type: "solid", pt: 0.75, color: HEX.accent6 } });
+  const cx = 9.1, cw = 12.75 - cx;
+  card(s, { x: cx, y: 1.4, w: cw, h: 4.25, objectName: "cmp-card" });
+  T(s, "結論", { x: cx + 0.25, y: 1.55, w: cw - 0.4, h: 0.4, fontSize: 16, bold: true, color: C.accent2 });
+  const ln = (t, o = {}) => ({ text: t, options: { breakLine: true, ...o } });
+  T(s, [
+    ln("分類:主軸比較好", { bold: true }),
+    ln("每一年 macro-F1 都高 3–4 點"),
+    ln("主要是找到的轉折點多很多", { paraSpaceAfter: 10 }),
+    ln("命中率:兩個方法差不多", { bold: true }),
+    ln("約 3 成,主軸略高 1.6–3.0 點", { paraSpaceAfter: 10 }),
+    ln("回測:兩個方法都虧損", { bold: true }),
+    ln("三年平均 Stacking 虧得少一點"),
+    { text: "但每年起伏都很大" },
+  ], { x: cx + 0.25, y: 2.05, w: cw - 0.4, h: 3.5, fontSize: 14, color: C.text1 });
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: cx, y: 5.85, w: cw, h: 0.95, rectRadius: 0.08, fill: { color: HEX.dk1 },
+    line: { type: "none" }, objectName: "cmp-takeaway" });
+  T(s, [ln("報告和網頁以主軸為主"), { text: "Stacking 當對照" }], { x: cx + 0.25, y: 5.85, w: cw - 0.4, h: 0.95, fontSize: 15, bold: true,
+    color: C.background1, valign: "middle" });
+}
+s.addNotes("這頁比較兩個方法,數字都是 2024 到 2026 三年平均。分類上主軸比較好:macro-F1 34 檔三年 51.95 / 53.14 / 52.93,Stacking 48.54 / 49.43 / 49.45;TW200 主軸 54.31 / 53.42 / 54.51,Stacking 50.31 / 50.37 / 50.43,每一年都高 3 到 4 點,主要差在找到率:34 檔主軸找到低點 77.8%、高點 70.0%,Stacking 只有 50.6%、41.0%;TW200 主軸 80.8%、78.5%,Stacking 48.4%、41.8%。命中率兩個方法差不多,約 3 成,主軸略高 1.6 到 3.0 點。補充:Stacking 判得少,例如 34 檔 2024 年判低點 1,384 天,主軸是 1,863 天。回測扣成本三年平均,34 檔主軸 -19.87%、Stacking -18.82%,TW200 主軸 -26.05%、Stacking -21.69%,Stacking 虧得少一點,但兩個方法每年起伏都很大,而且都是虧損。所以報告和網頁以主軸為主,Stacking 當對照。如果被問到和只用規則比:分類成績和規則差不多,AE + OC-SVM 的作用是篩候選、給分數。");
+
 // ======================= 南電(三段合併一頁) =======================
 pres.addSection({ title: "南電 2024" });
 const stockSlide = (title, tag, mainDays, stackDays, mainHL, stackHL, notes) => {
@@ -270,7 +322,7 @@ stockSlide("南電 2024:34 檔模型", "34amp0", "判低點 62 天、判高點 3
   "南電 8046 的 2024 年,模型是 34 檔,和第 6 頁回測同一個模型。上段是真實標籤:真高點 17 個、真低點 16 個。中段是主軸:判低點 62 天、判高點 34 天;判高點對 11 錯 23,判低點對 11 錯 51。下段是 Stacking 邏輯迴歸:判低點 65 天、判高點 23 天;判高點對 5 錯 18,判低點對 10 錯 55。實心三角形是判對、空心是判錯,綠色區間是回測的持有期間。");
 stockSlide("南電 2024:TW200 模型", "tw200amp0", "判低點 70 天、判高點 47 天", "判低點 58 天、判高點 22 天",
   ["對 16 / 錯 31", "對 13 / 錯 57"], ["對 7 / 錯 15", "對 10 / 錯 48"],
-  "同一檔南電 2024,換成 TW200(168 檔)的模型,和第 7 頁回測同一個模型。真實標籤一樣是真高點 17 個、真低點 16 個。主軸判低點 70 天、判高點 47 天;判高點對 16 錯 31,判低點對 13 錯 57。Stacking 判低點 58 天、判高點 22 天;判高點對 7 錯 15,判低點對 10 錯 48。和第 8 頁 34 檔模型相比,同一檔股票,兩個模型判的天數和對錯都不同。");
+  "同一檔南電 2024,換成 TW200(168 檔)的模型,和第 7 頁回測同一個模型。真實標籤一樣是真高點 17 個、真低點 16 個。主軸判低點 70 天、判高點 47 天;判高點對 16 錯 31,判低點對 13 錯 57。Stacking 判低點 58 天、判高點 22 天;判高點對 7 錯 15,判低點對 10 錯 48。和第 9 頁 34 檔模型相比,同一檔股票,兩個模型判的天數和對錯都不同。");
 
 // ======================= 展示網頁 =======================
 pres.addSection({ title: "下一步" });
@@ -344,12 +396,12 @@ s.addNotes("左邊是個股查詢,以池內的 8454 富邦媒為例:輸入代號
 async function fixEastAsianFont(file, face) {
   const fs = require("fs");
   const JSZip = require("jszip");
-  const zip = await JSZip.loadAsync(fs.readFileSync(file));
+  const zip = await JSZip.loadAsync(fs.readFileSync(file), { createFolders: false }); // 不產生資料夾項目
   const name = Object.keys(zip.files).find((n) => /^ppt\/theme\/theme\d+\.xml$/.test(n));
   let xml = await zip.file(name).async("string");
   xml = xml.replace(/<a:ea typeface="[^"]*"\/>/g, `<a:ea typeface="${face}"/>`)
            .replace(/<a:font script="Hant" typeface="[^"]*"\/>/g, `<a:font script="Hant" typeface="${face}"/>`);
-  zip.file(name, xml);
+  zip.file(name, xml, { createFolders: false });
   fs.writeFileSync(file, await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" }));
 }
 
