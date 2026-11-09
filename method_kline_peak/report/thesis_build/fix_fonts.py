@@ -15,6 +15,19 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zout:
             x = re.sub(r'<w:rFonts [^>]*(Liberation|WenQuanYi|FreeSans|DejaVu)[^>]*/>', FULL, x)
             print("styles: replaced", n0, "->", len(re.findall(r"Liberation|WenQuanYi|FreeSans|DejaVu", x)))
             data = x.encode("utf8")
+        elif it.filename == "word/settings.xml":
+            x = data.decode("utf8")
+            if "w:updateFields" not in x:
+                # 開啟時更新欄位(目錄、圖目錄、表目錄頁碼);位置在 settings 的子元素中,放在 w:defaultTabStop 之前即可符合順序
+                # CT_Settings 順序:… alwaysMergeEmptyNamespace, updateFields, hdrShapeDefaults, footnotePr, endnotePr, compat, docVars, rsids, mathPr, …
+                after = ["w:hdrShapeDefaults", "w:footnotePr", "w:endnotePr", "w:compat", "w:docVars", "w:rsids", "m:mathPr",
+                         "w:attachedSchema", "w:themeFontLang", "w:clrSchemeMapping", "w:doNotIncludeSubdocsInStats",
+                         "w:doNotAutoCompressPictures", "w:forceUpgrade", "w:captions", "w:readModeInkLockDown", "w:smartTagType",
+                         "sl:schemaLibrary", "w:shapeDefaults", "w:doNotEmbedSmartTags", "w:decimalSymbol", "w:listSeparator"]
+                pos = min([k for k in (x.find("<" + t) for t in after) if k >= 0] or [x.rfind("</w:settings>")])
+                x = x[:pos] + '<w:updateFields w:val="true"/>' + x[pos:]
+            print("settings updateFields:", "w:updateFields" in x)
+            data = x.encode("utf8")
         elif it.filename in ("word/document.xml", "word/footer1.xml", "word/footer2.xml", "word/footer3.xml"):
             x = data.decode("utf8")
             n0 = len(re.findall(r"Liberation|WenQuanYi|FreeSans|DejaVu", x))
