@@ -67,8 +67,9 @@ const card = (slide, o) => slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { rectR
 const bullets = (items, o = {}) => items.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < items.length - 1,
   paraSpaceAfter: 8, ...o } }));
 
+// 網頁截圖改用 claude/kline-peak-web-app e5c1da0(精簡版)。
 // 數字來源:claude/kline-peak-predict-tool 的 results/confusion_2024_2026_tw200_amp0.json、confusion_8046_2024_tw200_amp0.json、
-// compare_8046_2024_tw200.json、README 的後處理 / 機率門檻表(Stacking、TW200 168 檔);網頁截圖:claude/kline-peak-web-app d0bbce2。
+// compare_8046_2024_tw200.json、README 的後處理 / 機率門檻表(Stacking、TW200 168 檔);
 // 版面原則:標題 + 主圖 + 最多 4 個大數字卡;說明一律放講稿。
 const L = (t, o = {}) => ({ text: t, options: { breakLine: true, ...o } });
 // 大數字卡:大數字 + 短標籤
@@ -215,9 +216,9 @@ pres.addSection({ title: "網頁系統" });
 {
   const sl = pres.addSlide({ masterName: "CONTENT", sectionTitle: "網頁系統" });
   sl.addText("網頁:個股查詢", { placeholder: "title" });
-  const h = 5.45, w1 = h * 1280 / 1180, x1 = 0.6;
+  const h = 5.45, w1 = h * 1280 / 1062, x1 = 0.6;
   shot(sl, "kline_peak_ui_stock_8046_tw200.png", x1, 1.3, w1, h, "個股查詢:南電 8046 展示版畫面");
-  const rx = x1 + w1 + 0.45, rw = 12.75 - rx, ih = rw * 440 / 1280;
+  const rx = x1 + w1 + 0.45, rw = 12.75 - rx, ih = rw * 390 / 1280;
   T(sl, "推薦範圍外", { x: rx, y: 1.3, w: rw, h: 0.4, fontSize: 15, bold: true, color: C.text2 });
   shot(sl, "kline_peak_ui_stock_2618_tw200.png", rx, 1.8, rw, ih, "個股查詢:推薦範圍以外的股票 2618 展示版畫面");
   sl.addNotes("個股查詢以南電 8046 為例,和第 4 頁是同一檔股票,屬於台灣 50。2026-09-10 收盤後,三類機率是高點 0.03、低點 0.14、非極值 0.82,加起來是 1,最大的那類就是判斷,所以判為非極值。下方是最近 60 個交易日的 K 線,標出過去的判斷,5 個交易日後對答案,實心是判對、空心是判錯。右邊是推薦範圍以外的股票,例如 2618 長榮航:不在台灣 50,網站一樣算出判斷,但會標示不在推薦範圍、僅供參考。");
@@ -225,7 +226,7 @@ pres.addSection({ title: "網頁系統" });
 {
   const sl = pres.addSlide({ masterName: "CONTENT", sectionTitle: "網頁系統" });
   sl.addText("網頁:成績追蹤", { placeholder: "title" });
-  const h = 5.45, w1 = h * 1280 / 990, x1 = 0.6;
+  const h = 5.45, w1 = h * 1280 / 868, x1 = 0.6;
   shot(sl, "kline_peak_ui_track_tw200.png", x1, 1.3, w1, h, "成績追蹤展示版畫面");
   const rx = x1 + w1 + 0.45, rw = 12.75 - rx;
   stat(sl, rx, 1.3, rw, 1.8, "31.7%", "判低點命中率", C.accent2, 36);
