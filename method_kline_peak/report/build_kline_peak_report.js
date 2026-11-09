@@ -230,6 +230,76 @@ pres.addSection({ title: "方向" });
   sl.addNotes("綜合前面的結果:命中率約 3 成,多判的訊號也多,而且即使用規則篩掉低機率的訊號也沒有更準。所以我們不做自動交易,也不用回測來論證,而是做成給使用者方向的系統。做法是:用 TW200 剔除低波動股後的 168 檔訓練 Stacking,這是最終版本;每天收盤後對台灣 50 的成分股給出高點、低點、非極值的三類機率;5 個交易日後用真實結果對答案、累積命中率,讓使用者自己判斷要不要參考。接下來是網頁系統的展示。");
 }
 
+// ======================= 7–9. 網頁系統(真實畫面,claude/kline-peak-web-app d0bbce2 的截圖) =======================
+pres.addSection({ title: "網頁系統" });
+const shot = (sl, file, x, y, w, h, alt) => {
+  sl.addShape(pres.shapes.RECTANGLE, { x: x - 0.02, y: y - 0.02, w: w + 0.04, h: h + 0.04, fill: { color: HEX.lt1 },
+    line: { color: HEX.accent6, width: 1 }, shadow: { type: "outer", color: "000000", opacity: 0.12, blur: 6, offset: 2, angle: 90 } });
+  sl.addImage({ path: path.join(HERE, file), x, y, w, h, altText: alt });
+};
+const capt = (sl, text, x, y, w) => T(sl, text, { x, y, w, h: 0.3, fontSize: 13, bold: true, color: C.text2, valign: "middle" });
+// 7. 今日判斷
+{
+  const sl = pres.addSlide({ masterName: "CONTENT", sectionTitle: "網頁系統" });
+  sl.addText("網頁系統:今日判斷", { placeholder: "title" });
+  const info = [
+    ["① 今日判斷", "收盤後對台灣 50 全部成分股給判斷,判低點 / 判高點依機率排序"],
+    ["② 個股查詢", "輸入代號,看三類機率、近 60 天 K 線與過去判斷的對錯"],
+    ["③ 成績追蹤", "判斷存檔,5 個交易日後自動對答案"],
+    ["④ 方法與說明", "標籤定義、模型說明與免責聲明"],
+  ];
+  info.forEach(([h, d], i) => {
+    const y = 1.3 + i * 1.25;
+    card(sl, { x: 0.6, y, w: 3.55, h: 1.12, objectName: `page-${i}` });
+    T(sl, h, { x: 0.8, y: y + 0.1, w: 3.2, h: 0.35, fontSize: 15, bold: true, color: C.accent2 });
+    T(sl, d, { x: 0.8, y: y + 0.45, w: 3.2, h: 0.62, fontSize: 13, color: C.text1 });
+  });
+  const y0 = 1.65, h = 4.55, wd = h * 1280 / 1000, wm = h * 780 / 1650, xd = 4.5, xm = 12.75 - wm;
+  capt(sl, "桌機(2026-09-10 收盤,真實模型輸出)", xd, 1.3, wd);
+  shot(sl, "kline_peak_ui_today_desktop_tw200.png", xd, y0, wd, h, "今日判斷(桌機)展示版畫面");
+  capt(sl, "手機", xm, 1.3, wm);
+  shot(sl, "kline_peak_ui_today_mobile_tw200.png", xm, y0, wm, h, "今日判斷(手機)展示版畫面");
+  sl.addNotes("接下來是網頁系統的展示版,畫面都是真實模型輸出,資料到 2026-09-10 收盤。網站只有 Stacking 一個方法,模型用 TW200 剔除低波動股訓練,推薦範圍是台灣 50,50 檔全部給判斷。網頁有四個頁面:今日判斷、個股查詢、成績追蹤、方法與說明。這頁是今日判斷:收盤後列出判低點、判高點,依三類機率中該類的機率排序,每檔附信心等級,並依「已幾天沒破底 / 沒創高」分組;答案要再過 5 個交易日才知道。左邊是桌機、右邊是手機版,截圖只取上半部。");
+}
+// 8. 個股查詢(南電)
+{
+  const sl = pres.addSlide({ masterName: "CONTENT", sectionTitle: "網頁系統" });
+  sl.addText("網頁系統:個股查詢(南電)", { placeholder: "title" });
+  const y0 = 1.65, h = 5.05, w1 = h * 1280 / 1180, x1 = 0.6;
+  capt(sl, "② 個股查詢:8046 南電(台灣 50)", x1, 1.3, w1);
+  shot(sl, "kline_peak_ui_stock_8046_tw200.png", x1, y0, w1, h, "個股查詢:南電 8046 展示版畫面");
+  const rx = x1 + w1 + 0.4, rw = 12.75 - rx;
+  card(sl, { x: rx, y: 1.3, w: rw, h: 1.75, objectName: "stock-points" });
+  T(sl, bullets(["三類機率:高點 / 低點 / 非極值,加起來是 1,最大的那類就是判斷",
+    "K 線上標出過去的判斷,5 天後對答案:實心 = 對、空心 = 錯",
+    "和第 4 頁同一檔股票"]), { x: rx + 0.2, y: 1.42, w: rw - 0.35, h: 1.55, fontSize: 13 });
+  const ih = rw * 440 / 1280;
+  capt(sl, "推薦範圍以外的股票(2618 長榮航)", rx, 3.35, rw);
+  shot(sl, "kline_peak_ui_stock_2618_tw200.png", rx, 3.7, rw, ih, "個股查詢:池外股票 2618 展示版畫面");
+  T(sl, "不在台灣 50 的股票照樣判斷,但會標示「僅供參考」", { x: rx, y: 3.8 + ih, w: rw, h: 0.55, fontSize: 13, color: C.text2 });
+  sl.addNotes("個股查詢以南電 8046 為例,和第 4 頁是同一檔股票。2026-09-10 收盤後,三類機率是高點 0.03、低點 0.14、非極值 0.82,所以判為非極值。下方是最近 60 個交易日的 K 線,標出過去的判斷,5 個交易日後對答案,實心是判對、空心是判錯。右下是推薦範圍以外的股票,例如 2618 長榮航:不在台灣 50,網站一樣算出判斷,但會標示不在推薦範圍、僅供參考。");
+}
+// 9. 成績追蹤
+{
+  const sl = pres.addSlide({ masterName: "CONTENT", sectionTitle: "網頁系統" });
+  sl.addText("網頁系統:成績追蹤", { placeholder: "title" });
+  const y0 = 1.65, h = 5.05, w1 = h * 1280 / 990, x1 = 0.6;
+  capt(sl, "③ 成績追蹤:每天的判斷 5 個交易日後對答案", x1, 1.3, w1);
+  shot(sl, "kline_peak_ui_track_tw200.png", x1, y0, w1, h, "成績追蹤展示版畫面");
+  const rx = x1 + w1 + 0.4, rw = 12.75 - rx;
+  const stats = [["判低點命中率", "31.7%", "2026 年台灣 50 全部判斷(226 / 712)"], ["依信心等級", "高 35.1% / 中 31.8% / 低 28.6%", "信心越高,命中率略高"], ["隨便挑一天剛好是低點", "7.6%", "台灣 50、已對答案的日子"]];
+  stats.forEach(([hh, v, sub], i) => {
+    const y = 1.3 + i * 1.5;
+    card(sl, { x: rx, y, w: rw, h: 1.35, objectName: `track-${i}` });
+    T(sl, hh, { x: rx + 0.2, y: y + 0.1, w: rw - 0.35, h: 0.32, fontSize: 13, bold: true, color: C.text2 });
+    T(sl, v, { x: rx + 0.2, y: y + 0.42, w: rw - 0.35, h: 0.45, fontSize: i === 1 ? 15 : 22, bold: true, color: C.accent2 });
+    T(sl, sub, { x: rx + 0.2, y: y + 0.9, w: rw - 0.35, h: 0.35, fontSize: 12, color: C.text2 });
+  });
+  sl.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: rx, y: 5.85, w: rw, h: 0.85, rectRadius: 0.08, fill: { color: HEX.dk1 }, line: { type: "none" }, objectName: "track-takeaway" });
+  T(sl, "和研究結果一樣約三成,所以當提醒、不當指令", { x: rx + 0.2, y: 5.85, w: rw - 0.35, h: 0.85, fontSize: 14, bold: true, color: C.background1, valign: "middle" });
+  sl.addNotes("成績追蹤:每天的判斷當天就存檔,不會事後修改,5 個交易日後自動對答案。資料 2026-01-02 到 2026-09-10 是回放,也就是上線前用同一個模型逐日產生,9/10 起是實際追蹤。2026 年台灣 50 全部的判低點命中率是 31.7%,也就是 712 次判斷中對 226 次;依信心等級分,高 35.1%、中 31.8%、低 28.6%;隨便挑一天剛好是低點的機率是 7.6%。這和研究結果的約三成一致,所以網站的定位是提醒,不是買賣指令。");
+}
+
 // 主題的東亞字型(ea)預設是空的,繁中(Hant)會落到新細明體;改成正黑體,中文字才會用 Microsoft JhengHei
 async function fixEastAsianFont(file, face) {
   const fs = require("fs");
