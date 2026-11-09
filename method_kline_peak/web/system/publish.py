@@ -201,8 +201,6 @@ def shard_of(code):
 M_KEYS = {"main": "主軸", "stack": "Stacking 邏輯迴歸"}
 K_ZH = {"low": "低點", "high": "高點"}
 FUTURE = "用到未來資訊,實際用不了"
-IMAGES = [("compare_8046_2024_tw200_main.png", "main"), ("compare_8046_2024_tw200_stack.png", "stack"),
-          ("prob_cut_8046_2024_tw200_stack.png", "prob"), ("lohi_compare_8046_2024_tw200_main.png", "lohi")]
 
 
 def _rj(name):
@@ -252,28 +250,28 @@ def findings(out=None):
             if isinstance(x, dict) and "confusion_rows_true_cols_pred(漲,不漲不跌,跌)" in x:
                 cm = x["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"]
                 cross += cm[0][2] + cm[2][0]
-    a0, s0 = avg["主軸"]["A0 原始"], avg["Stacking 邏輯迴歸"]["A0 原始"]
-    top50, top10 = avg["主軸"]["2 每天前 50%"], avg["主軸"]["2 每天前 10%"]
     pa = pc["全部_三年平均"]
     p0, p7, p8 = pa["不設門檻(原始)"], pa["最大機率 ≥ 0.7"], pa["最大機率 ≥ 0.8"]
-    ca = cf["classification_三年平均"]["主軸"]
-    cards = {
-        "recall": {"low": a0["低點"]["找到率_精確"], "high": a0["高點"]["找到率_精確"],
-                   "low2": a0["低點"]["找到率_±2天"], "high2": a0["高點"]["找到率_±2天"], "cross": int(cross),
-                   "years": sorted(conf)},
-        "precision": {"low": a0["低點"]["命中率"], "high": a0["高點"]["命中率"],
-                      "base_low": a0["低點"]["隨機基準"], "base_high": a0["高點"]["隨機基準"]},
-        "filters": {"orig_hit": a0["低點"]["命中率"], "orig_rec": a0["低點"]["找到率_精確"],
-                    "top50_hit": top50["低點"]["命中率"], "top50_rec": top50["低點"]["找到率_精確"],
-                    "top10_hit": top10["低點"]["命中率"], "top10_rec": top10["低點"]["找到率_精確"],
-                    "s_hit": p0["低點"]["命中率"], "s_rec": p0["低點"]["找到率_精確"],
-                    "p7_hit": p7["低點"]["命中率"], "p7_rec": p7["低點"]["找到率_精確"],
-                    "p8_hit": p8["低點"]["命中率"], "p8_rec": p8["低點"]["找到率_精確"]},
-        "confirm": {"k0_hit": ca["A0 原始"]["低點"]["命中率"], "k1_hit": ca["k=1"]["低點"]["命中率"],
-                    "k3_hit": ca["k=3"]["低點"]["命中率"], "bt0": bt(0, "主軸"), "bt1": bt(1, "主軸"), "bt2": bt(2, "主軸"),
-                    "bt3": bt(3, "主軸"), "sbt0": bt(0, "Stacking 邏輯迴歸"), "sbt3": bt(3, "Stacking 邏輯迴歸"),
-                    "late1": late(1, "主軸"), "late3": late(3, "主軸")},
-    }
+    cards = {"cross": int(cross), "years": sorted(conf)}
+    for m, mk in M_KEYS.items():                                  # 兩個方法各一組結論數字(網頁預設顯示 Stacking)
+        a0 = avg[mk]["A0 原始"]
+        top50, top10 = avg[mk]["2 每天前 50%"], avg[mk]["2 每天前 10%"]
+        ca = cf["classification_三年平均"][mk]
+        cards[m] = {
+            "recall": {"low": a0["低點"]["找到率_精確"], "high": a0["高點"]["找到率_精確"],
+                       "low2": a0["低點"]["找到率_±2天"], "high2": a0["高點"]["找到率_±2天"]},
+            "precision": {"low": a0["低點"]["命中率"], "high": a0["高點"]["命中率"],
+                          "base_low": a0["低點"]["隨機基準"], "base_high": a0["高點"]["隨機基準"]},
+            "filters": {"orig_hit": a0["低點"]["命中率"], "orig_rec": a0["低點"]["找到率_精確"],
+                        "top50_hit": top50["低點"]["命中率"], "top50_rec": top50["低點"]["找到率_精確"],
+                        "top10_hit": top10["低點"]["命中率"], "top10_rec": top10["低點"]["找到率_精確"],
+                        # 機率門檻只有 Stacking 有(主軸沒有機率)
+                        "p7_hit": p7["低點"]["命中率"] if m == "stack" else None, "p7_rec": p7["低點"]["找到率_精確"] if m == "stack" else None,
+                        "p8_hit": p8["低點"]["命中率"] if m == "stack" else None, "p8_rec": p8["低點"]["找到率_精確"] if m == "stack" else None},
+            "confirm": {"k0_hit": ca["A0 原始"]["低點"]["命中率"], "k1_hit": ca["k=1"]["低點"]["命中率"],
+                        "k3_hit": ca["k=3"]["低點"]["命中率"], "bt0": bt(0, mk), "bt1": bt(1, mk), "bt2": bt(2, mk),
+                        "bt3": bt(3, mk), "late1": late(1, mk), "late3": late(3, mk)},
+        }
 
     # 後處理比較(TW200 三年平均)
     post = {}
@@ -312,46 +310,41 @@ def findings(out=None):
     lohi_base = {"buy_hold": lo["等權買進持有_pct"], "top3": lo["前3檔持有5天_引用"], "n_stocks": lo["n_stocks"], "year": lo["year"]}
 
     # 南電 2024 圖的說明(數字從 json 讀)
-    def c8(mk, key, kind):
-        for k, v in cmp8["methods"][mk].items():
-            if k.startswith(key):
-                return v[K_ZH[kind]]
-    m0, m3 = c8("主軸", "A0", "low"), c8("主軸", "確認 k=3", "low")
-    s0_, s3 = c8("Stacking 邏輯迴歸", "A0", "low"), c8("Stacking 邏輯迴歸", "確認 k=3", "low")
-    s1a = c8("Stacking 邏輯迴歸", "1a", "low")
+    def c8(mk, key, kind="low"):
+        return next(v[K_ZH[kind]] for k, v in cmp8["methods"][mk].items() if k.startswith(key))
+
+    def l8(mk, prefix):
+        return next(v for k, v in lo8["methods"][mk].items() if k.startswith(prefix))
     pn = pc["南電 2024"]
     q0, q7, q8 = pn["不設門檻(原始)"]["低點"], pn["最大機率 ≥ 0.7"]["低點"], pn["最大機率 ≥ 0.8"]["低點"]
-    lm = lo8["methods"]["主軸"]
-
-    def l8(prefix):
-        return next(v for k, v in lm.items() if k.startswith(prefix))
-    captions = {
-        "main": ["主軸 · 各種後處理留下的訊號",
-                 f"最上面是南電 2024 的真實高低點。原始判斷把 {m0['判']} 天判成低點,其中 {m0['對']} 天對、{m0['錯']} 天錯;"
-                 f"{m0['真']} 個真低點有 {m0['當天抓到']} 個當天就被提醒到,但一路下跌時幾乎天天喊低點。",
-                 f"往下是幾種減少訊號的方法。等 3 天確認後只剩 {m3['判']} 天({m3['對']} 對 / {m3['錯']} 錯),真低點一個都沒少;"
-                 f"代價是確認的那天(小點)已經晚了 3 天。"],
-        "stack": ["Stacking · 各種後處理留下的訊號",
-                  f"Stacking 判得比較少:原始判低點 {s0_['判']} 天({s0_['對']} 對 / {s0_['錯']} 錯),真低點只抓到 {s0_['當天抓到']} 個。",
-                  f"「事後最高分」那列看起來最好(命中 {s1a['命中率']}%),但要等整段訊號結束才知道哪天最高,實際用不了。"
-                  f"等 3 天確認剩 {s3['判']} 天({s3['對']} 對 / {s3['錯']} 錯)。"],
-        "prob": ["Stacking · 只留最大機率夠高的訊號",
-                 f"不設門檻時判低點 {q0['判']} 天,命中 {q0['命中率']}%。機率 ≥ 0.7 剩 {q7['判']} 天、命中 {q7['命中率']}%;"
-                 f"≥ 0.8 剩 {q8['判']} 天、命中 {q8['命中率']}%。",
-                 f"門檻拉高,錯的訊號少了,對的也一起少了:命中率 {q0['命中率']}% → {q8['命中率']}%,真低點當天抓到 {q0['當天抓到']} → {q8['當天抓到']} 個。"],
-        "lohi": ["主軸 · 南電 2024 低點進場、高點出場",
-                 f"南電 2024 全年下跌,買進持有 {lo8['buy_hold_pct']}%。照原始判斷低點買、高點賣是 {l8('A0')['扣成本_pct']}%,"
-                 f"等 3 天確認是 {l8('確認 k=3')['扣成本_pct']}%。",
-                 f"每一種實際做得到的規則都是虧錢,只是虧得比買進持有少。最上面「真實標籤」的 +{l8('真實標籤')['扣成本_pct']}% "
-                 f"是事先知道答案的上限,實際做不到。"],
-    }
-    imgs = []
-    for fname, key in IMAGES:
-        imgs.append({"file": f"img/{fname}", "title": captions[key][0], "text": captions[key][1:]})
-        if out is not None:
-            _copy_img(fname, os.path.join(out, "img", fname))
+    imgs = {}
+    for m, mk in M_KEYS.items():
+        name = "Stacking" if m == "stack" else "主軸"
+        x0, x1a, x3 = c8(mk, "A0"), c8(mk, "1a"), c8(mk, "確認 k=3")
+        h0 = c8(mk, "A0", "high")
+        items = [(f"compare_8046_2024_tw200_{m}.png", f"{name} · 各種後處理留下的訊號", [
+            f"最上面是南電 2024 的真實高低點。{name} 原始判斷把 {x0['判']} 天判成低點,其中 {x0['對']} 天對、{x0['錯']} 天錯;"
+            f"{x0['真']} 個真低點有 {x0['當天抓到']} 個當天就被提醒到(判高點 {h0['判']} 天,{h0['真']} 個真高點抓到 {h0['當天抓到']} 個)。",
+            f"「事後最高分」那列命中 {x1a['命中率']}%,但要等整段訊號結束才知道哪天最高,實際用不了。"
+            f"等 3 天確認剩 {x3['判']} 天({x3['對']} 對 / {x3['錯']} 錯),真低點一個都沒少;代價是確認的那天(小點)已經晚了 3 天。"])]
+        if m == "stack":
+            items.append(("prob_cut_8046_2024_tw200_stack.png", "Stacking · 只留最大機率夠高的訊號", [
+                f"不設門檻時判低點 {q0['判']} 天,命中 {q0['命中率']}%。機率 ≥ 0.7 剩 {q7['判']} 天、命中 {q7['命中率']}%;"
+                f"≥ 0.8 剩 {q8['判']} 天、命中 {q8['命中率']}%。",
+                f"門檻拉高,錯的訊號少了,對的也一起少了:命中率 {q0['命中率']}% → {q8['命中率']}%,"
+                f"真低點當天抓到 {q0['當天抓到']} → {q8['當天抓到']} 個。"]))
+        items.append((f"lohi_compare_8046_2024_tw200_{m}.png", f"{name} · 南電 2024 低點進場、高點出場", [
+            f"南電 2024 全年下跌,買進持有 {lo8['buy_hold_pct']}%。照 {name} 原始判斷低點買、高點賣是 {l8(mk, 'A0')['扣成本_pct']}%,"
+            f"等 3 天確認是 {l8(mk, '確認 k=3')['扣成本_pct']}%。",
+            f"實際做得到的規則都沒有賺錢,只是虧得比買進持有少。最上面「真實標籤」的 +{l8(mk, '真實標籤')['扣成本_pct']}% "
+            f"是事先知道答案的上限,實際做不到。"]))
+        imgs[m] = []
+        for fname, title, text in items:
+            imgs[m].append({"file": f"img/{fname}", "title": title, "text": text})
+            if out is not None:
+                _copy_img(fname, os.path.join(out, "img", fname))
     return {"cards": cards, "post": post, "prob": prob, "prob_median": pc["機率中位數_三年平均"], "lohi": lohi,
-            "lohi_base": lohi_base, "images": imgs, "confirm": confirm_hits(),
+            "lohi_base": lohi_base, "images": imgs, "confirm": confirm_hits(), "default_method": C.DEFAULT_METHOD,
             "sources": ["postproc_signals_tw200.json", "confirm_signals_tw200.json", "prob_cut_tw200.json",
                         "lohi_compare_34_2025.json", "compare_8046_2024_tw200.json", "lohi_compare_8046_2024_tw200.json",
                         "confusion_2024_2026_tw200_amp0.json"]}
@@ -474,5 +467,6 @@ def publish(data, cal, check, log=print):
         "published": time.strftime("%Y-%m-%d %H:%M"), "check": check, "model": latest.get("model"),
         "profile": C.profile_info(sum(1 for r in latest["rows"] if r["status"] == U.POOL)),
         "counts": {s: sum(1 for r in latest["rows"] if r["status"] == s) for s in (U.POOL, U.OUT, U.LOWVOL, U.NODATA, "halted")},
-        "rules": {"hold": C.HOLD, "cost_pct": C.COST_PCT, "top_n": C.TOP_N, "min_move": C.MIN_MOVE}}))
+        "rules": {"hold": C.HOLD, "cost_pct": C.COST_PCT, "top_n": C.TOP_N, "min_move": C.MIN_MOVE},
+        "default_method": C.DEFAULT_METHOD}))
     log(f"網頁資料完成:{len(rows)} 檔  ({time.time() - t0:.0f}s)")

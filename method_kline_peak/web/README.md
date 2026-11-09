@@ -66,6 +66,9 @@ KPWEB_POOL=tw100 KPWEB_TRAIN_MIN_AMP=3 python method_kline_peak/web/run.py start
 
 ## 頁面
 
+網站預設顯示 ② Stacking(`config.DEFAULT_METHOD`,2026-11-09 使用者決定),① 主軸保留當對照,今日判斷、成績追蹤、研究發現都可以切換過去;
+個股頁的大字判斷與 K 線標記用預設方法,兩方法比較表 Stacking 在前。
+
 | 頁面 | 網址 | 內容 |
 |---|---|---|
 | 今日判斷 | `#today` | 判低點 / 判高點依「沒破底 / 沒創高」天數分三組(剛出現、已 1–2 天、已 3 天以上),每組附研究命中率;每檔標「連續第 N 天」 |
@@ -90,7 +93,7 @@ python method_kline_peak/web/build_artifact.py       # 打包成 dist/(index.htm
 ## 測試
 
 ```bash
-python -m pytest method_kline_peak/web/tests        # 網頁系統 47 項
+python -m pytest method_kline_peak/web/tests        # 網頁系統 49 項
 python -m pytest method_kline_peak/tests            # 研究程式碼原本的測試
 ```
 

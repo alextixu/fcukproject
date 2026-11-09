@@ -102,8 +102,10 @@ def test_today_lists_only_pool_sorted(ran_daily):
 
 def test_stock_files_and_index(ran_daily):
     """Given 每日批次產生的網頁資料 / When 檢查個股檔(依代號前兩碼分檔)與自動完成清單 / Then 池內、池外、低波動股都有資料並標好分類;
-    ETF 0050 沒有個股資料,清單裡標不支援並附原因;分檔數量不超過 Artifact 一次發布的上限"""
+    ETF 0050 沒有個股資料,清單裡標不支援並附原因;分檔數量不超過 Artifact 一次發布的上限;meta.json 的預設方法是 Stacking"""
     out = C.SITE_DATA
+    with open(os.path.join(out, "meta.json"), encoding="utf-8") as f:
+        assert json.load(f)["default_method"] == "stack"
 
     def shard(code):
         with open(os.path.join(out, "stocks", f"{PB.shard_of(code)}.json"), encoding="utf-8") as f:
