@@ -183,8 +183,8 @@ steps = [
     ("股票池", "34 檔(台灣50 剔除 16 檔低波動股)\nTW200 剔除低波動股後 168 檔"),
     ("標籤", "11 天視窗,t = 第 6 天\n高點 / 低點 / 非極值"),
     ("特徵", "t-5 ~ t 六根 K 線,29 維"),
-    ("模型", "① 主軸:規則候選 + AE + OC-SVM\n② Stacking:兩組 AE + OC-SVM → 邏輯迴歸"),
-    ("walk-forward 評估", "前 4 年訓練、測下一年(2024、2025、2026)\n混淆矩陣、macro-F1、找到率、命中率"),
+    ("模型", "Stacking 第一層:高點、低點兩組 AE + OC-SVM\n對每一天打分數 → 第二層邏輯迴歸輸出三類機率"),
+    ("walk-forward 評估", "前 4 年訓練(第一層 3 年、第二層 1 年)、測下一年\n混淆矩陣、macro-F1、找到率、命中率"),
     ("交易模擬", "只做多前 3 檔回測、個案、後處理分析"),
     ("系統實作", "網頁系統:每日判斷、個股查詢、成績追蹤"),
 ]
@@ -214,29 +214,10 @@ for ax, (name, vals, col) in zip(axs, examples):
 fig.suptitle("收盤價示意(數值為虛構)", fontsize=10, color=MUTED, y=0.02)
 save(fig, "fig3_1_label.png")
 
-# 圖 3.2 主軸架構
-fig, ax = plt.subplots(figsize=(10, 4.2))
-ax.set_xlim(0, 20); ax.set_ylim(0, 8.4); ax.axis("off")
-box(ax, 0.2, 3.4, 2.6, 1.6, "t 日收盤後\n29 維特徵", size=10.5)
-box(ax, 3.4, 3.4, 3.0, 1.6, "規則挑候選\nt 收盤為 t-5 ~ t\n最高 / 最低", size=10)
-arrow(ax, 2.8, 4.2, 3.4, 4.2)
-for k, (lab, col, yy) in enumerate((("高點候選", ORANGE, 6.0), ("低點候選", BLUE, 0.8))):
-    box(ax, 7.2, yy, 2.4, 1.6, lab, fc="white", ec=col, color=col, size=10.5, bold=True)
-    box(ax, 10.2, yy, 2.4, 1.6, "標準化\n缺值補中位數", size=9.5)
-    box(ax, 13.2, yy, 2.4, 1.6, "線性 AE\n29 → 16", size=10)
-    box(ax, 16.2, yy, 3.7, 1.6, "OC-SVM\n(RBF, ν = 0.1, 相似度權重)\n分數 = decision_function", size=8.5)
-    arrow(ax, 6.4, 4.2, 7.2, yy + 0.8)
-    for x1, x2 in ((9.6, 10.2), (12.6, 13.2), (15.6, 16.2)):
-        arrow(ax, x1, yy + 0.8, x2, yy + 0.8)
-box(ax, 7.2, 3.4, 12.5, 1.6, "分數 > 0 → 判為該類;分數 ≤ 0 → 改判非極值\n分數也用來排序(回測取每天前 3 檔)",
-    fc=INK, ec=INK, color="white", size=10.5)
-ax.text(3.4, 2.7, "非候選一律判非極值", fontsize=9.5, color=MUTED)
-save(fig, "fig3_2_main_arch.png")
-
 # 圖 3.3 Stacking 架構
 fig, ax = plt.subplots(figsize=(10, 4.4))
 ax.set_xlim(0, 20); ax.set_ylim(0, 8.8); ax.axis("off")
-box(ax, 0.2, 3.6, 2.8, 1.6, "每一天\n29 維特徵\n(不用規則)", size=10)
+box(ax, 0.2, 3.6, 2.8, 1.6, "每一天\n29 維特徵\n(不經規則篩選)", size=10)
 for lab, col, yy, tag in (("高點 AE + OC-SVM", ORANGE, 6.2, "s_high"), ("低點 AE + OC-SVM", BLUE, 1.0, "s_low")):
     box(ax, 4.0, yy, 4.6, 1.6, f"第一層:{lab}\n只用 A 期真{lab[:2]}訓練", fc="white", ec=col, color=INK, size=10)
     box(ax, 9.4, yy, 2.6, 1.6, f"分數\n{tag}", fc="white", ec=col, color=col, size=10.5, bold=True)
@@ -253,12 +234,10 @@ fig, ax = plt.subplots(figsize=(10, 3.3))
 yrs = list(range(2020, 2027))
 for i, ty in enumerate((2024, 2025, 2026)):
     yy = 2 - i
-    for y_ in range(ty - 4, ty):
-        ax.add_patch(plt.Rectangle((y_, yy + 0.38), 0.96, 0.32, color=TEAL, alpha=0.85))
     for y_ in range(ty - 4, ty - 1):
-        ax.add_patch(plt.Rectangle((y_, yy + 0.02), 0.96, 0.32, color=PURPLE, alpha=0.55))
-    ax.add_patch(plt.Rectangle((ty - 1, yy + 0.02), 0.96, 0.32, color=PURPLE, alpha=0.95))
-    ax.add_patch(plt.Rectangle((ty, yy + 0.02), 0.96 if ty < 2026 else 0.7, 0.68, color=ORANGE, alpha=0.9))
+        ax.add_patch(plt.Rectangle((y_, yy + 0.12), 0.96, 0.5, color=PURPLE, alpha=0.55))
+    ax.add_patch(plt.Rectangle((ty - 1, yy + 0.12), 0.96, 0.5, color=PURPLE, alpha=0.95))
+    ax.add_patch(plt.Rectangle((ty, yy + 0.12), 0.96 if ty < 2026 else 0.7, 0.5, color=ORANGE, alpha=0.9))
     ax.text(2019.9, yy + 0.36, f"測試 {ty}", ha="right", va="center", fontsize=10.5)
 ax.set_xlim(2018.8, 2027.1); ax.set_ylim(-0.1, 2.9)
 ax.set_xticks([y_ + 0.48 for y_ in yrs]); ax.set_xticklabels([str(y_) for y_ in yrs])
@@ -266,31 +245,10 @@ ax.set_yticks([])
 for s in ("top", "right", "left"):
     ax.spines[s].set_visible(False)
 from matplotlib.patches import Patch
-ax.legend(handles=[Patch(color=TEAL, alpha=0.85, label="主軸訓練(前 4 年)"), Patch(color=PURPLE, alpha=0.55, label="Stacking 第一層 A(3 年)"),
+ax.legend(handles=[Patch(color=PURPLE, alpha=0.55, label="Stacking 第一層 A(3 年)"),
                    Patch(color=PURPLE, alpha=0.95, label="Stacking 第二層 B(1 年)"), Patch(color=ORANGE, alpha=0.9, label="測試年")],
-          loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=4, fontsize=9, frameon=False)
+          loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=3, fontsize=9, frameon=False)
 save(fig, "fig3_4_walkforward.png")
-
-# 圖 4.3 主軸 vs Stacking macro-F1(逐年)
-fig, axs = plt.subplots(1, 2, figsize=(10, 3.6), sharey=True)
-for ax, pool, title in zip(axs, ("34", "tw200"), ("34 檔", "TW200(168 檔)")):
-    xs = range(3)
-    m = [data["conf"][pool][y]["main"]["macro_f1"] for y in YEARS]
-    s = [data["conf"][pool][y]["stack"]["macro_f1"] for y in YEARS]
-    b1 = ax.bar([x - 0.18 for x in xs], m, 0.34, color=TEAL, label="主軸")
-    b2 = ax.bar([x + 0.18 for x in xs], s, 0.34, color=PURPLE, label="Stacking")
-    for bars in (b1, b2):
-        for r in bars:
-            ax.text(r.get_x() + r.get_width() / 2, r.get_height() + 0.3, f"{r.get_height():.2f}", ha="center", fontsize=9)
-    ax.set_xticks(list(xs)); ax.set_xticklabels(["2024", "2025", "2026(1–9 月)"])
-    ax.set_ylim(40, 58); ax.set_title(title, fontsize=12)
-    ax.grid(axis="y", color="#E3E8EC"); ax.set_axisbelow(True)
-    for sp in ("top", "right"):
-        ax.spines[sp].set_visible(False)
-axs[0].set_ylabel("macro-F1(%)")
-axs[0].legend(frameon=False, fontsize=10, loc="upper left")
-save(fig, "fig4_3_macro_f1.png")
-
 
 # ───────────────────────── 既有圖裁切 ─────────────────────────
 def crop(src, dst, top=0.0, bottom=0.0, left=0, right=0, abs_top=None, abs_bottom=None):
@@ -302,17 +260,47 @@ def crop(src, dst, top=0.0, bottom=0.0, left=0, right=0, abs_top=None, abs_botto
 
 
 # 混淆矩陣:用簡報已裁掉標題、重排成 3 × 2 的版本
-crop(os.path.join(REPORT, "kline_peak_confusion_tw50.png"), "fig4_1_conf_34.png")
-crop(os.path.join(REPORT, "kline_peak_confusion_tw200.png"), "fig4_2_conf_tw200.png")
+# 只取下排 Stacking(y ≥ 705)
+crop(os.path.join(REPORT, "kline_peak_confusion_tw50.png"), "fig4_1_conf_34.png", abs_top=705)
+crop(os.path.join(REPORT, "kline_peak_confusion_tw200.png"), "fig4_2_conf_tw200.png", abs_top=705)
+# 標題前的「②」編號塗白(報告只剩 Stacking 一個方法)
+from PIL import ImageDraw
+for fn in ("fig4_1_conf_34.png", "fig4_2_conf_tw200.png"):
+    im = Image.open(os.path.join(FIG, fn)).convert("RGB")
+    dr = ImageDraw.Draw(im)
+    import numpy as np
+    g = np.asarray(im.convert("L"))[0:34]          # 第一行標題(macro-F1 那行在下面,不動)
+    dark = (g < 160).any(axis=0)
+    for c0 in (60, 740, 1420):                     # 三欄各自找第一個字(②)的 x 範圍
+        x = c0 + int(np.argmax(dark[c0:c0 + 200]))
+        x1 = x
+        while dark[x1 + 1] or dark[x1 + 2] or dark[x1 + 3]:
+            x1 += 1
+        dr.rectangle((x - 1, 0, x1 + 1, 39), fill="white")
+    im.save(os.path.join(FIG, fn), optimize=True)
 # 資產曲線、南電、後處理、低點進高點出:裁掉最上方標題列(含「訓練門檻」字樣)
-crop(os.path.join(RES, "backtest_long_only_curves.png"), "fig4_4_curves_34.png", abs_top=95)
-crop(os.path.join(RES, "backtest_long_only_tw200_curves.png"), "fig4_5_curves_tw200.png", abs_top=95)
-crop(os.path.join(RES, "outputs_8046_2024_34_amp0.png"), "fig4_6_nandian_34.png", abs_top=200)
-crop(os.path.join(RES, "outputs_8046_2024_tw200_amp0.png"), "fig4_7_nandian_tw200.png", abs_top=200)
-crop(os.path.join(RES, "compare_8046_2024_tw200_main.png"), "fig4_8_post_nandian.png", abs_top=62)
+# 資產曲線只取下排 Stacking(y ≥ 820)
+crop(os.path.join(RES, "backtest_long_only_curves.png"), "fig4_4_curves_34.png", abs_top=820)
+crop(os.path.join(RES, "backtest_long_only_tw200_curves.png"), "fig4_5_curves_tw200.png", abs_top=820)
+
+
+# 南電每日判斷:只留「真實標籤」與「Stacking」兩段及圖下說明
+def stack_panels(src, dst):
+    im = Image.open(src).convert("RGB")
+    w, h = im.size
+    parts = [im.crop((0, 205, w, 705)), im.crop((0, 1372, w, 1895)), im.crop((0, 2045, w, h))]
+    c = Image.new("RGB", (w, sum(p.size[1] for p in parts)), "white")
+    y = 0
+    for p in parts:
+        c.paste(p, (0, y)); y += p.size[1]
+    c.save(os.path.join(FIG, dst), optimize=True)
+
+
+stack_panels(os.path.join(RES, "outputs_8046_2024_34_amp0.png"), "fig4_6_nandian_34.png")
+stack_panels(os.path.join(RES, "outputs_8046_2024_tw200_amp0.png"), "fig4_7_nandian_tw200.png")
+crop(os.path.join(RES, "compare_8046_2024_tw200_stack.png"), "fig4_8_post_nandian.png", abs_top=62)
 crop(os.path.join(RES, "prob_cut_8046_2024_tw200_stack.png"), "fig4_9_probcut.png", abs_top=62)
-crop(os.path.join(RES, "lohi_compare_8046_2024_tw200_main.png"), "fig4_10_lohi_nandian.png", abs_top=62)
-crop(os.path.join(RES, "lohi_compare_34_2025.png"), "fig4_11_lohi_34.png", abs_top=72)
+crop(os.path.join(RES, "lohi_compare_8046_2024_tw200_stack.png"), "fig4_10_lohi_nandian.png", abs_top=62)
 
 # 網頁截圖
 S = lambda f: os.path.join(SHOTS, f)
