@@ -144,7 +144,6 @@ const cover = [
 const front = [];
 front.push(H1("誌謝", { first: true }));
 front.push(P("本專題得以完成,首先感謝指導教授李俊宏老師一路以來的指導。從研究題目的方向、標籤的定義,到建議以兩組模型的輸出再訓練第三個模型(Stacking),老師在每個關鍵的轉折點都給了明確的方向,也提醒我們以嚴謹的方式對待實驗結果。"));
-front.push(P("感謝同系郭念慈同學與李俊宏老師先前的研究,本專題的局部高低點標籤與規則基準即以該研究為出發點;在此基礎上,我們才能專注於比較不同模型、評估交易上的可行性並實作系統。"));
 front.push(P("也感謝系上提供的學習環境,以及在專題過程中給予意見與協助的同學與家人。專題中仍有許多不足之處,尚祈各位先進不吝指正。"));
 front.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 480, ...BODY_LINE }, children: [run("郭家齊、呂偉湘 謹誌")] }));
 front.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: BODY_LINE, children: [run("中華民國一百一十五年十一月")] }));
