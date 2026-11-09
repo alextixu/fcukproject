@@ -2,9 +2,10 @@
 
 - 支援範圍:上市(TWSE)普通股,代號 4 位數字、不是 0 開頭。ETF、上櫃、興櫃、特別股、存託憑證都不支援。
   名稱與市場別來自 backtest/ncku/backtest/stock_api/stock_symbol_map.json。
-- 池內:訓練用的股票池(設定值 config.POOL,預設 TW100;剔除低波動股後 2026 年為 73 檔,存在模型檔裡)。
-- 低波動:2020-01 起每日收盤漲跌幅(絕對值)中位數 < 0.725%(同 mainline.low_vol),判斷不適用。
-- 池外:其餘支援的股票,判斷照算,但沒有驗證過。
+- 推薦範圍(status = pool):config.RECOMMEND,預設台灣 50。50 檔全部給判斷,低波動股也照樣出判斷。
+  訓練用的股票池是另一份(config.POOL,預設 TW200 剔除低波動股,存在模型檔裡)。
+- 低波動:推薦範圍以外、2020-01 起每日收盤漲跌幅(絕對值)中位數 < 0.725%(同 mainline.low_vol),判斷不適用。
+- 池外:推薦範圍以外的其餘上市普通股,判斷照算,畫面加提示。
 """
 import json
 import os
@@ -16,7 +17,7 @@ import pandas as pd
 from . import config as C
 
 POOL, OUT, LOWVOL, NOSUP, NODATA = "pool", "out", "lowvol", "nosup", "nodata"
-STATUS_NAMES = {POOL: "池內", OUT: "池外", LOWVOL: "低波動", NOSUP: "不支援", NODATA: "資料不足"}
+STATUS_NAMES = {POOL: "台灣 50", OUT: "池外", LOWVOL: "低波動", NOSUP: "不支援", NODATA: "資料不足"}
 MARKET_NAMES = {"TWSE": "上市", "OTC": "上櫃", "ESB": "興櫃", "ETF": "ETF"}
 _CODE = re.compile(r"[1-9]\d{3}")
 
@@ -62,6 +63,12 @@ def all_supported():
     return sorted(c for c in symbols() if supported(c))
 
 
+def recommend_list():
+    """推薦範圍的股票代號(.TW),順序照 TICKER_SETS。"""
+    from data_loader import TICKER_SETS  # noqa: E402
+    return [t for t in TICKER_SETS[C.RECOMMEND] if supported(code_of(t))]
+
+
 def universe(kind="all"):
     """每日要計算的股票代號(.TW)。all = 全部上市普通股;tw200 = 研究用 TW200 清單裡的上市普通股。"""
     if kind == "tw200":
@@ -79,7 +86,7 @@ def daily_move(df, upto=None):
 
 
 def classify(code, df, pool, upto=None):
-    """回傳 (分類, 每日漲跌幅中位數)。pool 為池內代號(.TW)的集合。"""
+    """回傳 (分類, 每日漲跌幅中位數)。pool 為推薦範圍代號(.TW)的集合;推薦範圍內的低波動股仍算 pool。"""
     if not supported(code):
         return NOSUP, None
     if df is None or len(df) < C.MIN_BARS:
@@ -94,13 +101,14 @@ def classify(code, df, pool, upto=None):
 
 def pool_for_year(year, store=None, pool=None):
     """year 年使用的股票池(.TW 代號)。pool 預設為設定值 config.POOL。
-    2026 年且研究結果檔有這個股票池:直接用結果檔記錄的清單(TW100 73 檔、TW200 168 檔、台灣50 34 檔),和研究完全相同;
-    其他情況:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。
+    2026 年(含)以前且研究結果檔有這個股票池:直接用結果檔記錄的清單(TW100、TW200、台灣50 剔除低波動股),和研究完全相同
+    (研究 2024–2026 的 walk-forward 每年都用同一份清單);
+    2027 年起:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。
     順序照 TICKER_SETS[pool](同 mainline.load_data):訓練資料的列順序會影響 AE / OC-SVM 的結果,順序不同就無法和研究完全一致。"""
     import mainline as ML
     from data_loader import TICKER_SETS  # noqa: E402
     pool = pool or C.POOL
-    if year == 2026 and pool in C.RESEARCH_POOL_FILES:
+    if year <= 2026 and pool in C.RESEARCH_POOL_FILES:
         with open(os.path.join(C.RESULTS, C.RESEARCH_POOL_FILES[pool]), encoding="utf-8") as f:
             keep = set(json.load(f)["pool"])
         return [tk for tk in TICKER_SETS[pool] if tk in keep]

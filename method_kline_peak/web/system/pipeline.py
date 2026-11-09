@@ -39,8 +39,6 @@ def _row(code, status, move, df, date, pred=None, m=None):
     if pred is not None:
         def f(x, n=4):
             return None if x is None or not np.isfinite(x) else round(float(x), n)
-        r["main"] = {"pred": pred.main_pred, "score": f(pred.main_score), "s_high": f(pred.main_s_high), "s_low": f(pred.main_s_low),
-                     "level": MD.level(pred.main_score, m["cuts"]["main"][pred.main_pred]) if pred.main_pred != "none" else None}
         r["stack"] = {"pred": pred.stack_pred, "score": f(pred.stack_score),
                       "p_low": f(pred.stack_p_low), "p_none": f(pred.stack_p_none), "p_high": f(pred.stack_p_high),
                       "level": MD.level(pred.stack_score, m["cuts"]["stack"][pred.stack_pred]) if pred.stack_pred != "none" else None}
@@ -51,7 +49,7 @@ def judge_day(date, data, m, codes, moves=None, source="daily", check=None, fram
     """對 date 這天做判斷,回傳存檔用的 dict(不寫檔)。data 只能含 date(含)以前的資料。
     frames(回放用):{代號: live_frame 依日期索引},事先對整段資料算好;特徵只用 t−5 ~ t,結果和逐日計算相同。"""
     date = pd.Timestamp(date)
-    pool = set(m["pool"])
+    pool = set(U.recommend_list())                     # 推薦範圍(台灣 50):status = pool,低波動股也照樣判斷
     rows, feats, keys = [], [], []
     for code in codes:
         tk = U.ticker_of(code)
@@ -120,7 +118,7 @@ def grade_pending(data, cal, log=print):
         day = ST.read_day(ts)
         out = {}
         for r in day["rows"]:
-            if r.get("main"):
+            if r.get("stack"):
                 out[r["code"]] = grade_from(answers(r["code"]), ts)
         ST.write_grade(ts, out)
     log(f"對答案:{len(todo)} 天")
@@ -144,7 +142,8 @@ def run_daily(asof=None, online=True, kind="all", store=None, log=print, publish
     today = pd.Timestamp(asof) if asof else pd.Timestamp.now(tz="Asia/Taipei").tz_localize(None).normalize()
     m = MD.ensure(today.year, store, log)
     codes = [U.code_of(t) for t in U.universe(kind)]
-    tickers = sorted(set(U.ticker_of(c) for c in codes) | set(m["pool"]))
+    rec = U.recommend_list()
+    tickers = sorted(set(U.ticker_of(c) for c in codes) | set(m["pool"]) | set(rec))
     rep = {"online": online}
     if online:
         r = store.update(tickers, today)
@@ -152,8 +151,8 @@ def run_daily(asof=None, online=True, kind="all", store=None, log=print, publish
         log(f"更新 K 線:{len(r.updated)} 檔有新資料、{len(r.refreshed)} 檔重抓、{len(r.failed)} 檔失敗"
             + (f"({r.error})" if r.error else ""))
     data = store.load_many(tickers, end=today)
-    cal = _calendar(data, m["pool"])
-    check = check_data(data, m["pool"], cal, None if asof is None else today, online) | {"update": rep}
+    cal = _calendar(data, rec)
+    check = check_data(data, rec, cal, None if asof is None else today, online) | {"update": rep}
     date = cal[-1]
     if date.year != m["year"]:
         m = MD.ensure(date.year, store, log)
@@ -197,9 +196,10 @@ def run_replay(start, end=None, kind="all", store=None, log=print, publish=True)
     end = pd.Timestamp(end) if end else None
     codes = [U.code_of(t) for t in U.universe(kind)]
     m0 = MD.ensure(pd.Timestamp(start).year, store, log)
-    tickers = sorted(set(U.ticker_of(c) for c in codes) | set(m0["pool"]))
+    rec = U.recommend_list()
+    tickers = sorted(set(U.ticker_of(c) for c in codes) | set(m0["pool"]) | set(rec))
     data = store.load_many(tickers, end=end)
-    cal = _calendar(data, m0["pool"])
+    cal = _calendar(data, rec)
     days = [d for d in cal if d >= pd.Timestamp(start) and not ST.has_day(d)]
     log(f"回放 {len(days)} 天({days[0].date() if days else '-'} ~ {days[-1].date() if days else '-'}),{len(codes)} 檔")
     moves = _moves_by_day(data, codes, days)
@@ -218,5 +218,5 @@ def run_replay(start, end=None, kind="all", store=None, log=print, publish=True)
             log(f"  {i + 1}/{len(days)}  ({time.time() - t0:.0f}s)")
     grade_pending(data, cal, log)
     if publish:
-        PB.publish(data, cal, check_data(data, m0["pool"], cal, cal[-1], online=False) | {"update": {"online": False}}, log=log)
+        PB.publish(data, cal, check_data(data, rec, cal, cal[-1], online=False) | {"update": {"online": False}}, log=log)
     log(f"回放完成  ({time.time() - t0:.0f}s)")

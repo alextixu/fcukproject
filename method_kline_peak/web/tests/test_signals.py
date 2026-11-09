@@ -56,7 +56,7 @@ def test_no_lookahead_with_real_archive(real_store):
     import os
     import pytest
     from system import config as C, publish as PB, store as ST
-    if not os.path.isdir(os.path.join(C.DATA, "tw100", "days")):
+    if not os.path.isdir(C.profile_dir("days")):
         pytest.skip("沒有回放存檔(先跑 run.py replay)")
     tab = ST.table()
     checked = 0

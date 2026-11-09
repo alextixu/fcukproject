@@ -18,10 +18,10 @@ def _day(date, rows, source="daily"):
 
 def test_day_file_written_once(tmp_data):
     """Given 某天的判斷已經存檔 / When 同一天再存一次(例如批次重跑、資料事後修正) / Then 拒絕寫入,檔案內容維持第一次的判斷"""
-    ST.write_day(_day("2026-03-02", [{"code": "2330", "status": "pool", "main": {"pred": "low"}}]))
+    ST.write_day(_day("2026-03-02", [{"code": "2330", "status": "pool", "stack": {"pred": "low"}}]))
     with pytest.raises(ST.AlreadyFrozen):
-        ST.write_day(_day("2026-03-02", [{"code": "2330", "status": "pool", "main": {"pred": "high"}}]))
-    assert ST.read_day("2026-03-02")["rows"][0]["main"]["pred"] == "low"
+        ST.write_day(_day("2026-03-02", [{"code": "2330", "status": "pool", "stack": {"pred": "high"}}]))
+    assert ST.read_day("2026-03-02")["rows"][0]["stack"]["pred"] == "low"
 
 
 def test_grade_file_written_once(tmp_data):
@@ -60,7 +60,7 @@ def test_grade_pending_only_after_five_days(tmp_data):
     再跑一次不會重對(答案檔不變)"""
     df = make_bars(V)
     cal = df.index
-    rows = [{"code": "1111", "status": "pool", "main": {"pred": "low"}}]
+    rows = [{"code": "1111", "status": "pool", "stack": {"pred": "low"}}]
     ST.write_day(_day(cal[5], rows))
     ST.write_day(_day(cal[9], rows))
     data = {"1111.TW": df}
@@ -91,9 +91,8 @@ def tmp_path_factory_dir():
 
 def test_table_joins_days_and_grades(tmp_data):
     """Given 一天的判斷與答案 / When 攤平成表 / Then 每檔一列,判斷和答案對在一起;沒答案的天數答案是空的"""
-    ST.write_day(_day("2026-03-02", [{"code": "2330", "status": "pool", "main": {"pred": "low", "score": 1.0, "level": "高"},
-                                      "stack": {"pred": "none"}}]))
-    ST.write_day(_day("2026-03-03", [{"code": "2330", "status": "pool", "main": {"pred": "none"}, "stack": {"pred": "none"}}]))
+    ST.write_day(_day("2026-03-02", [{"code": "2330", "status": "pool", "stack": {"pred": "low", "score": 0.7, "level": "高"}}]))
+    ST.write_day(_day("2026-03-03", [{"code": "2330", "status": "pool", "stack": {"pred": "none"}}]))
     ST.write_grade("2026-03-02", {"2330": {"truth": "low", "ret_pct": 1.2}})
     t = ST.table()
     assert len(t) == 2

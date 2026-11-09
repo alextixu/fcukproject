@@ -81,17 +81,16 @@ def list_days():
 
 
 def table():
-    """所有存檔攤平成一張表:每列 = 一天 × 一檔,含判斷與答案(還沒答案的為 NaN)。"""
+    """所有存檔攤平成一張表:每列 = 一天 × 一檔,含 Stacking 的判斷與答案(還沒答案的為 NaN)。"""
     rows = []
     for d in list_days():
         day = read_day(d)
         g = read_grade(d) or {}
         for r in day["rows"]:
-            m, s = r.get("main") or {}, r.get("stack") or {}
+            s = r.get("stack") or {}
             a = g.get(r["code"]) or {}
             rows.append({"date": d, "source": day.get("source", "daily"), "code": r["code"], "status": r["status"],
                          "close": r.get("close"),
-                         "main_pred": m.get("pred"), "main_score": m.get("score"), "main_level": m.get("level"),
                          "stack_pred": s.get("pred"), "stack_score": s.get("score"), "stack_level": s.get("level"),
                          "truth": a.get("truth"), "ret_pct": a.get("ret_pct")})
     return pd.DataFrame(rows)

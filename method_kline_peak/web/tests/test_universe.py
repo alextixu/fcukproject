@@ -52,9 +52,17 @@ def test_too_little_data():
 
 
 def test_pool_2026_is_research_pool():
-    """Given 2026 年的股票池 / When 讀取 / Then 就是研究的 TW100 剔除低波動股 73 檔"""
+    """Given 2026 年的訓練股票池(預設 TW200)/ When 讀取 / Then 就是研究的 TW200 剔除低波動股 168 檔;2024、2025 也用同一份(同研究)"""
     p = U.pool_for_year(2026)
-    assert len(p) == 73 and "2330.TW" in p and "2412.TW" not in p
+    assert len(p) == 168 and "2330.TW" in p and "2412.TW" not in p
+    assert U.pool_for_year(2024) == U.pool_for_year(2025) == p
+
+
+def test_recommend_pool_is_tw50_with_low_vol():
+    """Given 推薦範圍台灣 50 / When 列出並分類 / Then 50 檔都是上市普通股;低波動的中華電(2412)在推薦範圍內仍算 pool(照樣給判斷)"""
+    rec = U.recommend_list()
+    assert len(rec) == 50 and "2412.TW" in rec and "8046.TW" in rec
+    assert U.classify("2412", _walk(0.3), set(rec))[0] == U.POOL
 
 
 def test_universe_all_is_listed_common_stocks():

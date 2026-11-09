@@ -1,91 +1,68 @@
-"""網頁資料的成績欄位:主軸不分信心等級、Stacking 分;兩方法一致時的命中率。"""
+"""網頁資料的成績欄位(只有 Stacking)、研究發現的方向性結論。"""
+import json
+import os
+
 import pandas as pd
 
 from system import config as C, publish as PB
 
 
 def _tab():
-    """池內 6 個股票日(都已對答案)+ 1 個池外:
-    A 兩方法都判低點、真的是低點;B 兩方法都判低點、其實是非極值;C 只有主軸判低點、真的是低點;
-    D 兩方法都判高點、真的是高點;E 都判非極值;F 兩方法都判低點但還沒有答案;G 池外、兩方法都判低點、真的是低點。"""
-    rows = [("A", "pool", "low", "low", "low"), ("B", "pool", "low", "low", "none"), ("C", "pool", "low", "none", "low"),
-            ("D", "pool", "high", "high", "high"), ("E", "pool", "none", "none", "none"), ("F", "pool", "low", "low", None),
-            ("G", "out", "low", "low", "low")]
+    """推薦範圍內 5 個股票日(都已對答案)+ 1 個待驗證 + 1 個池外:
+    A 判低點(信心中)、真的是低點;B 判低點(信心中)、其實是非極值;C 判低點(信心高)、真的是低點;
+    D 判高點、真的是高點;E 判非極值;F 判低點、還沒有答案;G 池外、判低點、真的是低點。"""
+    rows = [("A", "pool", "low", "中", "low"), ("B", "pool", "low", "中", "none"), ("C", "pool", "low", "高", "low"),
+            ("D", "pool", "high", "高", "high"), ("E", "pool", "none", None, "none"), ("F", "pool", "low", "低", None),
+            ("G", "out", "low", "高", "low")]
     return pd.DataFrame([{"date": "2026-03-02", "source": "replay", "code": c, "status": st, "close": 10.0,
-                          "main_pred": m, "main_score": 1.0 if m != "none" else None, "main_level": "高" if m != "none" else None,
-                          "stack_pred": s, "stack_score": 0.6 if s != "none" else None, "stack_level": "中" if s != "none" else None,
-                          "truth": t, "ret_pct": 1.0 if t else None} for c, st, m, s, t in rows])
+                          "stack_pred": p, "stack_score": 0.6 if p != "none" else None, "stack_level": lv,
+                          "truth": t, "ret_pct": 1.0 if t else None} for c, st, p, lv, t in rows])
 
 
-def test_both_agree_hit_rate():
-    """Given 池內兩方法都判低點且已對答案的有 A、B 兩筆(A 對、B 錯),F 還沒答案、G 是池外 /
-    When 算兩方法一致時的命中率 / Then 判低點 1 / 2 = 50%(不含待驗證與池外);判高點 1 / 1 = 100%"""
+def test_track_hit_rates_and_levels():
+    """Given 推薦範圍內判低點且已對答案的 A、B、C(A、C 對)/ When 產生成績追蹤 / Then 判低點命中 2 / 3;信心中 1 / 2、高 1 / 1;
+    待驗證(F)和池外(G)不算進推薦範圍的命中率,池外另外算 1 / 1"""
     tr = PB.track(_tab())
-    assert tr["both"]["low"] == {"hits": 1, "n": 2, "pct": 50.0}
-    assert tr["both"]["high"] == {"hits": 1, "n": 1, "pct": 100.0}
-    assert tr["methods"]["main"]["low"]["both"] == tr["methods"]["stack"]["low"]["both"] == tr["both"]["low"]
+    low = tr["kinds"]["low"]
+    assert low["all"] == {"hits": 2, "n": 3, "pct": 66.7}
+    assert low["levels"] == {"中": {"hits": 1, "n": 2, "pct": 50.0}, "高": {"hits": 1, "n": 1, "pct": 100.0}}
+    assert low["out_pool"] == {"hits": 1, "n": 1, "pct": 100.0}
+    assert tr["kinds"]["high"]["all"] == {"hits": 1, "n": 1, "pct": 100.0}
+    assert "methods" not in tr and "both" not in tr
 
 
-def test_main_has_no_levels_stack_does():
-    """Given 存檔裡兩個方法都有信心等級欄位 / When 產生成績追蹤資料 / Then 主軸沒有分等級的命中率,Stacking 有;
-    主軸仍有整體命中率(池內判低點 A、B、C 三筆對 2 筆)"""
-    assert C.LEVEL_METHODS == ("stack",)
-    tr = PB.track(_tab())
-    assert tr["methods"]["main"]["low"]["levels"] == {}
-    assert tr["methods"]["stack"]["low"]["levels"] == {"中": {"hits": 1, "n": 2, "pct": 50.0}}
-    assert tr["methods"]["main"]["low"]["all"] == {"hits": 2, "n": 3, "pct": 66.7}
+def test_track_has_no_returns():
+    """Given 存檔的答案裡有 t+1 → t+5 報酬 / When 產生成績追蹤 / Then 輸出裡沒有任何報酬欄位(網頁不放回測與報酬)"""
+    text = json.dumps(PB.track(_tab()), ensure_ascii=False, default=str)
+    assert "ret" not in text and "win" not in text
 
 
-def test_public_row_drops_main_level_only():
-    """Given 存檔的一檔判斷(兩個方法都有 level) / When 轉成網頁用的資料 / Then 主軸的 level 拿掉、Stacking 保留,存檔本身不被改動"""
-    r = {"code": "2330", "status": "pool", "main": {"pred": "low", "score": 1.0, "level": "高"},
-         "stack": {"pred": "low", "score": 0.6, "level": "中"}}
+def test_public_row_has_only_stacking():
+    """Given 舊存檔的一檔判斷(同時有主軸與 Stacking)/ When 轉成網頁用的資料 / Then 只留 Stacking,存檔本身不被改動"""
+    r = {"code": "2330", "status": "pool", "main": {"pred": "low", "score": 1.0}, "stack": {"pred": "low", "score": 0.6, "level": "中"}}
     out = PB._public_row(r)
-    assert "level" not in out["main"] and out["stack"]["level"] == "中"
-    assert r["main"]["level"] == "高"
+    assert "main" not in out and out["stack"]["level"] == "中" and "main" in r
 
 
-def test_findings_read_from_result_files():
-    """Given 研究結果檔 / When 產生研究發現頁的資料 / Then 兩個方法的數字都和結果檔一致(主軸原始判低點命中率 29.24%、等 3 天確認 81.01%;
-    Stacking 機率 ≥ 0.8 命中率 32.81%;34 檔 2025 等權買進持有 +19.16%);用到未來資訊的列(真實標籤、事後最高分)都標成實際用不了"""
+def test_findings_directional_only():
+    """Given 研究結果檔 / When 產生研究發現頁的資料 / Then 只有方向性結論(找到率、高低點判反次數、命中率、等確認的命中率),
+    數字和結果檔的 Stacking 部分一致:找到率 48.35 / 41.82%、±2 天 56.79 / 51.18%、命中率 27.68 / 26.02%、判反 0 次;
+    沒有回測、後處理、機率門檻、主軸"""
     F = PB.findings()
-    assert F["cards"]["main"]["precision"]["low"] == 29.24 and F["cards"]["main"]["confirm"]["k3_hit"] == 81.01
-    assert F["cards"]["stack"]["filters"]["p8_hit"] == 32.81 and F["cards"]["cross"] == 0
-    assert F["cards"]["main"]["filters"]["p8_hit"] is None                      # 主軸沒有機率
-    assert F["lohi_base"]["buy_hold"] == 19.16
-    for m in ("main", "stack"):
-        fut = {r["name"] for r in F["post"][m] if r["future"]}
-        assert fut == {"合併連續・事後最高分"}
-        names = {r["name"]: r["future"] for r in F["lohi"][m]}
-        assert names["真實標籤"] and names["1a 合併連續・事後最高分"] and not names["A0 原始"]
-    assert [r["key"] for r in F["post"]["main"]] == ["A0 原始", "1a", "1b", "top50", "k1", "k2", "k3"]
-    assert F["confirm"]["main"]["low"] == {"k0": 29.24, "k1": 53.19, "k2": 67.74, "k3": 81.01, "base": 7.24}
+    with open(os.path.join(C.RESULTS, "postproc_signals_tw200.json"), encoding="utf-8") as f:
+        a0 = json.load(f)["三年平均"]["Stacking 邏輯迴歸"]["A0 原始"]
+    assert F["recall"] == {"low": a0["低點"]["找到率_精確"], "high": a0["高點"]["找到率_精確"],
+                           "low2": a0["低點"]["找到率_±2天"], "high2": a0["高點"]["找到率_±2天"]}
+    assert (F["recall"]["low"], F["recall"]["high"], F["recall"]["low2"]) == (48.35, 41.82, 56.79)
+    assert (F["precision"]["low"], F["precision"]["high"]) == (27.68, 26.02)
+    assert F["cross"] == 0 and F["years"] == ["2024", "2025", "2026"]
+    assert F["confirm"]["low"] == {"k0": 27.68, "k1": 49.67, "k2": 62.99, "k3": 75.93, "base": 7.24}
+    assert set(F) == {"recall", "precision", "cross", "years", "confirm", "sources"}
+    text = json.dumps({k: v for k, v in F.items() if k != "sources"}, ensure_ascii=False)
+    assert not [b for b in ("backtest", "扣成本", "主軸") if b in text]
 
 
-def test_findings_stacking_numbers_match_json():
-    """Given 研究結果檔的 Stacking 部分 / When 產生研究發現頁(網頁預設顯示 Stacking)/ Then 結論卡片、南電圖、分組命中率都用 Stacking 的數字:
-    找到率 低 48.35% / 高 41.82%、命中率 27.68% / 26.02%、只做多前 3 檔回測 TW200 三年平均 −21.69%;等確認 k = 1–3 命中 49.67 / 63.0 / 75.93%;
-    南電圖用 Stacking 版(compare_…_stack、prob_cut_…_stack、lohi_compare_…_stack)"""
-    import json
-    import os
-    F = PB.findings()
-    st = F["cards"]["stack"]
-    with open(os.path.join(C.RESULTS, "confirm_signals_tw200.json"), encoding="utf-8") as f:
-        cf = json.load(f)["classification_三年平均"]["Stacking 邏輯迴歸"]
-    assert st["recall"]["low"] == cf["A0 原始"]["低點"]["找到率_精確"] == 48.35
-    assert st["recall"]["high"] == cf["A0 原始"]["高點"]["找到率_精確"] == 41.82
-    assert (st["precision"]["low"], st["precision"]["high"]) == (27.68, 26.02)
-    assert st["confirm"]["bt0"] == -21.69
-    assert st["confirm"]["k1_hit"] == cf["k=1"]["低點"]["命中率"] and st["confirm"]["k3_hit"] == cf["k=3"]["低點"]["命中率"]
-    assert F["confirm"]["stack"]["low"]["k2"] == cf["k=2"]["低點"]["命中率"]
-    files = [im["file"] for im in F["images"]["stack"]]
-    assert files == ["img/compare_8046_2024_tw200_stack.png", "img/prob_cut_8046_2024_tw200_stack.png",
-                     "img/lohi_compare_8046_2024_tw200_stack.png"]
-    assert all("Stacking" in im["title"] for im in F["images"]["stack"])
-
-
-def test_default_method_is_stacking():
-    """Given 網站設定 / When 讀預設方法 / Then 是 Stacking(打開網站預設顯示 Stacking,主軸放第二個、可以切換);
-    研究發現資料也帶著同一個預設"""
-    assert C.DEFAULT_METHOD == "stack" and C.METHOD_ORDER == ("stack", "main")
-    assert PB.findings()["default_method"] == "stack"
+def test_only_stacking_configured():
+    """Given 網站設定 / When 讀方法、股票池、推薦範圍 / Then 只有 Stacking;訓練股票池預設 TW200;推薦範圍預設台灣 50"""
+    assert C.METHODS == ("stack",) and C.DEFAULT_METHOD == "stack"
+    assert C.POOL == "tw200" and C.RECOMMEND == "tw50"

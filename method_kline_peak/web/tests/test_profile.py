@@ -9,8 +9,8 @@ from learn5_trade6 import FLAT  # noqa: E402
 
 
 def test_default_profile():
-    """Given 沒有另外設定 / When 讀目前設定 / Then 股票池 tw100、訓練門檻 0%,設定名稱 tw100"""
-    assert (C.POOL, C.TRAIN_MIN_AMP, C.profile()) == ("tw100", 0.0, "tw100")
+    """Given 沒有另外設定 / When 讀目前設定 / Then 訓練股票池 tw200、訓練門檻 0%,設定名稱 tw200;推薦範圍台灣 50"""
+    assert (C.POOL, C.TRAIN_MIN_AMP, C.profile(), C.RECOMMEND) == ("tw200", 0.0, "tw200", "tw50")
 
 
 def test_profile_separates_storage(tmp_data, monkeypatch):
@@ -42,7 +42,7 @@ def test_train_min_amp_setting(real_store, monkeypatch):
     tr0, fc, pool = MD.training_set(2026, real_store)
     monkeypatch.setattr(C, "TRAIN_MIN_AMP", 3.0)
     tr3, _, _ = MD.training_set(2026, real_store)
-    assert len(tr0) == len(tr3) and len(pool) == 73
+    assert len(tr0) == len(tr3) and len(pool) == 168
     n0, n3 = (tr0.y != FLAT).sum(), (tr3.y != FLAT).sum()
     assert n3 < n0
     changed = tr0.y.to_numpy() != tr3.y.to_numpy()
