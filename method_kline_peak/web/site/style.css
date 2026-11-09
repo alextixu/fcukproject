@@ -82,11 +82,17 @@ h3{font-size:15px;margin:0 0 8px}
 .sub,.lbl,.info{overflow-wrap:anywhere}
 .listhead{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .listhead .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.listhead h2{margin:0}
 .grp{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:14px 0 2px;padding-top:10px;border-top:2px solid var(--line)}
 .grp:first-of-type{margin-top:4px}
 .grp b{font-size:13.5px}
-.grp .hit{font-size:12px;color:var(--ink2)}
-.pick{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--line);cursor:pointer}
+.grp .hit{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.cnt{display:inline-block;min-width:22px;text-align:center;font-size:12px;font-weight:700;padding:0 6px;border-radius:999px;background:var(--mute-bg);color:var(--ink2);font-variant-numeric:tabular-nums}
+.empty{color:var(--ink3);padding:8px 0;font-size:13px}
+.pick{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.pick .marks{margin-top:2px}
+.prob{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;min-width:62px}
+.spk svg{display:block}
 .grp+.pick{border-top:0}
 .pick:hover{background:var(--card2)}
 .rank{font-weight:800;color:var(--ink3);text-align:center}
@@ -113,6 +119,37 @@ h3{font-size:15px;margin:0 0 8px}
 .mutebox{background:var(--mute-bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px;color:var(--ink2)}
 .disc{font-size:12px;color:var(--ink3);border-top:1px solid var(--line);margin-top:24px;padding-top:12px;line-height:1.6}
 .loading{color:var(--ink3);padding:40px 0;text-align:center}
+/* 精簡版面:標題、卡片、提示框、展開 */
+.pt{margin-bottom:14px}
+h1.pt{margin:0 0 14px}
+.row.pt h1{margin:0}
+.lv{display:inline-block;margin-left:6px;font-size:11.5px;font-weight:700;padding:0 6px;border-radius:5px;vertical-align:1px;background:var(--mute-bg);color:var(--ink2)}
+.lv-h{background:var(--ink2);color:var(--card)}
+.vprob{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px;display:inline-block}
+[data-tip]{position:relative;cursor:help}
+[data-tip] .lbl{text-decoration:underline dotted var(--ink3);text-underline-offset:3px}
+[data-tip]:hover::after,[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;
+  background:var(--ink);color:var(--card);font-size:12px;font-weight:500;line-height:1.5;padding:7px 9px;border-radius:7px;white-space:pre-line;box-shadow:0 6px 18px var(--shadow);text-align:left}
+.tag[data-tip]:hover::after,.tag[data-tip]:focus::after{right:auto;width:200px}
+.stat .kpi{margin-top:2px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tile .kpi{font-size:21px}
+.explain{margin-top:10px}
+.explain summary{cursor:pointer;color:var(--ink2);font-size:13px;font-weight:600}
+.explain>div{margin-top:8px;font-size:14px;color:var(--ink2);line-height:1.7}
+.explain>div p{margin:0 0 6px}
+.acc details{border-top:1px solid var(--line);padding:10px 0}
+.acc details:first-child{border-top:0;padding-top:2px}
+.acc summary{cursor:pointer;font-weight:700;font-size:14.5px}
+.acc p{margin:6px 0 0;color:var(--ink2);font-size:14px}
+.dots{display:flex;gap:5px}
+.dots i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--bad)}
+.dots i.on{background:var(--bad)}
+.legendtags{display:flex;gap:8px;flex-wrap:wrap}
+.defs{display:flex;flex-direction:column;gap:10px;justify-content:center;font-size:14.5px}
+.defs .tag{width:52px;text-align:center;margin-right:10px}
+.step span{font-size:13px;color:var(--ink2)}
 /* 搜尋 */
 .search{position:relative;max-width:560px}
 .search input{width:100%;font:inherit;font-size:16px;padding:12px 14px 12px 40px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);outline:none}
@@ -193,3 +230,4 @@ h3{font-size:15px;margin:0 0 8px}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 .lvtable td:first-child{white-space:normal}
+.legendtags .tag:nth-child(n+3)[data-tip]:hover::after,.legendtags .tag:nth-child(n+3)[data-tip]:focus::after{left:auto;right:0}
