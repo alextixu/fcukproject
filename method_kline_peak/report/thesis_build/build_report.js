@@ -170,12 +170,12 @@ const body = [];
 body.push(H1("第一章 緒論", { first: true }));
 body.push(H2("1.1 研究背景"));
 body.push(P("技術分析以價格與成交量的歷史型態推估後續走勢,其中 K 線(蠟燭圖)以開、高、低、收四個價格呈現每日的多空變化,是台股投資人最常使用的工具之一。對短線交易而言,能否在轉折點附近進出場,往往比判斷長期方向更直接影響績效:若能在局部低點附近買進、在局部高點附近賣出,就能掌握一段波動。"));
-body.push(P("然而轉折點必須等到之後的價格走出來才能確認。同系郭念慈、李俊宏的研究 [1] 以 11 天的收盤價視窗定義局部高點與局部低點,並指出:若 t 日收盤是前後 5 天的最高,它必然也是 t−5 到 t 這 6 天的最高,而後者在 t 日收盤後就能知道。據此可以用簡單的規則在 t 日挑出「可能是高點 / 低點」的候選日,做為比較的基準。"));
+body.push(P("然而轉折點必須等到之後的價格走出來才能確認。本研究以 11 天的收盤價視窗定義局部高點與局部低點;由定義可知,若 t 日收盤是前後 5 天的最高,它必然也是 t−5 到 t 這 6 天的最高,而後者在 t 日收盤後就能知道。據此可以用簡單的規則在 t 日挑出「可能是高點 / 低點」的候選日,做為比較的基準。"));
 body.push(H2("1.2 研究動機"));
 body.push(P("規則基準不會漏掉任何真正的局部高低點,但候選日中多數其實不是轉折點。以本研究的 34 檔股票池為例,規則在 2024 年找到全部的真高點與真低點,但判高點與判低點的命中率都只有約 27%(見 4.2.1 節)。換言之,大約每 4 個候選日中只有 1 個是真正的轉折點。如果能從 t 日以前的 K 線型態中學到「真轉折點長什麼樣子」,就有機會刪去一部分假候選、讓訊號更可信,並進一步把訊號用在選股與交易上。"));
 body.push(H2("1.3 研究目的"));
 body.push(P("本研究的目的如下:"));
-body.push(L("(1)", "在 [1] 的標籤與規則框架下,以自編碼器與單類支持向量機學習真高點、真低點的 K 線型態,篩選規則候選並給出可排序的分數(主軸)。"));
+body.push(L("(1)", "以 11 天視窗的標籤與規則候選為基礎,以自編碼器與單類支持向量機學習真高點、真低點的 K 線型態,篩選規則候選並給出可排序的分數(主軸)。"));
 body.push(L("(2)", "比較不使用規則、改以邏輯迴歸組合兩組模型分數的 Stacking 方法。"));
 body.push(L("(3)", "以 walk-forward 方式評估兩個方法的分類成績與交易模擬,並分析各種減少訊號的後處理做法。"));
 body.push(L("(4)", "依研究結果實作網頁系統,讓使用者查詢每日判斷與歷史成績,作為決策輔助。"));
@@ -186,33 +186,33 @@ body.push(L("(3)", "資料期間:2016 年 1 月至 2026 年 9 月 11 日的日K�
 body.push(L("(4)", "測試期間:2024 年、2025 年與 2026 年 1 月至 9 月 11 日,每一年都只用該年以前的資料訓練。"));
 body.push(L("(5)", "交易模擬只做多,不考慮融券放空、滑價與漲跌停無法成交等情況(詳見 4.3 節與 5.2 節)。"));
 body.push(H2("1.5 研究方法"));
-body.push(P("本研究先依 [1] 為每個交易日貼上高點、低點或非極值的標籤,再以 t 日以前 6 根 K 線的 29 維特徵建立兩個三分類方法:主軸以規則挑候選,再由自編碼器把特徵壓縮到 16 維、由單類支持向量機判斷候選是否落在真轉折點的範圍內;Stacking 則以兩組模型的分數訓練多類別邏輯迴歸。評估採 walk-forward,以混淆矩陣、macro-F1、找到率(recall)與命中率(precision)衡量分類成績,再以只做多的回測、個股案例與後處理分析評估交易上的可行性,最後將模型實作成網頁系統。"));
+body.push(P("本研究先依 11 天視窗的定義為每個交易日貼上高點、低點或非極值的標籤,再以 t 日以前 6 根 K 線的 29 維特徵建立兩個三分類方法:主軸以規則挑候選,再由自編碼器把特徵壓縮到 16 維、由單類支持向量機判斷候選是否落在真轉折點的範圍內;Stacking 則以兩組模型的分數訓練多類別邏輯迴歸。評估採 walk-forward,以混淆矩陣、macro-F1、找到率(recall)與命中率(precision)衡量分類成績,再以只做多的回測、個股案例與後處理分析評估交易上的可行性,最後將模型實作成網頁系統。"));
 body.push(H2("1.6 研究流程"));
 body.push(P("研究流程如圖 1.1 所示。"));
 body.push(...FIG("fig1_1_flow.png", 4.6, "圖 1.1 研究流程"));
 body.push(H2("1.7 章節結構"));
-body.push(P("第一章說明研究背景、動機、目的、範圍與流程。第二章回顧本研究使用的文獻與方法,並說明與前人研究的差別。第三章定義問題與標籤,介紹自編碼器、單類支持向量機與邏輯迴歸的理論基礎,以及兩個方法的架構與訓練方式。第四章為實證分析,包含資料分析、分類成績、回測與個案、後處理分析與網頁系統評估。第五章為結論、研究限制、成果、貢獻、後續研究方向,以及專題過程中導入的 AI 工具。"));
+body.push(P("第一章說明研究背景、動機、目的、範圍與流程。第二章回顧本研究使用的文獻與方法,並說明本研究如何結合這些方法。第三章定義問題與標籤,介紹自編碼器、單類支持向量機與邏輯迴歸的理論基礎,以及兩個方法的架構與訓練方式。第四章為實證分析,包含資料分析、分類成績、回測與個案、後處理分析與網頁系統評估。第五章為結論、研究限制、成果、貢獻、後續研究方向,以及專題過程中導入的 AI 工具。"));
 
 // ───── 第二章 ─────
 body.push(H1("第二章 相關文獻回顧"));
-body.push(H2("2.1 局部高低點標籤與規則基準"));
-body.push(P("本研究的出發點是同系郭念慈、李俊宏的研究 [1]。該研究以第 t 日收盤價 C_t 與前後各 5 日構成的 11 日視窗定義標籤:C_t 為視窗內最高者為高點、最低者為低點,與他日並列者也算,其餘為非極值;並提出規則基準:t 日收盤為 t−5 至 t 最高者判為高點、最低者判為低點。本研究沿用此標籤與規則,並沿用其以「訓練資料中各類頻率的平方根倒數」設定類別權重的做法。"));
+body.push(H2("2.1 局部高低點的定義與規則基準"));
+body.push(P("本研究以第 t 日收盤價 C_t 與前後各 5 日構成的 11 日視窗定義標籤:C_t 為視窗內最高者為高點、最低者為低點,與他日並列者也算,其餘為非極值(正式定義見 3.1 節)。由定義可知,真高點的 t 日收盤必然也是 t−5 至 t 這 6 天的最高,因此可以在 t 日收盤後以規則挑出候選:t 日收盤為 t−5 至 t 最高者判為高點、最低者判為低點。本研究以此規則作為比較的基準。"));
 body.push(H2("2.2 自編碼器"));
-body.push(P("自編碼器(Autoencoder, AE)由編碼器與解碼器組成,以重建輸入為目標進行訓練,中間的低維表示可視為資料的壓縮特徵。Hinton 與 Salakhutdinov [2] 證明以神經網路學習的低維編碼比主成分分析更能保留資料結構。本研究採用一層線性編碼器(29 → 16 維),在線性情況下其效果近似主成分分析;訓練使用 Adam 最佳化器 [3]。"));
+body.push(P("自編碼器(Autoencoder, AE)由編碼器與解碼器組成,以重建輸入為目標進行訓練,中間的低維表示可視為資料的壓縮特徵。Hinton 與 Salakhutdinov [1] 證明以神經網路學習的低維編碼比主成分分析更能保留資料結構。本研究採用一層線性編碼器(29 → 16 維),在線性情況下其效果近似主成分分析;訓練使用 Adam 最佳化器 [2]。"));
 body.push(H2("2.3 單類支持向量機"));
-body.push(P("單類支持向量機(One-Class SVM, OC-SVM)由 Schölkopf 等人 [4] 提出,只用單一類別的樣本學習一個能涵蓋大部分樣本的區域,常用於異常偵測。參數 ν 為訓練樣本落在區域外比例的上界,也是支持向量比例的下界;決策函數大於 0 表示落在區域內。本研究分別以真高點、真低點的樣本各訓練一個 OC-SVM,判斷新的一天是否「像」過去的真轉折點,並以決策函數的值作為分數。"));
+body.push(P("單類支持向量機(One-Class SVM, OC-SVM)由 Schölkopf 等人 [3] 提出,只用單一類別的樣本學習一個能涵蓋大部分樣本的區域,常用於異常偵測。參數 ν 為訓練樣本落在區域外比例的上界,也是支持向量比例的下界;決策函數大於 0 表示落在區域內。本研究分別以真高點、真低點的樣本各訓練一個 OC-SVM,判斷新的一天是否「像」過去的真轉折點,並以決策函數的值作為分數。"));
 body.push(H2("2.4 堆疊泛化(Stacking)"));
-body.push(P("Wolpert [5] 提出的堆疊泛化(Stacked Generalization)以第一層模型的輸出作為第二層模型的輸入,第二層模型必須用第一層沒看過的資料訓練,才能學到如何組合第一層的輸出。本研究依指導教授的建議,以高點、低點兩組 AE + OC-SVM 為第一層,以多類別邏輯迴歸為第二層,兩層使用不同年份的資料訓練。"));
+body.push(P("Wolpert [4] 提出的堆疊泛化(Stacked Generalization)以第一層模型的輸出作為第二層模型的輸入,第二層模型必須用第一層沒看過的資料訓練,才能學到如何組合第一層的輸出。本研究依指導教授的建議,以高點、低點兩組 AE + OC-SVM 為第一層,以多類別邏輯迴歸為第二層,兩層使用不同年份的資料訓練。"));
 body.push(H2("2.5 邏輯迴歸"));
-body.push(P("邏輯迴歸由 Cox [6] 提出,以 logistic 函數將線性組合轉為機率;多類別情況下以 softmax 函數輸出各類機率 [7]。邏輯迴歸的係數可直接解讀,適合作為第二層模型,讓每一天的判斷可以手算驗證(見 3.3.5 節)。"));
+body.push(P("邏輯迴歸由 Cox [5] 提出,以 logistic 函數將線性組合轉為機率;多類別情況下以 softmax 函數輸出各類機率 [6]。邏輯迴歸的係數可直接解讀,適合作為第二層模型,讓每一天的判斷可以手算驗證(見 3.3.5 節)。"));
 body.push(H2("2.6 時間序列的驗證方式"));
-body.push(P("時間序列資料前後相關,若隨機切分訓練與測試資料,模型可能看到測試期以後的資訊。Bergmeir 與 Benítez [8] 討論時間序列預測的交叉驗證方式,指出保留時間順序的評估較能反映實際使用情況。交易策略領域常用的 walk-forward 分析 [9] 則以「用過去一段期間訓練、在下一段期間測試,再整體往後移動」的方式重複評估。本研究採用 walk-forward:每個測試年都只用之前 4 年的資料訓練,並剔除訓練期最後 5 個交易日,因為這些日子的標籤需要看到測試年的價格。"));
+body.push(P("時間序列資料前後相關,若隨機切分訓練與測試資料,模型可能看到測試期以後的資訊。Bergmeir 與 Benítez [7] 討論時間序列預測的交叉驗證方式,指出保留時間順序的評估較能反映實際使用情況。交易策略領域常用的 walk-forward 分析 [8] 則以「用過去一段期間訓練、在下一段期間測試,再整體往後移動」的方式重複評估。本研究採用 walk-forward:每個測試年都只用之前 4 年的資料訓練,並剔除訓練期最後 5 個交易日,因為這些日子的標籤需要看到測試年的價格。"));
 body.push(H2("2.7 分類評估指標"));
-body.push(P("三分類中非極值占大多數,單看準確率會被多數類主導。Sokolova 與 Lapalme [10] 整理了多類別分類的評估指標,其中 macro-F1 為各類 F1 的平均,對每一類一視同仁。本研究以 macro-F1 為主要指標,並分別報告高點、低點的找到率(recall,真轉折點中被判出的比例)與命中率(precision,判出的訊號中真的是轉折點的比例)。"));
+body.push(P("三分類中非極值占大多數,單看準確率會被多數類主導。Sokolova 與 Lapalme [9] 整理了多類別分類的評估指標,其中 macro-F1 為各類 F1 的平均,對每一類一視同仁。本研究以 macro-F1 為主要指標,並分別報告高點、低點的找到率(recall,真轉折點中被判出的比例)與命中率(precision,判出的訊號中真的是轉折點的比例)。"));
 body.push(H2("2.8 實作工具"));
-body.push(P("本研究以 scikit-learn [11] 實作標準化、單類支持向量機與邏輯迴歸,以 PyTorch [12] 實作自編碼器。"));
-body.push(H2("2.9 本研究與前人研究的差別"));
-body.push(P("與 [1] 相比,本研究沿用相同的標籤與規則基準,差別在於:(1)在規則候選之上加入 AE + OC-SVM 篩選,並以決策函數作為可排序的分數;(2)另提出不使用規則的 Stacking 方法作為對照;(3)以 walk-forward 在 2024 至 2026 三個測試年、兩個股票池評估,並加入只做多的交易模擬與後處理分析,檢驗分類成績能否轉換成交易上的價值;(4)將模型實作為每日更新的網頁系統,並以自動化測試確認系統輸出與研究結果一致。"));
+body.push(P("本研究以 scikit-learn [10] 實作標準化、單類支持向量機與邏輯迴歸,以 PyTorch [11] 實作自編碼器。"));
+body.push(H2("2.9 本研究的做法"));
+body.push(P("本研究在 2.1 節的標籤與規則基準上,結合 2.2 至 2.8 節的方法,做法如下:(1)在規則候選之上加入 AE + OC-SVM 篩選,並以決策函數作為可排序的分數;(2)另提出不使用規則的 Stacking 方法作為對照;(3)以 walk-forward 在 2024 至 2026 三個測試年、兩個股票池評估,並加入只做多的交易模擬與後處理分析,檢驗分類成績能否轉換成交易上的價值;(4)將模型實作為每日更新的網頁系統,並以自動化測試確認系統輸出與研究結果一致。"));
 
 // ───── 第三章 ─────
 body.push(H1("第三章 論文主體"));
@@ -231,17 +231,17 @@ body.push(P(["給定標準化後的特徵向量 ", I("x"), " ∈ R", SUP("29"), 
 body.push(EQ([I("z"), " = ", I("W"), SUB("e"), I("x"), " + ", I("b"), SUB("e"), ",  ", I("x̂"), " = ", I("W"), SUB("d"), I("z"), " + ", I("b"), SUB("d")], 3));
 body.push(P(["其中 ", I("z"), " ∈ R", SUP("16"), " 為潛在表示。訓練目標為最小化平均平方重建誤差:"]));
 body.push(EQ([I("L"), " = (1/", I("N"), ") Σ", SUB("i"), " ‖ ", I("x"), SUB("i"), " − ", I("x̂"), SUB("i"), " ‖", SUP("2")], 4));
-body.push(P("訓練使用 Adam [3](學習率 0.001、權重衰減 0.00001)、餘弦退火學習率、批次大小 256,共 60 輪。"));
+body.push(P("訓練使用 Adam [2](學習率 0.001、權重衰減 0.00001)、餘弦退火學習率、批次大小 256,共 60 輪。"));
 body.push(H3("3.2.2 單類支持向量機的決策函數"));
-body.push(P(["OC-SVM [4] 在潛在空間中以核函數學習一個涵蓋訓練樣本的區域,其決策函數為:"]));
+body.push(P(["OC-SVM [3] 在潛在空間中以核函數學習一個涵蓋訓練樣本的區域,其決策函數為:"]));
 body.push(EQ([I("f"), "(", I("z"), ") = Σ", SUB("i"), " α", SUB("i"), " ", I("K"), "(", I("z"), SUB("i"), ", ", I("z"), ") − ρ"], 5));
 body.push(EQ([I("K"), "(", I("z"), SUB("i"), ", ", I("z"), ") = exp(−γ ‖ ", I("z"), SUB("i"), " − ", I("z"), " ‖", SUP("2"), ")"], 6));
 body.push(P("其中 α_i 為支持向量的係數,ρ 為偏移量,γ 為 RBF 核參數(本研究使用 scikit-learn 的 scale 設定)。f(z) > 0 表示 z 落在區域內。ν 設為 0.1。訓練時每個樣本另給一個相似度權重:在標準化後的特徵空間中,與該樣本歐氏距離不超過 3.0 的其他樣本裡,同為該類的比例,使型態較具代表性的樣本有較大的影響。本研究以 f(z) 作為分數:分數越高,表示越像過去的真轉折點。"));
 body.push(H3("3.2.3 邏輯迴歸與 softmax"));
-body.push(P(["Stacking 的第二層為多類別邏輯迴歸 [6][7]。以 ", I("s"), " = (", I("s"), SUB("high"), ", ", I("s"), SUB("low"), ") 表示兩個 OC-SVM 標準化後的分數,對類別 k ∈ {低點, 非極值, 高點}:"]));
+body.push(P(["Stacking 的第二層為多類別邏輯迴歸 [5][6]。以 ", I("s"), " = (", I("s"), SUB("high"), ", ", I("s"), SUB("low"), ") 表示兩個 OC-SVM 標準化後的分數,對類別 k ∈ {低點, 非極值, 高點}:"]));
 body.push(EQ([I("z"), SUB("k"), " = ", I("w"), SUB("k"), " · ", I("s"), " + ", I("b"), SUB("k")], 7));
 body.push(EQ([I("P"), "(", I("y"), " = ", I("k"), " | ", I("s"), ") = exp(", I("z"), SUB("k"), ") / Σ", SUB("j"), " exp(", I("z"), SUB("j"), ")"], 8));
-body.push(P("判斷為機率最大的類別,分數為該類的機率。由於非極值占大多數,訓練時依 [1] 以類別頻率的平方根倒數設定類別權重,並正規化為平均 1:"));
+body.push(P("判斷為機率最大的類別,分數為該類的機率。由於非極值占大多數,訓練時以類別頻率的平方根倒數設定類別權重,並正規化為平均 1:"));
 body.push(EQ([I("w"), SUB("c"), " = (1/√", I("p"), SUB("c"), ") / mean", SUB("c′"), "(1/√", I("p"), SUB("c′"), ")"], 9));
 body.push(P("其中 p_c 為類別 c 在訓練資料中的比例。"));
 
@@ -293,7 +293,7 @@ body.push(P("例子 (d) 與 (a) 相隔一天,兩天的分數幾乎相同,都被�
 body.push(H1("第四章 實證分析"));
 body.push(H2("4.1 資料分析"));
 body.push(H3("4.1.1 資料來源與股票池"));
-body.push(P("日K線取自 Yahoo Finance(透過 yfinance 套件 [13])的還原權息價格,期間為 2016 年 1 月 1 日至 2026 年 9 月 11 日。部分股票的每日漲跌幅很小,標籤多半只是小起伏,因此本研究剔除低波動股:計算 2020 年 1 月以後每日收盤漲跌幅絕對值的中位數,低於 0.725% 者剔除。此標準套用在台灣50 時正好剔除 16 檔(中華電、台灣大、合庫金、台灣高鐵、第一金、遠傳、華南金、兆豐金、統一超、玉山金、亞泥、台新金、統一、永豐金、台泥、中信金),剩 34 檔。TW200 清單共 222 檔,有資料者 216 檔,剔除 48 檔低波動股後剩 168 檔。"));
+body.push(P("日K線取自 Yahoo Finance(透過 yfinance 套件 [12])的還原權息價格,期間為 2016 年 1 月 1 日至 2026 年 9 月 11 日。部分股票的每日漲跌幅很小,標籤多半只是小起伏,因此本研究剔除低波動股:計算 2020 年 1 月以後每日收盤漲跌幅絕對值的中位數,低於 0.725% 者剔除。此標準套用在台灣50 時正好剔除 16 檔(中華電、台灣大、合庫金、台灣高鐵、第一金、遠傳、華南金、兆豐金、統一超、玉山金、亞泥、台新金、統一、永豐金、台泥、中信金),剩 34 檔。TW200 清單共 222 檔,有資料者 216 檔,剔除 48 檔低波動股後剩 168 檔。"));
 body.push(...TAB("表 4.1 股票池", ["股票池", "原始檔數", "有資料", "剔除低波動", "使用檔數"], [
   ["34 檔(台灣50)", "50", "50", String(B["34"].excluded_n), String(B["34"].pool_n)],
   ["TW200", "222", "216", String(B.tw200.excluded_n), String(B.tw200.pool_n)],
@@ -469,7 +469,7 @@ body.push(L("(3)", "回測為簡化設定:假設漲停時買得到、沒有滑�
 body.push(L("(4)", "主要結果只使用種子 42;後處理與低點進高點出的比較是直接看測試年的結果,沒有以驗證期事先選定做法。"));
 body.push(L("(5)", "標籤需要 t+5 的價格,網頁系統的成績追蹤也必須等 5 個交易日後才能對答案。"));
 body.push(H2("5.3 研究成果"));
-body.push(L("(1)", "在 [1] 的標籤與規則框架下,完成主軸(規則 + AE + OC-SVM)與 Stacking(兩組 AE + OC-SVM + 邏輯迴歸)兩個三分類方法,並可輸出每日的分數與機率。"));
+body.push(L("(1)", "以 11 天視窗的標籤與規則候選為基礎,完成主軸(規則 + AE + OC-SVM)與 Stacking(兩組 AE + OC-SVM + 邏輯迴歸)兩個三分類方法,並可輸出每日的分數與機率。"));
 body.push(L("(2)", "完成兩個股票池、三個測試年的 walk-forward 評估,包括混淆矩陣、回測、個股案例、後處理、等確認、機率門檻與低點進高點出等分析,所有數字都保存在結果檔中、可重現。"));
 body.push(L("(3)", "完成網頁系統(展示版):每日批次、判斷存檔、5 天後對答案、今日判斷、個股查詢、成績追蹤、研究發現與方法說明頁,並以 47 項自動化測試驗證。"));
 body.push(H2("5.4 研究貢獻"));
@@ -483,32 +483,31 @@ body.push(L("(2)", "以驗證期事先選定後處理與交易規則,再於測�
 body.push(L("(3)", "使用歷史成分股清單與不含測試期的低波動判定,降低存活者偏誤與資訊洩漏。"));
 body.push(L("(4)", "網頁系統持續累積實際上線後的判斷與答案,以真實時間序列評估長期表現。"));
 body.push(H2("5.6 專題過程導入的 AI 工具"));
-body.push(P("本專題使用 Claude Code(Anthropic)[14] 作為輔助工具,協助以下工作:"));
+body.push(P("本專題使用 Claude Code(Anthropic)[13] 作為輔助工具,協助以下工作:"));
 body.push(L("(1)", "程式撰寫:標籤、特徵、主軸與 Stacking 模型、walk-forward 回測、後處理分析、網頁系統與其自動化測試的程式碼。"));
 body.push(L("(2)", "實驗執行與結果核對:依指示執行實驗、把結果寫入結果檔,並核對不同程式之間的數字一致(例如後處理的原始列與回測結果檔相同、網頁正式模型重現研究結果)。"));
 body.push(L("(3)", "圖表與報告整理:繪製混淆矩陣、資產曲線與個案圖,整理簡報與本報告的初稿。"));
 body.push(L("(4)", "多個 session 分工:以一個監督用的 session 接收與轉達指令,再由不同的 session 分別負責研究分支、網頁系統分支與報告分支,彼此以訊息交接。"));
-body.push(P("人工決策與檢查的部分包括:研究方向與題目的決定;標籤定義、改用規則候選加 AE + OC-SVM、加入 Stacking 對照等方法上的選擇;股票池的選擇與剔除低波動股;回測規則(只做多、前 3 檔、持有 5 天、成本)的確認;要求不改模型、不調參數的後處理分析;以及報告呈現方式與最終內容的決定。AI 工具產生的程式與數字,均經人工閱讀結果、對照結果檔與圖表後才採用;本報告中無法確認的文獻資訊均標示【待補】或【待確認】。"));
+body.push(P("人工決策與檢查的部分包括:研究方向與題目的決定;標籤定義、改用規則候選加 AE + OC-SVM、加入 Stacking 對照等方法上的選擇;股票池的選擇與剔除低波動股;回測規則(只做多、前 3 檔、持有 5 天、成本)的確認;要求不改模型、不調參數的後處理分析;以及報告呈現方式與最終內容的決定。AI 工具產生的程式與數字,均經人工閱讀結果、對照結果檔與圖表後才採用。"));
 
 // ───── 參考文獻 ─────
 body.push(H1("參考文獻"));
 const REF = (n, parts) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...BODY_LINE, after: 80 }, indent: { left: 600, hanging: 600 },
   children: [run(`[${n}]`), new TextRun({ children: [new Tab()], font: F }), ...runs(parts)], tabStops: [{ type: TabStopType.LEFT, position: 600 }] });
 const it = (t) => [t, { italics: true }];
-body.push(REF(1, ["郭念慈、李俊宏,【待補:論文題目/出處】,逢甲大學資訊工程學系。"]));
-body.push(REF(2, ["G. E. Hinton and R. R. Salakhutdinov, \"Reducing the dimensionality of data with neural networks,\" ", it("Science"), ", vol. 313, no. 5786, pp. 504–507, Jul. 2006."]));
-body.push(REF(3, ["D. P. Kingma and J. Ba, \"Adam: A method for stochastic optimization,\" ", it("Proceedings of the 3rd International Conference on Learning Representations (ICLR)"), ", San Diego, CA, USA, May 2015."]));
-body.push(REF(4, ["B. Schölkopf, J. C. Platt, J. Shawe-Taylor, A. J. Smola, and R. C. Williamson, \"Estimating the support of a high-dimensional distribution,\" ", it("Neural Computation"), ", vol. 13, no. 7, pp. 1443–1471, Jul. 2001."]));
-body.push(REF(5, ["D. H. Wolpert, \"Stacked generalization,\" ", it("Neural Networks"), ", vol. 5, no. 2, pp. 241–259, 1992."]));
-body.push(REF(6, ["D. R. Cox, \"The regression analysis of binary sequences,\" ", it("Journal of the Royal Statistical Society: Series B (Methodological)"), ", vol. 20, no. 2, pp. 215–242, 1958."]));
-body.push(REF(7, ["C. M. Bishop, ", it("Pattern Recognition and Machine Learning"), ". New York: Springer, 2006."]));
-body.push(REF(8, ["C. Bergmeir and J. M. Benítez, \"On the use of cross-validation for time series predictor evaluation,\" ", it("Information Sciences"), ", vol. 191, pp. 192–213, May 2012."]));
-body.push(REF(9, ["R. Pardo, ", it("The Evaluation and Optimization of Trading Strategies"), " (2nd ed.). Hoboken, NJ: John Wiley & Sons, 2008."]));
-body.push(REF(10, ["M. Sokolova and G. Lapalme, \"A systematic analysis of performance measures for classification tasks,\" ", it("Information Processing & Management"), ", vol. 45, no. 4, pp. 427–437, Jul. 2009."]));
-body.push(REF(11, ["F. Pedregosa et al., \"Scikit-learn: Machine learning in Python,\" ", it("Journal of Machine Learning Research"), ", vol. 12, pp. 2825–2830, 2011."]));
-body.push(REF(12, ["A. Paszke et al., \"PyTorch: An imperative style, high-performance deep learning library,\" ", it("Advances in Neural Information Processing Systems 32 (NeurIPS 2019)"), ", pp. 8024–8035, Dec. 2019."]));
-body.push(REF(13, ["R. Aroussi, yfinance: Download market data from Yahoo! Finance's API. https://github.com/ranaroussi/yfinance(存取日期:2026 年 11 月 9 日)"]));
-body.push(REF(14, ["Anthropic, Claude Code 說明文件. https://code.claude.com/docs(存取日期:2026 年 11 月 9 日)"]));
+body.push(REF(1, ["G. E. Hinton and R. R. Salakhutdinov, \"Reducing the dimensionality of data with neural networks,\" ", it("Science"), ", vol. 313, no. 5786, pp. 504–507, Jul. 2006."]));
+body.push(REF(2, ["D. P. Kingma and J. Ba, \"Adam: A method for stochastic optimization,\" ", it("Proceedings of the 3rd International Conference on Learning Representations (ICLR)"), ", San Diego, CA, USA, May 2015."]));
+body.push(REF(3, ["B. Schölkopf, J. C. Platt, J. Shawe-Taylor, A. J. Smola, and R. C. Williamson, \"Estimating the support of a high-dimensional distribution,\" ", it("Neural Computation"), ", vol. 13, no. 7, pp. 1443–1471, Jul. 2001."]));
+body.push(REF(4, ["D. H. Wolpert, \"Stacked generalization,\" ", it("Neural Networks"), ", vol. 5, no. 2, pp. 241–259, 1992."]));
+body.push(REF(5, ["D. R. Cox, \"The regression analysis of binary sequences,\" ", it("Journal of the Royal Statistical Society: Series B (Methodological)"), ", vol. 20, no. 2, pp. 215–242, 1958."]));
+body.push(REF(6, ["C. M. Bishop, ", it("Pattern Recognition and Machine Learning"), ". New York: Springer, 2006."]));
+body.push(REF(7, ["C. Bergmeir and J. M. Benítez, \"On the use of cross-validation for time series predictor evaluation,\" ", it("Information Sciences"), ", vol. 191, pp. 192–213, May 2012."]));
+body.push(REF(8, ["R. Pardo, ", it("The Evaluation and Optimization of Trading Strategies"), " (2nd ed.). Hoboken, NJ: John Wiley & Sons, 2008."]));
+body.push(REF(9, ["M. Sokolova and G. Lapalme, \"A systematic analysis of performance measures for classification tasks,\" ", it("Information Processing & Management"), ", vol. 45, no. 4, pp. 427–437, Jul. 2009."]));
+body.push(REF(10, ["F. Pedregosa et al., \"Scikit-learn: Machine learning in Python,\" ", it("Journal of Machine Learning Research"), ", vol. 12, pp. 2825–2830, 2011."]));
+body.push(REF(11, ["A. Paszke et al., \"PyTorch: An imperative style, high-performance deep learning library,\" ", it("Advances in Neural Information Processing Systems 32 (NeurIPS 2019)"), ", pp. 8024–8035, Dec. 2019."]));
+body.push(REF(12, ["R. Aroussi, yfinance: Download market data from Yahoo! Finance's API. https://github.com/ranaroussi/yfinance(存取日期:2026 年 11 月 9 日)"]));
+body.push(REF(13, ["Anthropic, Claude Code 說明文件. https://code.claude.com/docs(存取日期:2026 年 11 月 9 日)"]));
 
 // ───── 附錄 ─────
 body.push(H1("附錄"));
