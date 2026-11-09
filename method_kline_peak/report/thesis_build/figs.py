@@ -298,18 +298,81 @@ stitch(os.path.join(RES, "compare_8046_2024_tw200_stack.png"), [(70, 430), (555,
 stitch(os.path.join(RES, "confusion_8046_2024_tw200_amp0.png"), [(197, 940)], "fig4_4_nandian_conf.png", box=(800, 0, 1560, 990))
 
 # 網頁截圖(分支 claude/kline-peak-web-app 881d92d,預設 Stacking)。
-# 方法切換鈕與兩方法對照的區塊含另一方法的名稱,以垂直拼接略過那些列。
+# 報告只談 Stacking、不提股票池檔數:
+#   - 頁首右上「模型:訓練… · 股票池…,N 檔」那一行以頁首底色塗掉(「判斷基準日」那行保留)
+#   - 紫色「兩方法一致・一致命中…」小標籤以卡片底色(白)塗掉
+#   - 方法編號「②」以周圍底色(白)塗掉(位置由欄位投影量出)
+#   - 方法切換鈕、兩方法對照區塊、含檔數或「回測」字樣的說明列,以垂直拼接略過
+HDR = (36, 50, 74)
+
+
+def prep(path, mobile=False, glyphs=(), boxes=()):
+    im = Image.open(path).convert("RGB")
+    a = np.asarray(im).copy()
+    # 頁首第二行(桌機:右上 y 30–47;手機:第三行 y 123–154)
+    if mobile:
+        a[123:155, :] = HDR
+    else:
+        a[29:48, 840:] = HDR
+    # 紫色小標籤(底色 236,232,251)→ 白;以連通區塊的外框整塊塗白(含標籤內的字)
+    lav = (np.abs(a.astype(int) - np.array([236, 232, 251])).sum(2) <= 6)
+    seen = np.zeros_like(lav)
+    H, Wd = lav.shape
+    for y, x in zip(*np.nonzero(lav)):
+        if seen[y, x]:
+            continue
+        stack = [(y, x)]; seen[y, x] = True; ys = [y]; xs = [x]
+        while stack:
+            cy, cx = stack.pop()
+            for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
+                if 0 <= ny < H and 0 <= nx < Wd and lav[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True; stack.append((ny, nx)); ys.append(ny); xs.append(nx)
+        if len(ys) > 200:
+            a[min(ys) - 1:max(ys) + 2, min(xs) - 1:max(xs) + 2] = 255
+    # 「②」:在 (x, y) 附近找第一個字形(欄間空隙 ≥ 3 視為字的邊界),以左上角底色塗掉
+    g = a.astype(int).sum(2)
+    for gx, gy in glyphs:
+        y0, y1, x0 = gy - 11, gy + 12, gx - 12
+        bg = a[y0, x0].copy()
+        dark = (np.abs(g[y0:y1, x0:x0 + 60] - int(bg.astype(int).sum())) > 120).any(0)
+        s0 = int(np.argmax(dark)); s1 = s0
+        while s1 + 3 < len(dark) and (dark[s1 + 1] or dark[s1 + 2] or dark[s1 + 3]):
+            s1 += 1
+        a[y0:y1, x0 + s0 - 1:x0 + s1 + 2] = bg
+    for (bx0, by0, bx1, by1), col in boxes:
+        a[by0:by1, bx0:bx1] = col
+    return Image.fromarray(a)
+
+
+def stitch_im(im, ranges, dst):
+    w = im.size[0]
+    parts = [im.crop((0, a, w, b)) for a, b in ranges]
+    c = Image.new("RGB", (w, sum(p.size[1] for p in parts)), "white")
+    y = 0
+    for p in parts:
+        c.paste(p, (0, y)); y += p.size[1]
+    c.save(os.path.join(FIG, dst), optimize=True)
+
+
 S = lambda f: os.path.join(SHOTS, f)
-stitch(S("today_desktop.png"), [(0, 130), (205, 1200)], "fig4_5_web_today.png")
-stitch(S("stock_pool_8454_desktop.png"), [(0, 372), (1036, 1500)], "fig4_6_web_stock.png")
-stitch(S("track_desktop.png"), [(0, 130), (250, 986)], "fig4_7_web_track.png")
+# 今日判斷:略過標題列(含切換鈕)與摘要卡列(含兩方法一致卡、②);判高點欄說明中「── 只當提醒,研究沒有回測過賣出規則」塗白
+stitch_im(prep(S("today_desktop.png"), boxes=[((800, 371, 1200, 394), 255)]), [(0, 130), (316, 1200)], "fig4_5_web_today.png")
+# 個股查詢 8454:頁首與股價列 + 最近 60 日 K 線(標記說明中的「②」塗掉)
+stitch_im(prep(S("stock_pool_8454_desktop.png"), boxes=[((983, 1054, 1003, 1076), 255), ((729, 1462, 749, 1484), 255)]), [(0, 372), (1036, 1500)], "fig4_6_web_stock.png")
+# 成績追蹤:命中率卡、60 天命中率圖、信心等級表(到「全部」列)
+stitch_im(prep(S("track_desktop.png")), [(0, 130), (250, 986)], "fig4_7_web_track.png")
 # 附錄
-stitch(S("today_mobile.png"), [(0, 480), (625, 2220)], "appB_today_mobile.png")
-crop(S("search_autocomplete_desktop.png"), "appB_search.png")
-stitch(S("stock_outpool_2618_desktop.png"), [(0, 440)], "appB_stock_outpool.png")
-stitch(S("stock_lowvol_2412_desktop.png"), [(0, 465)], "appB_stock_lowvol.png")
-stitch(S("track_desktop.png"), [(0, 130), (1100, 2455)], "appB_track.png")
-stitch(S("findings_desktop.png"), [(0, 130), (255, 410)], "appB_findings.png")
-stitch(S("about_desktop.png"), [(0, 460), (1465, 1873)], "appB_about.png")
+# 手機今日判斷:略過副標(含股票池檔數)、切換鈕與第二排摘要卡(兩方法一致、②)
+stitch_im(prep(S("today_mobile.png"), mobile=True), [(0, 378), (625, 878), (1150, 2220)], "appB_today_mobile.png")
+# 代號自動完成:略過含股票池檔數的說明列
+stitch_im(prep(S("search_autocomplete_desktop.png")), [(0, 176), (204, 900)], "appB_search.png")
+# 池外股票:只取到股價列,略過含股票池檔數的提示列
+stitch_im(prep(S("stock_outpool_2618_desktop.png")), [(0, 378)], "appB_stock_outpool.png")
+stitch_im(prep(S("stock_lowvol_2412_desktop.png")), [(0, 465)], "appB_stock_lowvol.png")
+stitch_im(prep(S("track_desktop.png")), [(0, 130), (1100, 2372)], "appB_track.png")   # 略過頁尾(含「回測」字樣)
+# 研究發現:第一排結論卡(卡片文字開頭的「②」與第二句「…兩個方法…從來沒有判反過」塗白)
+stitch_im(prep(S("findings_desktop.png"), boxes=[((92, 343, 114, 367), 255), ((200, 366, 630, 389), 255)]), [(0, 130), (255, 410)], "appB_findings.png")
+# 方法與說明:略過含結果檔名與「回測」字樣的副標、兩個方法卡、歷史命中率與回測表、免責聲明
+stitch_im(prep(S("about_desktop.png")), [(0, 175), (225, 460), (1465, 1738)], "appB_about.png")
 
 print("ok", len(os.listdir(FIG)), "figs")
