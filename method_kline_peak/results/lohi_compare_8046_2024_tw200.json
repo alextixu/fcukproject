@@ -1,0 +1,1474 @@
+{
+ "pool": "tw200",
+ "year": 2024,
+ "ticker": "8046.TW",
+ "buy_hold_pct": -47.17,
+ "buy_hold_gross_pct": -46.86,
+ "methods": {
+  "主軸": {
+   "真實標籤(事先知道答案,用到未來資訊,實際用不了)": {
+    "扣成本_pct": 144.1,
+    "沒扣成本_pct": 164.97,
+    "n_trades": 14,
+    "win_rate_pct": 100.0,
+    "avg_hold_days": 8.0,
+    "max_dd_pct": -8.33,
+    "vs_buy_hold_pct": 191.27,
+    "n_low_signals": 16,
+    "n_high_signals": 17,
+    "trades": [
+     {
+      "entry": "2024-01-19",
+      "exit": "2024-01-30",
+      "hold_days": 8,
+      "net_ret_pct": 3.03,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-16",
+      "exit": "2024-02-20",
+      "hold_days": 3,
+      "net_ret_pct": 2.06,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-18",
+      "exit": "2024-03-21",
+      "hold_days": 4,
+      "net_ret_pct": 4.55,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-29",
+      "exit": "2024-04-02",
+      "hold_days": 3,
+      "net_ret_pct": 5.18,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-22",
+      "exit": "2024-04-25",
+      "hold_days": 4,
+      "net_ret_pct": 10.43,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-03",
+      "exit": "2024-05-17",
+      "hold_days": 11,
+      "net_ret_pct": 3.98,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-22",
+      "exit": "2024-05-30",
+      "hold_days": 7,
+      "net_ret_pct": 9.95,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-07",
+      "exit": "2024-06-21",
+      "hold_days": 10,
+      "net_ret_pct": 2.01,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-03",
+      "exit": "2024-07-18",
+      "hold_days": 12,
+      "net_ret_pct": 8.09,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-08-09",
+      "exit": "2024-08-15",
+      "hold_days": 5,
+      "net_ret_pct": 1.14,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-11",
+      "exit": "2024-09-30",
+      "hold_days": 13,
+      "net_ret_pct": 13.56,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-21",
+      "exit": "2024-10-23",
+      "hold_days": 3,
+      "net_ret_pct": 3.82,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-05",
+      "exit": "2024-11-27",
+      "hold_days": 17,
+      "net_ret_pct": 3.42,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-16",
+      "exit": "2024-12-31",
+      "hold_days": 12,
+      "net_ret_pct": 22.97,
+      "how": "期末"
+     }
+    ]
+   },
+   "A0 原始": {
+    "扣成本_pct": -40.95,
+    "沒扣成本_pct": -35.53,
+    "n_trades": 15,
+    "win_rate_pct": 26.7,
+    "avg_hold_days": 10.0,
+    "max_dd_pct": -45.37,
+    "vs_buy_hold_pct": 6.22,
+    "n_low_signals": 70,
+    "n_high_signals": 47,
+    "trades": [
+     {
+      "entry": "2024-01-04",
+      "exit": "2024-01-15",
+      "hold_days": 8,
+      "net_ret_pct": -4.73,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-01-16",
+      "exit": "2024-01-23",
+      "hold_days": 6,
+      "net_ret_pct": 0.97,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-15",
+      "exit": "2024-02-19",
+      "hold_days": 3,
+      "net_ret_pct": -0.15,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-26",
+      "exit": "2024-03-19",
+      "hold_days": 16,
+      "net_ret_pct": -5.31,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-26",
+      "exit": "2024-04-02",
+      "hold_days": 6,
+      "net_ret_pct": -0.35,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-11",
+      "exit": "2024-04-25",
+      "hold_days": 11,
+      "net_ret_pct": -6.48,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-03",
+      "exit": "2024-05-09",
+      "hold_days": 5,
+      "net_ret_pct": 1.03,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-21",
+      "exit": "2024-05-29",
+      "hold_days": 7,
+      "net_ret_pct": 10.37,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-25",
+      "exit": "2024-07-09",
+      "hold_days": 11,
+      "net_ret_pct": -4.72,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-11",
+      "exit": "2024-07-12",
+      "hold_days": 2,
+      "net_ret_pct": 3.59,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-23",
+      "exit": "2024-08-13",
+      "hold_days": 14,
+      "net_ret_pct": -18.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-08-26",
+      "exit": "2024-09-16",
+      "hold_days": 16,
+      "net_ret_pct": -9.35,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-10-22",
+      "hold_days": 11,
+      "net_ret_pct": -1.65,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-29",
+      "exit": "2024-11-20",
+      "hold_days": 16,
+      "net_ret_pct": -7.55,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-28",
+      "exit": "2024-12-23",
+      "hold_days": 18,
+      "net_ret_pct": -5.55,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "1a 合併連續・事後最高分(用到未來資訊,實際用不了)": {
+    "扣成本_pct": -23.17,
+    "沒扣成本_pct": -16.12,
+    "n_trades": 15,
+    "win_rate_pct": 46.7,
+    "avg_hold_days": 9.6,
+    "max_dd_pct": -36.07,
+    "vs_buy_hold_pct": 24.0,
+    "n_low_signals": 30,
+    "n_high_signals": 29,
+    "trades": [
+     {
+      "entry": "2024-01-04",
+      "exit": "2024-01-15",
+      "hold_days": 8,
+      "net_ret_pct": -4.73,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-01-19",
+      "exit": "2024-01-24",
+      "hold_days": 4,
+      "net_ret_pct": 3.03,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-16",
+      "exit": "2024-02-20",
+      "hold_days": 3,
+      "net_ret_pct": 2.06,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-27",
+      "exit": "2024-03-21",
+      "hold_days": 17,
+      "net_ret_pct": -3.73,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-28",
+      "exit": "2024-04-02",
+      "hold_days": 4,
+      "net_ret_pct": 3.61,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-12",
+      "exit": "2024-04-25",
+      "hold_days": 10,
+      "net_ret_pct": -5.78,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-03",
+      "exit": "2024-05-09",
+      "hold_days": 5,
+      "net_ret_pct": 1.03,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-22",
+      "exit": "2024-05-29",
+      "hold_days": 6,
+      "net_ret_pct": 11.57,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-26",
+      "exit": "2024-07-09",
+      "hold_days": 10,
+      "net_ret_pct": -2.17,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-11",
+      "exit": "2024-07-15",
+      "hold_days": 3,
+      "net_ret_pct": 6.93,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-23",
+      "exit": "2024-08-13",
+      "hold_days": 14,
+      "net_ret_pct": -18.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-08-26",
+      "exit": "2024-09-16",
+      "hold_days": 16,
+      "net_ret_pct": -9.35,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-10-23",
+      "hold_days": 12,
+      "net_ret_pct": 0.84,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-30",
+      "exit": "2024-11-20",
+      "hold_days": 15,
+      "net_ret_pct": -5.1,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-29",
+      "exit": "2024-12-23",
+      "hold_days": 17,
+      "net_ret_pct": -1.88,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "1b 合併連續・即時版": {
+    "扣成本_pct": -40.95,
+    "沒扣成本_pct": -35.53,
+    "n_trades": 15,
+    "win_rate_pct": 26.7,
+    "avg_hold_days": 10.0,
+    "max_dd_pct": -45.37,
+    "vs_buy_hold_pct": 6.22,
+    "n_low_signals": 50,
+    "n_high_signals": 41,
+    "trades": [
+     {
+      "entry": "2024-01-04",
+      "exit": "2024-01-15",
+      "hold_days": 8,
+      "net_ret_pct": -4.73,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-01-16",
+      "exit": "2024-01-23",
+      "hold_days": 6,
+      "net_ret_pct": 0.97,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-15",
+      "exit": "2024-02-19",
+      "hold_days": 3,
+      "net_ret_pct": -0.15,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-26",
+      "exit": "2024-03-19",
+      "hold_days": 16,
+      "net_ret_pct": -5.31,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-26",
+      "exit": "2024-04-02",
+      "hold_days": 6,
+      "net_ret_pct": -0.35,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-11",
+      "exit": "2024-04-25",
+      "hold_days": 11,
+      "net_ret_pct": -6.48,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-03",
+      "exit": "2024-05-09",
+      "hold_days": 5,
+      "net_ret_pct": 1.03,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-21",
+      "exit": "2024-05-29",
+      "hold_days": 7,
+      "net_ret_pct": 10.37,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-25",
+      "exit": "2024-07-09",
+      "hold_days": 11,
+      "net_ret_pct": -4.72,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-11",
+      "exit": "2024-07-12",
+      "hold_days": 2,
+      "net_ret_pct": 3.59,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-23",
+      "exit": "2024-08-13",
+      "hold_days": 14,
+      "net_ret_pct": -18.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-08-26",
+      "exit": "2024-09-16",
+      "hold_days": 16,
+      "net_ret_pct": -9.35,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-10-22",
+      "hold_days": 11,
+      "net_ret_pct": -1.65,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-29",
+      "exit": "2024-11-20",
+      "hold_days": 16,
+      "net_ret_pct": -7.55,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-28",
+      "exit": "2024-12-23",
+      "hold_days": 18,
+      "net_ret_pct": -5.55,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "2-50 每天前 50%": {
+    "扣成本_pct": -32.18,
+    "沒扣成本_pct": -29.34,
+    "n_trades": 7,
+    "win_rate_pct": 42.9,
+    "avg_hold_days": 18.4,
+    "max_dd_pct": -37.73,
+    "vs_buy_hold_pct": 14.99,
+    "n_low_signals": 30,
+    "n_high_signals": 26,
+    "trades": [
+     {
+      "entry": "2024-01-04",
+      "exit": "2024-01-24",
+      "hold_days": 15,
+      "net_ret_pct": -5.55,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-26",
+      "exit": "2024-03-19",
+      "hold_days": 16,
+      "net_ret_pct": -5.31,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-27",
+      "exit": "2024-05-09",
+      "hold_days": 29,
+      "net_ret_pct": -8.38,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-26",
+      "exit": "2024-08-15",
+      "hold_days": 35,
+      "net_ret_pct": -19.7,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-10-23",
+      "hold_days": 12,
+      "net_ret_pct": 0.84,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-05",
+      "exit": "2024-11-20",
+      "hold_days": 12,
+      "net_ret_pct": 1.02,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-10",
+      "exit": "2024-12-23",
+      "hold_days": 10,
+      "net_ret_pct": 1.19,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "確認 k=1": {
+    "扣成本_pct": -18.96,
+    "沒扣成本_pct": -11.51,
+    "n_trades": 15,
+    "win_rate_pct": 60.0,
+    "avg_hold_days": 10.0,
+    "max_dd_pct": -38.99,
+    "vs_buy_hold_pct": 28.21,
+    "n_low_signals": 30,
+    "n_high_signals": 29,
+    "trades": [
+     {
+      "entry": "2024-01-10",
+      "exit": "2024-01-16",
+      "hold_days": 5,
+      "net_ret_pct": -1.25,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-01-22",
+      "exit": "2024-01-25",
+      "hold_days": 4,
+      "net_ret_pct": 0.08,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-19",
+      "exit": "2024-02-21",
+      "hold_days": 3,
+      "net_ret_pct": -0.8,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-01",
+      "exit": "2024-03-22",
+      "hold_days": 16,
+      "net_ret_pct": 0.36,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-01",
+      "exit": "2024-04-03",
+      "hold_days": 3,
+      "net_ret_pct": 1.37,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-23",
+      "exit": "2024-04-26",
+      "hold_days": 4,
+      "net_ret_pct": 3.76,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-06",
+      "exit": "2024-05-10",
+      "hold_days": 5,
+      "net_ret_pct": 2.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-23",
+      "exit": "2024-06-24",
+      "hold_days": 22,
+      "net_ret_pct": 3.36,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-27",
+      "exit": "2024-07-10",
+      "hold_days": 10,
+      "net_ret_pct": -4.58,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-12",
+      "exit": "2024-07-16",
+      "hold_days": 3,
+      "net_ret_pct": 2.14,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-26",
+      "exit": "2024-08-14",
+      "hold_days": 14,
+      "net_ret_pct": -15.24,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-08-27",
+      "exit": "2024-09-18",
+      "hold_days": 16,
+      "net_ret_pct": -9.99,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-08",
+      "exit": "2024-10-24",
+      "hold_days": 12,
+      "net_ret_pct": 0.49,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-01",
+      "exit": "2024-11-21",
+      "hold_days": 15,
+      "net_ret_pct": -4.42,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-04",
+      "exit": "2024-12-27",
+      "hold_days": 18,
+      "net_ret_pct": 3.27,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "確認 k=2": {
+    "扣成本_pct": -26.51,
+    "沒扣成本_pct": -19.76,
+    "n_trades": 15,
+    "win_rate_pct": 40.0,
+    "avg_hold_days": 10.5,
+    "max_dd_pct": -41.65,
+    "vs_buy_hold_pct": 20.66,
+    "n_low_signals": 24,
+    "n_high_signals": 22,
+    "trades": [
+     {
+      "entry": "2024-01-11",
+      "exit": "2024-01-17",
+      "hold_days": 5,
+      "net_ret_pct": -2.77,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-01-23",
+      "exit": "2024-01-26",
+      "hold_days": 4,
+      "net_ret_pct": -1.9,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-20",
+      "exit": "2024-02-22",
+      "hold_days": 3,
+      "net_ret_pct": -2.52,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-04",
+      "exit": "2024-03-25",
+      "hold_days": 16,
+      "net_ret_pct": 0.13,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-02",
+      "exit": "2024-04-08",
+      "hold_days": 3,
+      "net_ret_pct": -1.53,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-24",
+      "exit": "2024-04-29",
+      "hold_days": 4,
+      "net_ret_pct": 0.21,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-07",
+      "exit": "2024-05-21",
+      "hold_days": 11,
+      "net_ret_pct": 0.5,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-24",
+      "exit": "2024-06-25",
+      "hold_days": 22,
+      "net_ret_pct": 2.07,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-05",
+      "exit": "2024-07-11",
+      "hold_days": 5,
+      "net_ret_pct": -4.08,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-15",
+      "exit": "2024-07-22",
+      "hold_days": 6,
+      "net_ret_pct": -1.31,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-29",
+      "exit": "2024-08-19",
+      "hold_days": 16,
+      "net_ret_pct": -18.44,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-08-28",
+      "exit": "2024-09-19",
+      "hold_days": 16,
+      "net_ret_pct": -9.04,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-09",
+      "exit": "2024-10-25",
+      "hold_days": 12,
+      "net_ret_pct": -1.3,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-04",
+      "exit": "2024-11-22",
+      "hold_days": 15,
+      "net_ret_pct": 0.59,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-05",
+      "exit": "2024-12-31",
+      "hold_days": 19,
+      "net_ret_pct": 11.84,
+      "how": "期末"
+     }
+    ]
+   },
+   "確認 k=3": {
+    "扣成本_pct": -9.23,
+    "沒扣成本_pct": -2.05,
+    "n_trades": 13,
+    "win_rate_pct": 23.1,
+    "avg_hold_days": 10.0,
+    "max_dd_pct": -27.02,
+    "vs_buy_hold_pct": 37.94,
+    "n_low_signals": 19,
+    "n_high_signals": 20,
+    "trades": [
+     {
+      "entry": "2024-01-12",
+      "exit": "2024-01-18",
+      "hold_days": 5,
+      "net_ret_pct": -4.3,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-01-24",
+      "exit": "2024-01-29",
+      "hold_days": 4,
+      "net_ret_pct": -1.89,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-21",
+      "exit": "2024-02-23",
+      "hold_days": 3,
+      "net_ret_pct": -1.89,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-13",
+      "exit": "2024-03-26",
+      "hold_days": 10,
+      "net_ret_pct": -0.58,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-03",
+      "exit": "2024-04-09",
+      "hold_days": 3,
+      "net_ret_pct": -0.58,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-25",
+      "exit": "2024-04-30",
+      "hold_days": 4,
+      "net_ret_pct": -1.37,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-08",
+      "exit": "2024-05-22",
+      "hold_days": 11,
+      "net_ret_pct": -1.12,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-27",
+      "exit": "2024-06-26",
+      "hold_days": 22,
+      "net_ret_pct": 1.03,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-08",
+      "exit": "2024-07-23",
+      "hold_days": 12,
+      "net_ret_pct": 1.02,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-03",
+      "exit": "2024-09-27",
+      "hold_days": 18,
+      "net_ret_pct": -5.3,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-17",
+      "exit": "2024-10-28",
+      "hold_days": 8,
+      "net_ret_pct": -0.58,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-08",
+      "exit": "2024-11-25",
+      "hold_days": 12,
+      "net_ret_pct": -6.52,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-06",
+      "exit": "2024-12-31",
+      "hold_days": 18,
+      "net_ret_pct": 13.8,
+      "how": "期末"
+     }
+    ]
+   }
+  },
+  "Stacking 邏輯迴歸": {
+   "真實標籤(事先知道答案,用到未來資訊,實際用不了)": {
+    "扣成本_pct": 144.1,
+    "沒扣成本_pct": 164.97,
+    "n_trades": 14,
+    "win_rate_pct": 100.0,
+    "avg_hold_days": 8.0,
+    "max_dd_pct": -8.33,
+    "vs_buy_hold_pct": 191.27,
+    "n_low_signals": 16,
+    "n_high_signals": 17,
+    "trades": [
+     {
+      "entry": "2024-01-19",
+      "exit": "2024-01-30",
+      "hold_days": 8,
+      "net_ret_pct": 3.03,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-02-16",
+      "exit": "2024-02-20",
+      "hold_days": 3,
+      "net_ret_pct": 2.06,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-18",
+      "exit": "2024-03-21",
+      "hold_days": 4,
+      "net_ret_pct": 4.55,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-29",
+      "exit": "2024-04-02",
+      "hold_days": 3,
+      "net_ret_pct": 5.18,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-22",
+      "exit": "2024-04-25",
+      "hold_days": 4,
+      "net_ret_pct": 10.43,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-03",
+      "exit": "2024-05-17",
+      "hold_days": 11,
+      "net_ret_pct": 3.98,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-05-22",
+      "exit": "2024-05-30",
+      "hold_days": 7,
+      "net_ret_pct": 9.95,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-07",
+      "exit": "2024-06-21",
+      "hold_days": 10,
+      "net_ret_pct": 2.01,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-03",
+      "exit": "2024-07-18",
+      "hold_days": 12,
+      "net_ret_pct": 8.09,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-08-09",
+      "exit": "2024-08-15",
+      "hold_days": 5,
+      "net_ret_pct": 1.14,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-11",
+      "exit": "2024-09-30",
+      "hold_days": 13,
+      "net_ret_pct": 13.56,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-21",
+      "exit": "2024-10-23",
+      "hold_days": 3,
+      "net_ret_pct": 3.82,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-05",
+      "exit": "2024-11-27",
+      "hold_days": 17,
+      "net_ret_pct": 3.42,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-16",
+      "exit": "2024-12-31",
+      "hold_days": 12,
+      "net_ret_pct": 22.97,
+      "how": "期末"
+     }
+    ]
+   },
+   "A0 原始": {
+    "扣成本_pct": -28.05,
+    "沒扣成本_pct": -24.15,
+    "n_trades": 9,
+    "win_rate_pct": 44.4,
+    "avg_hold_days": 15.9,
+    "max_dd_pct": -37.03,
+    "vs_buy_hold_pct": 19.12,
+    "n_low_signals": 58,
+    "n_high_signals": 22,
+    "trades": [
+     {
+      "entry": "2024-01-04",
+      "exit": "2024-03-19",
+      "hold_days": 46,
+      "net_ret_pct": -12.8,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-27",
+      "exit": "2024-04-02",
+      "hold_days": 5,
+      "net_ret_pct": 2.34,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-12",
+      "exit": "2024-04-25",
+      "hold_days": 10,
+      "net_ret_pct": -5.78,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-25",
+      "exit": "2024-07-18",
+      "hold_days": 18,
+      "net_ret_pct": 1.36,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-23",
+      "exit": "2024-08-13",
+      "hold_days": 14,
+      "net_ret_pct": -18.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-11",
+      "exit": "2024-09-16",
+      "hold_days": 4,
+      "net_ret_pct": 8.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-10-23",
+      "hold_days": 12,
+      "net_ret_pct": 0.84,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-30",
+      "exit": "2024-11-20",
+      "hold_days": 15,
+      "net_ret_pct": -5.1,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-28",
+      "exit": "2024-12-24",
+      "hold_days": 19,
+      "net_ret_pct": -0.17,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "1a 合併連續・事後最高分(用到未來資訊,實際用不了)": {
+    "扣成本_pct": -11.35,
+    "沒扣成本_pct": -6.56,
+    "n_trades": 9,
+    "win_rate_pct": 66.7,
+    "avg_hold_days": 15.2,
+    "max_dd_pct": -25.87,
+    "vs_buy_hold_pct": 35.82,
+    "n_low_signals": 22,
+    "n_high_signals": 15,
+    "trades": [
+     {
+      "entry": "2024-01-05",
+      "exit": "2024-03-20",
+      "hold_days": 46,
+      "net_ret_pct": -8.58,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-29",
+      "exit": "2024-04-02",
+      "hold_days": 3,
+      "net_ret_pct": 5.18,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-16",
+      "exit": "2024-04-25",
+      "hold_days": 8,
+      "net_ret_pct": 1.01,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-26",
+      "exit": "2024-07-18",
+      "hold_days": 17,
+      "net_ret_pct": 4.06,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-23",
+      "exit": "2024-08-13",
+      "hold_days": 14,
+      "net_ret_pct": -18.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-11",
+      "exit": "2024-09-16",
+      "hold_days": 4,
+      "net_ret_pct": 8.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-10-23",
+      "hold_days": 12,
+      "net_ret_pct": 0.84,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-30",
+      "exit": "2024-11-20",
+      "hold_days": 15,
+      "net_ret_pct": -5.1,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-29",
+      "exit": "2024-12-24",
+      "hold_days": 18,
+      "net_ret_pct": 3.72,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "1b 合併連續・即時版": {
+    "扣成本_pct": -28.05,
+    "沒扣成本_pct": -24.15,
+    "n_trades": 9,
+    "win_rate_pct": 44.4,
+    "avg_hold_days": 15.9,
+    "max_dd_pct": -37.03,
+    "vs_buy_hold_pct": 19.12,
+    "n_low_signals": 37,
+    "n_high_signals": 17,
+    "trades": [
+     {
+      "entry": "2024-01-04",
+      "exit": "2024-03-19",
+      "hold_days": 46,
+      "net_ret_pct": -12.8,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-03-27",
+      "exit": "2024-04-02",
+      "hold_days": 5,
+      "net_ret_pct": 2.34,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-12",
+      "exit": "2024-04-25",
+      "hold_days": 10,
+      "net_ret_pct": -5.78,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-25",
+      "exit": "2024-07-18",
+      "hold_days": 18,
+      "net_ret_pct": 1.36,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-23",
+      "exit": "2024-08-13",
+      "hold_days": 14,
+      "net_ret_pct": -18.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-11",
+      "exit": "2024-09-16",
+      "hold_days": 4,
+      "net_ret_pct": 8.71,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-10-23",
+      "hold_days": 12,
+      "net_ret_pct": 0.84,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-30",
+      "exit": "2024-11-20",
+      "hold_days": 15,
+      "net_ret_pct": -5.1,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-28",
+      "exit": "2024-12-24",
+      "hold_days": 19,
+      "net_ret_pct": -0.17,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "2-50 每天前 50%": {
+    "扣成本_pct": -50.21,
+    "沒扣成本_pct": -49.33,
+    "n_trades": 3,
+    "win_rate_pct": 0.0,
+    "avg_hold_days": 61.0,
+    "max_dd_pct": -56.42,
+    "vs_buy_hold_pct": -3.04,
+    "n_low_signals": 37,
+    "n_high_signals": 6,
+    "trades": [
+     {
+      "entry": "2024-01-04",
+      "exit": "2024-04-25",
+      "hold_days": 71,
+      "net_ret_pct": -21.09,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-26",
+      "exit": "2024-09-16",
+      "hold_days": 57,
+      "net_ret_pct": -26.53,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-07",
+      "exit": "2024-12-24",
+      "hold_days": 55,
+      "net_ret_pct": -14.12,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "確認 k=1": {
+    "扣成本_pct": -7.22,
+    "沒扣成本_pct": -2.19,
+    "n_trades": 9,
+    "win_rate_pct": 66.7,
+    "avg_hold_days": 14.7,
+    "max_dd_pct": -24.28,
+    "vs_buy_hold_pct": 39.95,
+    "n_low_signals": 25,
+    "n_high_signals": 14,
+    "trades": [
+     {
+      "entry": "2024-01-10",
+      "exit": "2024-03-22",
+      "hold_days": 45,
+      "net_ret_pct": -5.89,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-01",
+      "exit": "2024-04-03",
+      "hold_days": 3,
+      "net_ret_pct": 1.37,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-23",
+      "exit": "2024-04-26",
+      "hold_days": 4,
+      "net_ret_pct": 3.76,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-06-27",
+      "exit": "2024-07-19",
+      "hold_days": 17,
+      "net_ret_pct": 5.44,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-26",
+      "exit": "2024-08-14",
+      "hold_days": 14,
+      "net_ret_pct": -15.24,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-12",
+      "exit": "2024-09-18",
+      "hold_days": 4,
+      "net_ret_pct": 5.73,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-08",
+      "exit": "2024-10-24",
+      "hold_days": 12,
+      "net_ret_pct": 0.49,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-01",
+      "exit": "2024-11-21",
+      "hold_days": 15,
+      "net_ret_pct": -4.42,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-04",
+      "exit": "2024-12-27",
+      "hold_days": 18,
+      "net_ret_pct": 3.27,
+      "how": "高點出場"
+     }
+    ]
+   },
+   "確認 k=2": {
+    "扣成本_pct": -11.78,
+    "沒扣成本_pct": -7.0,
+    "n_trades": 9,
+    "win_rate_pct": 55.6,
+    "avg_hold_days": 14.4,
+    "max_dd_pct": -29.68,
+    "vs_buy_hold_pct": 35.39,
+    "n_low_signals": 22,
+    "n_high_signals": 10,
+    "trades": [
+     {
+      "entry": "2024-01-11",
+      "exit": "2024-03-25",
+      "hold_days": 45,
+      "net_ret_pct": -7.37,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-02",
+      "exit": "2024-04-08",
+      "hold_days": 3,
+      "net_ret_pct": -1.53,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-24",
+      "exit": "2024-04-29",
+      "hold_days": 4,
+      "net_ret_pct": 0.21,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-05",
+      "exit": "2024-07-22",
+      "hold_days": 12,
+      "net_ret_pct": 2.42,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-29",
+      "exit": "2024-08-19",
+      "hold_days": 16,
+      "net_ret_pct": -18.44,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-13",
+      "exit": "2024-09-19",
+      "hold_days": 4,
+      "net_ret_pct": 4.06,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-09",
+      "exit": "2024-10-25",
+      "hold_days": 12,
+      "net_ret_pct": -1.3,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-04",
+      "exit": "2024-11-22",
+      "hold_days": 15,
+      "net_ret_pct": 0.59,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-05",
+      "exit": "2024-12-31",
+      "hold_days": 19,
+      "net_ret_pct": 11.84,
+      "how": "期末"
+     }
+    ]
+   },
+   "確認 k=3": {
+    "扣成本_pct": -0.39,
+    "沒扣成本_pct": 4.39,
+    "n_trades": 8,
+    "win_rate_pct": 37.5,
+    "avg_hold_days": 13.9,
+    "max_dd_pct": -20.43,
+    "vs_buy_hold_pct": 46.78,
+    "n_low_signals": 18,
+    "n_high_signals": 9,
+    "trades": [
+     {
+      "entry": "2024-01-12",
+      "exit": "2024-03-26",
+      "hold_days": 45,
+      "net_ret_pct": -8.45,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-03",
+      "exit": "2024-04-09",
+      "hold_days": 3,
+      "net_ret_pct": -0.58,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-04-25",
+      "exit": "2024-04-30",
+      "hold_days": 4,
+      "net_ret_pct": -1.37,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-07-08",
+      "exit": "2024-07-23",
+      "hold_days": 12,
+      "net_ret_pct": 1.02,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-09-16",
+      "exit": "2024-09-27",
+      "hold_days": 9,
+      "net_ret_pct": 3.85,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-10-17",
+      "exit": "2024-10-28",
+      "hold_days": 8,
+      "net_ret_pct": -0.58,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-11-08",
+      "exit": "2024-11-25",
+      "hold_days": 12,
+      "net_ret_pct": -6.52,
+      "how": "高點出場"
+     },
+     {
+      "entry": "2024-12-06",
+      "exit": "2024-12-31",
+      "hold_days": 18,
+      "net_ret_pct": 13.8,
+      "how": "期末"
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,205 @@
+{
+ "pool": "tw50",
+ "n_stocks": 34,
+ "year": 2025,
+ "等權買進持有_pct": 19.16,
+ "等權買進持有_沒扣_pct": 19.86,
+ "前3檔持有5天_引用": {
+  "主軸": -34.87,
+  "Stacking 邏輯迴歸": -11.94
+ },
+ "methods": {
+  "主軸": {
+   "_核對": {
+    "macro_f1": 53.14,
+    "回測 json macro_f1": 53.14,
+    "判低點數": 1712,
+    "回測 json 低點訊號數": 1712
+   },
+   "真實標籤(事先知道答案,用到未來資訊,實際用不了)": {
+    "扣成本_pct": 629.07,
+    "沒扣成本_pct": 745.72,
+    "n_trades": 77,
+    "win_rate_pct": 94.8,
+    "avg_hold_days": 9.3,
+    "max_dd_pct": -6.28,
+    "vs_等權買進持有": 609.91,
+    "n_low_signals": 598,
+    "n_high_signals": 601
+   },
+   "A0 原始": {
+    "扣成本_pct": -15.13,
+    "沒扣成本_pct": 0.59,
+    "n_trades": 87,
+    "win_rate_pct": 52.9,
+    "avg_hold_days": 9.0,
+    "max_dd_pct": -31.77,
+    "vs_等權買進持有": -34.29,
+    "n_low_signals": 1712,
+    "n_high_signals": 1736
+   },
+   "1a 合併連續・事後最高分(用到未來資訊,實際用不了)": {
+    "扣成本_pct": 15.25,
+    "沒扣成本_pct": 34.33,
+    "n_trades": 79,
+    "win_rate_pct": 68.4,
+    "avg_hold_days": 9.6,
+    "max_dd_pct": -33.62,
+    "vs_等權買進持有": -3.91,
+    "n_low_signals": 871,
+    "n_high_signals": 916
+   },
+   "1b 合併連續・即時版": {
+    "扣成本_pct": -23.1,
+    "沒扣成本_pct": -8.84,
+    "n_trades": 87,
+    "win_rate_pct": 48.3,
+    "avg_hold_days": 8.9,
+    "max_dd_pct": -35.7,
+    "vs_等權買進持有": -42.26,
+    "n_low_signals": 1292,
+    "n_high_signals": 1321
+   },
+   "2-50 每天前 50%": {
+    "扣成本_pct": -7.26,
+    "沒扣成本_pct": 1.49,
+    "n_trades": 46,
+    "win_rate_pct": 54.3,
+    "avg_hold_days": 16.4,
+    "max_dd_pct": -22.56,
+    "vs_等權買進持有": -26.42,
+    "n_low_signals": 820,
+    "n_high_signals": 838
+   },
+   "確認 k=1": {
+    "扣成本_pct": -23.26,
+    "沒扣成本_pct": -11.6,
+    "n_trades": 73,
+    "win_rate_pct": 35.6,
+    "avg_hold_days": 10.5,
+    "max_dd_pct": -31.36,
+    "vs_等權買進持有": -42.42,
+    "n_low_signals": 933,
+    "n_high_signals": 955
+   },
+   "確認 k=2": {
+    "扣成本_pct": -20.79,
+    "沒扣成本_pct": -8.4,
+    "n_trades": 75,
+    "win_rate_pct": 38.7,
+    "avg_hold_days": 9.9,
+    "max_dd_pct": -30.83,
+    "vs_等權買進持有": -39.95,
+    "n_low_signals": 712,
+    "n_high_signals": 697
+   },
+   "確認 k=3": {
+    "扣成本_pct": -14.75,
+    "沒扣成本_pct": -2.92,
+    "n_trades": 67,
+    "win_rate_pct": 34.3,
+    "avg_hold_days": 10.8,
+    "max_dd_pct": -30.97,
+    "vs_等權買進持有": -33.91,
+    "n_low_signals": 599,
+    "n_high_signals": 572
+   }
+  },
+  "Stacking 邏輯迴歸": {
+   "_核對": {
+    "macro_f1": 49.43,
+    "回測 json macro_f1": 49.43,
+    "判低點數": 972,
+    "回測 json 低點訊號數": 972
+   },
+   "真實標籤(事先知道答案,用到未來資訊,實際用不了)": {
+    "扣成本_pct": 629.07,
+    "沒扣成本_pct": 745.72,
+    "n_trades": 77,
+    "win_rate_pct": 94.8,
+    "avg_hold_days": 9.3,
+    "max_dd_pct": -6.28,
+    "vs_等權買進持有": 609.91,
+    "n_low_signals": 598,
+    "n_high_signals": 601
+   },
+   "A0 原始": {
+    "扣成本_pct": 1.18,
+    "沒扣成本_pct": 9.15,
+    "n_trades": 39,
+    "win_rate_pct": 59.0,
+    "avg_hold_days": 19.0,
+    "max_dd_pct": -31.33,
+    "vs_等權買進持有": -17.98,
+    "n_low_signals": 972,
+    "n_high_signals": 850
+   },
+   "1a 合併連續・事後最高分(用到未來資訊,實際用不了)": {
+    "扣成本_pct": 18.23,
+    "沒扣成本_pct": 29.74,
+    "n_trades": 48,
+    "win_rate_pct": 62.5,
+    "avg_hold_days": 15.0,
+    "max_dd_pct": -32.23,
+    "vs_等權買進持有": -0.93,
+    "n_low_signals": 569,
+    "n_high_signals": 494
+   },
+   "1b 合併連續・即時版": {
+    "扣成本_pct": 7.83,
+    "沒扣成本_pct": 15.4,
+    "n_trades": 35,
+    "win_rate_pct": 62.9,
+    "avg_hold_days": 20.6,
+    "max_dd_pct": -31.38,
+    "vs_等權買進持有": -11.33,
+    "n_low_signals": 748,
+    "n_high_signals": 658
+   },
+   "2-50 每天前 50%": {
+    "扣成本_pct": 16.46,
+    "沒扣成本_pct": 22.31,
+    "n_trades": 26,
+    "win_rate_pct": 65.4,
+    "avg_hold_days": 28.3,
+    "max_dd_pct": -24.63,
+    "vs_等權買進持有": -2.7,
+    "n_low_signals": 470,
+    "n_high_signals": 403
+   },
+   "確認 k=1": {
+    "扣成本_pct": 22.42,
+    "沒扣成本_pct": 30.67,
+    "n_trades": 34,
+    "win_rate_pct": 61.8,
+    "avg_hold_days": 21.1,
+    "max_dd_pct": -29.37,
+    "vs_等權買進持有": 3.26,
+    "n_low_signals": 543,
+    "n_high_signals": 463
+   },
+   "確認 k=2": {
+    "扣成本_pct": 8.8,
+    "沒扣成本_pct": 14.43,
+    "n_trades": 26,
+    "win_rate_pct": 61.5,
+    "avg_hold_days": 27.4,
+    "max_dd_pct": -30.66,
+    "vs_等權買進持有": -10.36,
+    "n_low_signals": 417,
+    "n_high_signals": 339
+   },
+   "確認 k=3": {
+    "扣成本_pct": 5.24,
+    "沒扣成本_pct": 11.23,
+    "n_trades": 29,
+    "win_rate_pct": 37.9,
+    "avg_hold_days": 24.4,
+    "max_dd_pct": -33.98,
+    "vs_等權買進持有": -13.92,
+    "n_low_signals": 340,
+    "n_high_signals": 288
+   }
+  }
+ }
+}
