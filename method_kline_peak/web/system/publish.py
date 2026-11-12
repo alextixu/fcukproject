@@ -6,7 +6,10 @@
   track.json       成績追蹤:每日前 3 檔對答案、命中率、各信心等級命中率、池外命中率
   index.json       自動完成用的股票清單(代號、名稱、分類、市場別)
   research.json    研究結果:TW200 Stacking 2024–2026 的分類成績(直接讀 results/,不重算)
-  stocks/<代號前兩碼>.json  個股(每檔一筆):今天的判斷、還沒破底 / 沒創高的訊號、最近 60 根 K 線、過去的判斷與答案
+  stocks/<代號前兩碼>.json  個股(每檔一筆):今天的判斷、還沒破底 / 沒創高的訊號、今年整年的 K 線、今年的判斷與答案、今年的對答案統計
+
+畫面上的價格(收盤、漲跌幅、K 線、量)用證交所官方日資料的實際成交價(未還原);沒有官方資料的股票才用還原價並標示。
+模型、判斷、對答案一律用 yfinance 還原價(和研究相同),顯示用的價格不影響任何判斷。
   findings.json    研究發現頁:方向性結論(找得到轉折區、高低點不判反、命中率約三成)
 """
 import json
@@ -197,6 +200,69 @@ def shard_of(code):
     return code[:2]
 
 
+# ───────────────────────── 顯示用的價格 ─────────────────────────
+def official_bars(code):
+    """證交所官方日資料(實際成交價,未還原;量 = 成交股數)。沒有這檔就回傳 None。只用來顯示。"""
+    p = os.path.join(C.OFFICIAL, f"{code}.parquet")
+    if not os.path.exists(p):
+        return None
+    o = pd.read_parquet(p)
+    o["date"] = pd.to_datetime(o["date"])
+    o = o.set_index("date").sort_index()
+    o = o[~o.index.duplicated(keep="last")]
+    return o[(o["close"] > 0) & (o["open"] > 0)]
+
+
+def chart_start(index, asof):
+    """K 線圖的起點:判斷基準日那年的第一個交易日;那年還不到 CHART_BARS 根時,往前補到 CHART_BARS 根。"""
+    idx = index[index <= asof]
+    ystart = pd.Timestamp(f"{asof.year}-01-01")
+    if not len(idx):
+        return ystart
+    return min(ystart, idx[-min(C.CHART_BARS, len(idx))])
+
+
+def display_bars(code, df, asof):
+    """畫面用的 K 線,從 chart_start 到判斷基準日。回傳 dict:bars、price('actual' 實際成交價 / 'adj' 還原價)、close、chg_pct、close_date。
+    有官方資料、而且官方資料涵蓋整段(起點以前就有、最後一天不早於還原價最後一個有成交的日子)才用實際成交價;
+    官方沒有的日子(休市日 Yahoo 補的量 0 K 棒、停牌期間)不會出現在實際成交價的 K 線裡。"""
+    if df is None:
+        return {"bars": [], "price": "adj", "close": None, "chg_pct": None, "close_date": None}
+    adj = clean(df.loc[:asof])
+    if not len(adj):
+        return {"bars": [], "price": "adj", "close": None, "chg_pct": None, "close_date": None}
+    start = chart_start(adj.index, asof)
+    traded = adj[adj["volume"] > 0]
+    off = official_bars(code)
+    if off is not None and len(off) and off.index[0] <= start and len(traded) and off.loc[:asof].index[-1] >= traded.index[-1]:
+        o = off.loc[start:asof]
+        bars = [[str(d.date()), round(float(a), 2), round(float(h), 2), round(float(lo), 2), round(float(c), 2), int(v)]
+                for d, a, h, lo, c, v in zip(o.index, o["open"], o["high"], o["low"], o["close"], o["capacity"])]
+        last = o.iloc[-1]
+        ch = last.get("change")
+        chg = round(float(ch) / (float(last["close"]) - float(ch)) * 100, 3) if ch == ch and ch is not None and last["close"] != ch else None
+        return {"bars": bars, "price": "actual", "close": float(last["close"]), "chg_pct": chg, "close_date": str(o.index[-1].date())}
+    a = adj.loc[start:]
+    bars = [[str(d.date()), round(o, 2), round(h, 2), round(lo, 2), round(c, 2), int(v)]
+            for d, o, h, lo, c, v in zip(a.index, a.open, a.high, a.low, a.close, a.volume)]
+    prev = a["close"].shift(1).iloc[-1]
+    chg = round((a["close"].iloc[-1] / prev - 1) * 100, 3) if prev == prev and prev else None
+    return {"bars": bars, "price": "adj", "close": round(float(a["close"].iloc[-1]), 2), "chg_pct": chg, "close_date": str(a.index[-1].date())}
+
+
+def year_stats(g, year):
+    """一檔股票 year 年的判低點 / 判高點:判斷天數、已對答案天數、對幾天、命中率。"""
+    out = {"year": year}
+    y = g[g.date.str.startswith(year)] if g is not None else None
+    for kind in KINDS:
+        s = y[y.stack_pred == kind] if y is not None else []
+        gr = s[s.truth.notna()] if len(s) else []
+        hits = int((gr.truth == kind).sum()) if len(gr) else 0
+        out[kind] = {"n": int(len(s)), "graded": int(len(gr)), "hits": hits,
+                     "pct": round(hits / len(gr) * 100, 1) if len(gr) else None}
+    return out
+
+
 # ───────────────────────── 主程式 ─────────────────────────
 def publish(data, cal, check, log=print):
     t0 = time.time()
@@ -219,6 +285,8 @@ def publish(data, cal, check, log=print):
     recent = sorted(tab.date.unique())[-40:]
     rt = tab[tab.date.isin(recent)]
     preds_by = {c: g.assign(date=pd.to_datetime(g.date)).set_index("date") for c, g in rt.groupby("code")}
+    disp = {code: display_bars(code, data.get(U.ticker_of(code)), asof)
+            for code, r in rows.items() if r["status"] != U.NOSUP}
     closes_by, active = {}, {}
     for code, r in rows.items():
         df = data.get(U.ticker_of(code))
@@ -237,14 +305,16 @@ def publish(data, cal, check, log=print):
             if x is None or rows[code]["status"] != U.POOL:
                 continue
             r = rows[code]
-            items.append({"code": code, "name": U.name_of(code), "close": r.get("close"), "chg_pct": r.get("chg_pct"),
+            dp = disp.get(code) or {}
+            items.append({"code": code, "name": U.name_of(code), "close": dp.get("close", r.get("close")), "chg_pct": dp.get("chg_pct", r.get("chg_pct")),
                           "score": x["score"], "level": x["level"],
                           "level_hit": tr["kinds"].get(kind, {}).get("levels", {}).get(x["level"]),
                           "date": x["date"], "days": x["days"], "run": x["run"], "group": x["group"]})
         items.sort(key=lambda x: (x["days"], -(x["score"] if x["score"] is not None else -1e9)))
         for it in items:
-            if it["code"] in closes_by:
-                it["spark"] = [round(float(v), 2) for v in closes_by[it["code"]].tail(20)]
+            bars = (disp.get(it["code"]) or {}).get("bars") or []
+            if bars:
+                it["spark"] = [b[4] for b in bars[-20:]]                      # 走勢小圖:實際成交價(沒有官方資料才用還原價)
         today["lists"][kind] = items
     today["n_pool"] = sum(1 for r in latest["rows"] if r["status"] == U.POOL)
     _w(os.path.join(out, "today.json"), _clean_nan(today))
@@ -252,28 +322,24 @@ def publish(data, cal, check, log=print):
     # 個股:依代號前兩碼分成幾十個檔(Artifact 一次最多發布 255 個檔案)
     hist = tab[tab.stack_pred.isin(KINDS)]
     hist_by = {c: g for c, g in hist.groupby("code")}
+    year = str(asof.year)
     shards = {}
     for code, r in rows.items():
         if r["status"] in (U.NOSUP,):
             continue
-        df = data.get(U.ticker_of(code))
-        bars = []
-        if df is not None:
-            cdf = clean(df.loc[:asof]).tail(C.CHART_BARS)
-            bars = [[str(d.date()), round(o, 2), round(h, 2), round(lo, 2), round(c, 2), int(v)]
-                    for d, o, h, lo, c, v in zip(cdf.index, cdf.open, cdf.high, cdf.low, cdf.close, cdf.volume)]
+        dp = disp[code]
         g = hist_by.get(code)
-        sig, stats = [], None
+        sig = []
         if g is not None:
-            first = bars[0][0] if bars else latest["date"]
+            first = dp["bars"][0][0] if dp["bars"] else latest["date"]
             for _, s in g[g.date >= first].iterrows():
                 sig.append({"date": s.date, "pred": s.stack_pred, "score": s.stack_score, "level": s.stack_level,
                             "truth": s.truth, "source": s.source})
-            gm = g[(g.stack_pred == "low") & g.truth.notna()]
-            stats = _rate((gm.truth == "low").sum(), len(gm))
         shards.setdefault(shard_of(code), {})[code] = _clean_nan({
             "code": code, "name": U.name_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
-            "today": _public_row(r), "active": active.get(code, {}), "bars": bars, "signals": sig[-40:], "low_stats": stats})
+            "today": _public_row(r), "active": active.get(code, {}), "price": dp["price"], "close": dp["close"],
+            "chg_pct": dp["chg_pct"], "close_date": dp["close_date"], "bars": dp["bars"], "signals": sig,
+            "year": year_stats(g, year)})
     for k, v in shards.items():
         _w(os.path.join(out, "stocks", f"{k}.json"), v)
 

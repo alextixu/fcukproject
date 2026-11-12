@@ -131,33 +131,40 @@ function acKey(e) {
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { ACSEL = (ACSEL + (e.key === 'ArrowDown' ? 1 : -1) + ACL.length) % ACL.length; [...el.children].forEach((d, i) => d.classList.toggle('sel', i === ACSEL)); e.preventDefault(); }
   if (e.key === 'Enter') go('stock-' + ACL[ACSEL][0]);
 }
+/* K 線:預設整年塞進畫面寬度;「放大」時每根 K 棒固定寬度、可左右捲動(打開時捲到最新一天)。 */
+let ZOOM = 'fit';
 function kchart(S) {
-  const M = MOBILE(), bars = S.bars.slice(M ? -30 : -60);
+  const M = MOBILE(), bars = S.bars || [];
   if (!bars.length) return '<div class="mutebox">沒有 K 線資料</div>';
   const sig = Object.fromEntries((S.signals || []).map(s => [s.date, s]));
-  const W = M ? 420 : 860, H = M ? 320 : 300, VH = 50, pad = 8, top = 22, bot = H - VH - 24;
+  const fitW = M ? 420 : 860, zoomed = ZOOM === 'zoom', W = zoomed ? Math.max(fitW, bars.length * (M ? 9 : 12) + 16) : fitW;
+  const H = M ? 320 : 300, VH = 50, pad = 8, top = 22, bot = H - VH - 24;
   const mx = Math.max(...bars.map(b => b[2])) * 1.015, mn = Math.min(...bars.map(b => b[3])) * 0.985, y = v => top + (mx - v) / (mx - mn) * (bot - top);
-  const bw = (W - pad * 2) / bars.length, vmax = Math.max(...bars.map(b => b[5])) || 1; let g = '';
+  const bw = (W - pad * 2) / bars.length, vmax = Math.max(...bars.map(b => b[5])) || 1, tw = Math.max(2.5, Math.min(5, bw * .45)); let g = '';
   for (let k = 0; k < 4; k++) { const v = mn + (mx - mn) * k / 3; g += `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="2" y="${y(v) - 3}" font-size="10" fill="var(--axis)">${fmt(v, 1)}</text>`; }
+  let lastMonth = '';
   bars.forEach((b, i) => {
     const [d, o, h, l, c, v] = b, x = pad + i * bw + bw / 2, col = c >= o ? 'var(--up)' : 'var(--down)';
+    if (d.slice(5, 7) !== lastMonth) {
+      lastMonth = d.slice(5, 7);
+      g += `<line x1="${x - bw / 2}" x2="${x - bw / 2}" y1="${top}" y2="${H - 24}" stroke="var(--grid)"/><text x="${x - bw / 2 + 2}" y="${H - 8}" font-size="10" fill="var(--axis)">${+lastMonth}月</text>`;
+    }
     g += `<line x1="${x}" x2="${x}" y1="${y(h)}" y2="${y(l)}" stroke="${col}"/><rect x="${x - bw * .34}" y="${y(Math.max(o, c))}" width="${bw * .68}" height="${Math.max(1, Math.abs(y(o) - y(c)))}" fill="${col}"/>`;
     g += `<rect x="${x - bw * .34}" y="${H - 24 - v / vmax * VH}" width="${bw * .68}" height="${v / vmax * VH}" fill="${col}" opacity=".35"/>`;
     const s = sig[d];
     if (s && s.pred && s.pred !== 'none') {
-      const isL = s.pred === 'low', c2 = isL ? 'var(--low)' : 'var(--high)', yy = isL ? y(l) + 11 : y(h) - 11;
+      const isL = s.pred === 'low', c2 = isL ? 'var(--low)' : 'var(--high)', yy = isL ? y(l) + tw + 6 : y(h) - tw - 6;
       const st = s.truth == null ? 'wait' : s.truth === s.pred ? 'ok' : 'bad';
-      const tri = isL ? `M${x - 5},${yy + 4} L${x + 5},${yy + 4} L${x},${yy - 4} Z` : `M${x - 5},${yy - 4} L${x + 5},${yy - 4} L${x},${yy + 4} Z`;
-      g += `<path d="${tri}" fill="${st === 'ok' ? c2 : 'var(--card)'}" stroke="${c2}" stroke-width="1.5" ${st === 'wait' ? 'stroke-dasharray="2 1.5"' : ''}><title>${d} 判${LBL[s.pred]}:${st === 'wait' ? '待驗證' : st === 'ok' ? '對' : '錯'}</title></path>`;
-      if (st === 'bad') g += `<text x="${x}" y="${isL ? yy + 16 : yy - 8}" font-size="9" fill="var(--bad)" text-anchor="middle">✕</text>`;
+      const tri = isL ? `M${x - tw},${yy + tw * .8} L${x + tw},${yy + tw * .8} L${x},${yy - tw * .8} Z` : `M${x - tw},${yy - tw * .8} L${x + tw},${yy - tw * .8} L${x},${yy + tw * .8} Z`;
+      g += `<path d="${tri}" fill="${st === 'ok' ? c2 : 'var(--card)'}" stroke="${c2}" stroke-width="1.3" ${st === 'wait' ? 'stroke-dasharray="2 1.5"' : ''}><title>${d} 判${LBL[s.pred]}:${st === 'wait' ? '待驗證' : st === 'ok' ? '對' : '錯'}</title></path>`;
     }
-    if (i === bars.length - 1) g += `<rect x="${x - bw / 2}" y="${top - 6}" width="${bw}" height="${bot - top + 12}" fill="var(--accent)" opacity=".06"/><text x="${x - bw}" y="${top - 9}" font-size="10" font-weight="700" fill="var(--axis)" text-anchor="end">今天 ▸</text>`;
+    if (i === bars.length - 1) g += `<rect x="${x - bw / 2}" y="${top - 6}" width="${bw}" height="${bot - top + 12}" fill="var(--accent)" opacity=".06"/><text x="${x - bw}" y="${top - 9}" font-size="10" font-weight="700" fill="var(--axis)" text-anchor="end">${md(d)} ▸</text>`;
   });
-  const ticks = M ? [0, 10, 20, bars.length - 1] : [0, 15, 30, 45, bars.length - 1];
-  ticks.filter(i => i < bars.length).forEach(i => g += `<text x="${pad + i * bw + bw / 2}" y="${H - 8}" font-size="10" fill="var(--axis)" text-anchor="middle">${md(bars[i][0])}</text>`);
-  return `<div class="chartwrap"${ttl('K 線為還原價,紅漲綠跌;三角形 = 過去的判斷,5 個交易日後對答案')}><svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}</svg></div>
+  const t = `${S.price === 'actual' ? '實際成交價(證交所)' : '還原價(把除權息補回去)'},紅漲綠跌;三角形 = 這天的判斷,5 個交易日後對答案`;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" ${zoomed ? `width="${W}" height="${H}"` : 'width="100%"'} style="display:block">${g}</svg>`;
+  return `<div class="${zoomed ? 'chartscroll' : 'chartwrap'}"${ttl(t)}>${svg}</div>
   <div class="legend"><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--low)"/></svg>判低點</span><span><svg width="12" height="10"><path d="M1,1 L11,1 L6,9Z" fill="var(--high)"/></svg>判高點</span>
-  <span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4"/></svg>錯</span><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg>待驗證</span></div>`;
+  <span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--low)"/></svg>對</span><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4"/></svg>錯</span><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg>待驗證</span></div>`;
 }
 function bar(label, v, color, txt) {
   return `<div class="cls"><span>${label}</span><div class="bar" style="margin:0;height:8px"><i style="width:${Math.max(0, Math.min(1, v)) * 100}%;background:${color}"></i></div><span class="right">${txt}</span></div>`;
@@ -202,7 +209,7 @@ async function pageStock(code) {
   if (S.status === 'lowvol') pre = `<div class="mutebox"${ttl('這類股票的「11 天最低」常常只差一兩檔,判斷沒有參考價值')}><b>低波動・判斷不適用</b>・漲跌中位數 ${fmt(S.move)}% &lt; ${D.meta.rules.min_move}%
    <details style="margin-top:6px"><summary style="cursor:pointer">看模型輸出</summary><div style="margin-top:6px">今天判${LBL[p]}${P.score != null ? `(機率 ${fmt(P.score)})` : ''}。</div></details></div>`;
   if (S.status === 'halted') pre = `<div class="badbox"${ttl('停牌、處置或資料未更新')}><b>${S.date} 無交易</b>・今天沒有判斷</div>`;
-  if (S.status === 'nodata') pre = `<div class="mutebox"><b>資料不足</b>・至少要 16 個交易日的 K 線</div>`;
+  if (S.status === 'nodata') pre = `<div class="mutebox"><b>資料不足</b>・${(S.bars || []).length ? '至少要 16 個交易日的 K 線' : '還沒有這檔的 K 線'}</div>`;
   const dim = S.status === 'lowvol' ? 'opacity:.45;filter:grayscale(1)' : '';
   const last = S.bars[S.bars.length - 1] || [];
   const hit = S.status !== 'pool' || p === 'none' ? null : trk(p).levels?.[P.level];
@@ -214,14 +221,21 @@ async function pageStock(code) {
     : `模型判斷今天是 <b>非極值</b>(一般日子)。三類機率裡「非極值」最高(${fmt(P.p_none)})。`;
   const R = (D.research?.classification || []).find(r => r.year === '2026') || {};
   const RS = '研究結果 TW200 2026 1–9 月';
-  const past = (S.signals || []).filter(x => x.pred !== 'none').slice().reverse().slice(0, 10);
-  const ls = S.low_stats;
+  const past = (S.signals || []).filter(x => x.pred !== 'none').slice().reverse();
+  const Y = S.year || {}, yr = Y.year || S.date.slice(0, 4);
+  const pastRow = x => `<tr><td>${md(x.date)}</td><td><span class="tag ${tagCls(x.pred)}">${LBL[x.pred]}</span></td><td>${fmt(x.score)}</td><td>${x.level || '—'}</td>
+     <td>${x.truth == null ? '<span class="tag t-wait">待驗證</span>' : x.truth === x.pred ? '<span class="tag t-ok">對</span>' : `<span class="tag t-bad">錯・實為${LBL[x.truth]}</span>`}</td></tr>`;
+  const pastTable = rows => `<div class="tblwrap"><table class="tbl"><tr><th>日期</th><th>判斷</th><th>機率</th><th>信心</th><th>結果</th></tr>${rows.map(pastRow).join('')}</table></div>`;
+  const yrow = k => { const r = Y[k] || {}, wait = (r.n || 0) - (r.graded || 0);
+    return `<tr><td><span class="tag ${tagCls(k)}">判${LBL[k]}</span></td><td>${r.n || 0} 天${wait ? ` <span class="wait"${ttl('還沒滿 5 個交易日,還沒有答案')}>+${wait} 待驗證</span>` : ''}</td><td>${r.graded ? `${r.hits} 天` : '—'}</td><td class="pctc">${pct(r.pct)}</td></tr>`; };
+  const pxTip = S.price === 'actual' ? '實際成交價(證交所官方資料)' : '還原價(把除權息補回去);這檔沒有證交所官方資料';
   const tile = (label, v, t) => `<div class="tile"${tip(t)}><div class="lbl">${label}</div><div class="kpi">${v}</div></div>`;
   const vtip = p === 'none' ? '' : `機率 ${fmt(P.score)}・信心 ${P.level}\n${S.status !== 'pool' ? `${(STATUS[S.status] || ['池外'])[0]}股票:命中率見上方` : lvTip(hit)}`;
   return `<h1 class="pt">個股查詢</h1>${searchBox()}
   <div class="stack">
   <div class="card"><div class="row"><h2 style="margin:0;font-size:20px">${code} ${esc(S.name)}</h2>${typeTag(S.status)}<div class="sp"></div>
-   <div class="right"${ttl(`${md(S.date)} 收盤(還原價)`)}><span class="px" style="font-size:20px">${fmt(t.close ?? last[4])}</span> ${chg(t.chg_pct)}</div></div></div>
+   <div class="right"${ttl(pxTip)}><span class="px" style="font-size:20px">${fmt(S.close ?? t.close ?? last[4])}</span> ${chg(S.chg_pct ?? t.chg_pct)}
+    <div class="asof">${S.close_date ? md(S.close_date) : md(S.date)} 收盤${S.price === 'adj' ? ' <span class="tag t-none">還原價</span>' : ''}</div></div></div></div>
   ${pre}
   ${t.stack ? `<div class="grid2" style="${dim}">
    <div class="card"><div class="verdict"><div class="vicon" style="background:${p === 'low' ? 'var(--low-bg)' : p === 'high' ? 'var(--high-bg)' : 'var(--mute-bg)'};color:${p === 'low' ? 'var(--low)' : p === 'high' ? 'var(--high)' : 'var(--ink3)'}">${icon}</div>
@@ -231,17 +245,16 @@ async function pageStock(code) {
      <h3 style="margin-top:16px"${ttl('三類機率加起來是 1,最大的那類就是判斷。研究顯示只挑機率高的,命中率只升一點點,真的轉折點卻會漏掉很多,所以機率只當參考。')}>三類機率</h3>
      ${bar('高點', P.p_high, 'var(--high)', fmt(P.p_high))}${bar('低點', P.p_low, 'var(--low)', fmt(P.p_low))}${bar('非極值', P.p_none, 'var(--ink3)', fmt(P.p_none))}
      ${more(sug, '怎麼解讀')}</div>
-   <div class="card"><h3>判低點參考</h3><div class="tiles">
-     ${tile('這檔對答案', ls?.n ? `${ls.hits} / ${ls.n}` : '—', ls?.n ? `這檔判低點對答案(回放 + 實際追蹤):${pct(ls.pct)}` : '')}
+   <div class="card"><h3${ttl(`這檔 ${yr} 年每天的判斷,5 個交易日後對答案(回放 + 實際追蹤)`)}>${yr} 成績</h3>
+     <table class="tbl ytable"><tr><th></th><th>判斷</th><th>對</th><th>命中率</th></tr>${yrow('low')}${yrow('high')}</table>
+     <div class="tiles t3">
      ${tile('研究命中率', pct(R.prec_low), `判低點命中率・${RS}`)}
      ${tile('研究找到率', pct(R.rec_low), `真低點找到率・${RS}`)}
      ${tile('隨機猜中', pct(R.base_low), `隨便挑一天剛好是低點・${RS}`)}</div></div>
   </div>` : ''}
   ${activeCard(S)}
-  <div class="card" style="${dim}"><h3>近 ${MOBILE() ? 30 : 60} 個交易日</h3>${kchart(S)}</div>
-  <div class="card" style="${dim}"><h3>過去的判斷</h3>${past.length ? `<div class="tblwrap"><table class="tbl"><tr><th>日期</th><th>判斷</th><th>機率</th><th>信心</th><th>結果</th></tr>
-    ${past.map(x => `<tr><td>${md(x.date)}</td><td><span class="tag ${tagCls(x.pred)}">${LBL[x.pred]}</span></td><td>${fmt(x.score)}</td><td>${x.level || '—'}</td>
-     <td>${x.truth == null ? '<span class="tag t-wait">待驗證</span>' : x.truth === x.pred ? '<span class="tag t-ok">對</span>' : `<span class="tag t-bad">錯・實為${LBL[x.truth]}</span>`}</td></tr>`).join('')}</table></div>` : '<div class="empty">近 60 天沒有判斷</div>'}</div>
+  <div class="card" style="${dim}"><div class="row"><h3 style="margin:0">${(S.bars || [])[0]?.[0]?.slice(0, 4) === yr ? yr + ' 整年' : 'K 線'}</h3><div class="sp"></div>${(S.bars || []).length ? seg(ZOOM, [['fit', '全年'], ['zoom', '放大']], 'ZOOM') : ''}</div>${kchart(S)}</div>
+  <div class="card" style="${dim}"><h3>${yr} 的判斷</h3>${past.length ? pastTable(past.slice(0, 10)) + (past.length > 10 ? `<details class="more"><summary>還有 ${past.length - 10} 天</summary>${pastTable(past.slice(10))}</details>` : '') : '<div class="empty">今年沒有判斷</div>'}</div>
   </div>${disc()}`;
 }
 
@@ -369,6 +382,8 @@ function header() {
   if (c.online === false && M.source !== 'replay') t.push(`這次批次沒有連網,K 線只到 ${M.asof}`);
   document.getElementById('hmeta').innerHTML = `<span${ttl(t.join('\n'))}>判斷基準日 <b>${dlabel(M.asof)}</b></span>${M.source === 'replay' ? ` <span class="tag t-replay"${ttl('回放:上線前用同一個模型逐日產生的判斷')}>回放</span>` : ''}`;
   const b = [];
+  const age = (Date.now() - new Date(`${M.asof}T14:30:00+08:00`).getTime()) / 864e5;
+  if (age > 4) b.push(`<div class="warnbox"${ttl('網頁顯示的是判斷基準日收盤後的資料;之後的股價還沒更新')}><b>資料只到 ${dlabel(M.asof)}</b>・不是最新股價</div>`);
   if (c.stale) b.push(`<div class="badbox"${ttl('資料來源晚到時批次會在稍後補跑')}><b>資料還沒更新</b>・顯示 ${M.asof} 的判斷</div>`);
   if ((c.missing_pool || []).length) b.push(`<div class="warnbox"${ttl('這幾檔今天沒有判斷')}><b>${c.missing_pool.length} 檔缺 ${md(M.asof)} 資料</b>・${c.missing_pool.slice(0, 8).join('、')}${c.missing_pool.length > 8 ? '…' : ''}</div>`);
   document.getElementById('banner').innerHTML = b.join('');
@@ -383,6 +398,7 @@ async function render() {
     app.innerHTML = p === 'stock' ? (arg ? await pageStock(arg) : pageSearch()) : p === 'track' ? pageTrack() : p === 'findings' ? pageFindings()
       : p === 'about' ? pageAbout() : pageToday();
   } catch (e) { app.innerHTML = `<div class="badbox">畫面產生失敗:${esc(e.message)}</div>`; console.error(e); }
+  app.querySelectorAll('.chartscroll').forEach(e => { e.scrollLeft = e.scrollWidth; });
   if (p === 'stock' && arg) Q = '';
 }
 async function boot() {

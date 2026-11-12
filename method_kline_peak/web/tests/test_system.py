@@ -109,7 +109,7 @@ def test_today_lists_only_recommend_pool_sorted(ran_daily):
 
 def test_stock_files_and_index(ran_daily):
     """Given 每日批次產生的網頁資料 / When 檢查個股檔(依代號前兩碼分檔)與自動完成清單 / Then 台灣 50、池外、低波動股都有資料並標好分類;
-    個股資料只有 Stacking(沒有主軸欄位);ETF 0050 清單裡標不支援並附原因;分檔數量不超過 Artifact 一次發布的上限"""
+    K 線是今年整年(第一個交易日到判斷基準日),附今年的對答案統計;個股資料只有 Stacking(沒有主軸欄位);ETF 0050 清單裡標不支援並附原因;分檔數量不超過 Artifact 一次發布的上限"""
     out = C.SITE_DATA
 
     def shard(code):
@@ -117,7 +117,8 @@ def test_stock_files_and_index(ran_daily):
             return json.load(f)
     for code, st in (("2330", U.POOL), ("2412", U.POOL), ("2618", U.OUT), ("2801", U.LOWVOL)):
         s = shard(code)[code]
-        assert s["status"] == st and len(s["bars"]) == C.CHART_BARS and s["bars"][-1][0] == str(DATE.date())
+        assert s["status"] == st and s["bars"][0][0] == "2026-01-02" and s["bars"][-1][0] == str(DATE.date())   # 今年整年
+        assert set(s["year"]) == {"year", "low", "high"} and s["year"]["year"] == "2026"
         assert "main" not in s["today"] and all("main" not in x for x in s["signals"])
     assert len(os.listdir(os.path.join(out, "stocks"))) <= 100
     with open(os.path.join(out, "index.json"), encoding="utf-8") as f:

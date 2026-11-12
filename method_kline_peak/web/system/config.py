@@ -16,6 +16,7 @@ os.environ.setdefault("TW_CACHE_DIR", P.YF_2026_CACHE)                # 研究�
 SITE = os.path.join(WEB, "site")                                       # 靜態前端
 DATA = os.environ.get("KPWEB_DATA") or os.path.join(WEB, "data")       # 存檔(判斷、對答案、模型、K 線快取)
 SITE_DATA = os.path.join(SITE, "data")                                 # 前端讀的 JSON(每次批次重寫)
+OFFICIAL = os.environ.get("KPWEB_OFFICIAL") or P.OFFICIAL                # 證交所官方日資料(實際成交價,未還原);只用來顯示,模型一律用還原價
 RESULTS = os.path.join(KP, "results")
 SYMBOLS = os.path.join(ROOT, "backtest", "ncku", "backtest", "stock_api", "stock_symbol_map.json")
 
@@ -66,7 +67,7 @@ COST_PCT = 0.585                      # 買 0.1425% + 賣 0.1425% + 稅 0.3%
 TOP_N = 3                             # 推薦清單每組先列前 N 檔
 MIN_MOVE, MOVE_FROM = 0.725, "2020-01-01"   # 低波動門檻(同 mainline)
 MIN_BARS = 16                         # 10 日均量 + 6 根 K
-CHART_BARS = 60                       # 個股頁 K 線根數
+CHART_BARS = 60                       # 個股頁 K 線:判斷基準日那年整年,不到這個根數時往前補足
 HISTORY_START = "2016-01-01"
 # 2026-11-09 使用者決定:Stacking 是最終版,主軸完全拿掉(模型、存檔、網頁都只有 Stacking)
 METHODS = ("stack",)
