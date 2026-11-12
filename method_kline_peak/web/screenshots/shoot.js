@@ -1,7 +1,7 @@
 // 用真資料截圖:node screenshots/shoot.js <網址,例如 http://localhost:8765> <輸出資料夾>
 const {chromium} = require('playwright'); const path = require('path');
 const base = process.argv[2], dir = process.argv[3];
-const pages = [['today', 'today'], ['stock-8046', 'stock_pool_8046'], ['stock-2618', 'stock_outpool_2618'], ['track', 'track'], ['findings', 'findings'], ['about', 'about']];
+const pages = [['today', 'today'], ['stock-8046', 'stock_pool_8046'], ['stock-3374', 'stock_otc_3374'], ['stock-2618', 'stock_outpool_2618'], ['track', 'track'], ['findings', 'findings'], ['about', 'about']];
 (async () => {
   const b = await chromium.launch(); const errs = [];
   for (const [vw, scale, opt, scheme] of [['desktop', 1, {width: 1280, height: 900}, 'light'], ['mobile', 2, {width: 390, height: 844}, 'light']]) {
