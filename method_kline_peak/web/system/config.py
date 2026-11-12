@@ -69,6 +69,7 @@ MIN_MOVE, MOVE_FROM = 0.725, "2020-01-01"   # 低波動門檻(同 mainline)
 MIN_BARS = 16                         # 10 日均量 + 6 根 K
 CHART_BARS = 60                       # 個股頁 K 線:判斷基準日那年整年,不到這個根數時往前補足
 HISTORY_START = "2016-01-01"
+RAW_START = "2025-01-01"              # 畫面用的實際成交價(Yahoo 未還原價)從這天起下載;只用來顯示
 # 2026-11-09 使用者決定:Stacking 是最終版,主軸完全拿掉(模型、存檔、網頁都只有 Stacking)
 METHODS = ("stack",)
 METHOD_NAMES = {"stack": "Stacking"}

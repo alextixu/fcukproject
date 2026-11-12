@@ -2,6 +2,9 @@
 
   data/<設定>/days/<日期>.json     當天收盤後的判斷(所有計算的股票),之後不重算
   data/<設定>/grades/<日期>.json   t+5 收盤後的答案(每檔:真實類別、t+1 開 → t+5 收 扣成本報酬)
+  data/<設定>/days_extra/<日期>.json    補算:那天的存檔寫好之後才加進計算範圍的股票(例:上櫃、ETF),用同一個模型、
+                                        只用到那天為止的資料補算;一樣寫過就不再改,不會動到原本的存檔
+  data/<設定>/grades_extra/<日期>.json  補算那些股票的答案
   <設定> = 股票池 + 訓練門檻,例:tw100、tw200_amp3(config.profile)
 """
 import json
@@ -80,12 +83,64 @@ def list_days():
     return sorted(f[:-5] for f in os.listdir(_dir("days")) if f.endswith(".json"))
 
 
+# ── 補算(那天的存檔寫好之後才加進來的股票) ──
+def extra_path(date):
+    return os.path.join(_dir("days_extra"), f"{pd.Timestamp(date).date()}.json")
+
+
+def extra_grade_path(date):
+    return os.path.join(_dir("grades_extra"), f"{pd.Timestamp(date).date()}.json")
+
+
+def has_extra(date):
+    return os.path.exists(extra_path(date))
+
+
+def has_extra_grade(date):
+    return os.path.exists(extra_grade_path(date))
+
+
+def write_extra(day):
+    _write_once(extra_path(day["date"]), day)
+
+
+def write_extra_grade(date, grades):
+    _write_once(extra_grade_path(date), {"date": str(pd.Timestamp(date).date()), "grades": grades})
+
+
+def read_extra(date):
+    p = extra_path(date)
+    if not os.path.exists(p):
+        return None
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def read_extra_grade(date):
+    p = extra_grade_path(date)
+    if not os.path.exists(p):
+        return None
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)["grades"]
+
+
+def all_rows(date):
+    """那天所有股票的判斷:原本的存檔 + 補算。"""
+    rows = list(read_day(date)["rows"])
+    ex = read_extra(date)
+    return rows + (ex["rows"] if ex else [])
+
+
 def table():
     """所有存檔攤平成一張表:每列 = 一天 × 一檔,含 Stacking 的判斷與答案(還沒答案的為 NaN)。"""
     rows = []
     for d in list_days():
         day = read_day(d)
         g = read_grade(d) or {}
+        ex = read_extra(d)
+        if ex:
+            day = dict(day, rows=day["rows"] + ex["rows"])
+            g = {**g, **(read_extra_grade(d) or {})}
         for r in day["rows"]:
             s = r.get("stack") or {}
             a = g.get(r["code"]) or {}

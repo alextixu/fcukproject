@@ -2,13 +2,14 @@
 
   python method_kline_peak/web/run.py daily            每日批次(更新 K 線 → 判斷並存檔 → 對答案 → 產生網頁資料)
   python method_kline_peak/web/run.py daily --offline  不連網,只用快取的 K 線
+  python method_kline_peak/web/run.py update           只下載 K 線(還原價 + 畫面用的實際成交價),不判斷
   python method_kline_peak/web/run.py replay --start 2026-01-02 [--end 2026-09-10]
                                                        上線前的日子逐日產生回放存檔(成績追蹤的歷史)
   python method_kline_peak/web/run.py train --year 2026   訓練(重訓)某一年的正式模型
   python method_kline_peak/web/run.py publish          只重新產生網頁資料
   python method_kline_peak/web/run.py serve [--port 8000]  開本機網頁 http://localhost:8000
   python method_kline_peak/web/run.py start            每日批次 + 開本機網頁
-共通參數:--universe all(全部上市普通股,預設)/ tw200(研究用 TW200 清單)
+共通參數:--universe all(全部上市、上櫃普通股與 ETF,預設)/ tw200(研究用 TW200 清單)
           --pool tw200(訓練用股票池,預設;可換 tw100 等 TICKER_SETS 的名稱,一樣剔除低波動股)
           --train-min-amp 0(訓練門檻 %,預設 0)
           也可以用環境變數 KPWEB_POOL、KPWEB_TRAIN_MIN_AMP 設定。每組設定的存檔分開放在 data/<設定>/。
@@ -38,7 +39,7 @@ def serve(port):
 
 def main():
     ap = argparse.ArgumentParser(description="K 線高低點判斷網頁")
-    ap.add_argument("cmd", choices=["daily", "replay", "train", "publish", "serve", "start"])
+    ap.add_argument("cmd", choices=["daily", "update", "replay", "train", "publish", "serve", "start"])
     ap.add_argument("--offline", action="store_true", help="不連網,只用快取")
     ap.add_argument("--date", help="判斷基準日(預設今天;用於補跑或測試)")
     ap.add_argument("--start", help="replay 起日")
@@ -53,6 +54,10 @@ def main():
     print(f"設定:{C.profile()}(股票池 {C.POOL}、訓練門檻 {C.TRAIN_MIN_AMP:g}%)", flush=True)
     log = functools.partial(print, flush=True)
     from system import pipeline as PL, model as MD, datasource as DS  # noqa: E402
+    if a.cmd == "update":
+        import pandas as pd
+        today = pd.Timestamp(a.date) if a.date else pd.Timestamp.now(tz="Asia/Taipei").tz_localize(None).normalize()
+        PL.update_prices(today, a.universe, log=log)
     if a.cmd in ("daily", "start"):
         PL.run_daily(asof=a.date, online=not a.offline, kind=a.universe, log=log)
     if a.cmd == "replay":

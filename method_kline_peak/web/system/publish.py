@@ -8,7 +8,8 @@
   research.json    研究結果:TW200 Stacking 2024–2026 的分類成績(直接讀 results/,不重算)
   stocks/<代號前兩碼>.json  個股(每檔一筆):今天的判斷、還沒破底 / 沒創高的訊號、今年整年的 K 線、今年的判斷與答案、今年的對答案統計
 
-畫面上的價格(收盤、漲跌幅、K 線、量)用證交所官方日資料的實際成交價(未還原);沒有官方資料的股票才用還原價並標示。
+畫面上的收盤、K 線、量用 Yahoo 未還原的實際成交價(data/prices_raw);抓不到的股票才用還原價並標示。
+漲跌幅用還原價算(除權息當天和看盤軟體一樣是對參考價的漲跌)。
 模型、判斷、對答案一律用 yfinance 還原價(和研究相同),顯示用的價格不影響任何判斷。
   findings.json    研究發現頁:方向性結論(找得到轉折區、高低點不判反、命中率約三成)
 """
@@ -196,13 +197,14 @@ def stock_active(g, df, asof):
 
 
 def shard_of(code):
-    """個股資料分檔:代號前兩碼(例 2330 → 23)。前端照同一規則讀 stocks/<前兩碼>.json。"""
-    return code[:2]
+    """個股資料分檔:代號前兩碼(例 2330 → 23);ETF(00 開頭)用前四碼(例 00878 → 0087),免得 ETF 全擠在同一檔。
+    前端照同一規則讀 stocks/<分檔>.json。"""
+    return code[:4] if code.startswith("00") else code[:2]
 
 
 # ───────────────────────── 顯示用的價格 ─────────────────────────
 def official_bars(code):
-    """證交所官方日資料(實際成交價,未還原;量 = 成交股數)。沒有這檔就回傳 None。只用來顯示。"""
+    """證交所官方日資料(實際成交價,未還原;量 = 成交股數)。沒有這檔就回傳 None。只拿來抽查 Yahoo 未還原價。"""
     p = os.path.join(C.OFFICIAL, f"{code}.parquet")
     if not os.path.exists(p):
         return None
@@ -222,32 +224,29 @@ def chart_start(index, asof):
     return min(ystart, idx[-min(C.CHART_BARS, len(idx))])
 
 
-def display_bars(code, df, asof):
-    """畫面用的 K 線,從 chart_start 到判斷基準日。回傳 dict:bars、price('actual' 實際成交價 / 'adj' 還原價)、close、chg_pct、close_date。
-    有官方資料、而且官方資料涵蓋整段(起點以前就有、最後一天不早於還原價最後一個有成交的日子)才用實際成交價;
-    官方沒有的日子(休市日 Yahoo 補的量 0 K 棒、停牌期間)不會出現在實際成交價的 K 線裡。"""
+def display_bars(code, df, asof, raw=None):
+    """畫面用的 K 線,從 chart_start 到判斷基準日。df = 還原價(模型用),raw = Yahoo 未還原價(沒有就 None)。
+    回傳 dict:bars、price('actual' 實際成交價 / 'adj' 還原價)、close、chg_pct、close_date。
+    日期照還原價的日子(和模型同一份交易日);未還原價涵蓋整段才用實際成交價,否則整段用還原價。
+    漲跌幅一律用還原價算:除權息當天和看盤軟體一樣,是對參考價(前一天收盤扣掉股利)的漲跌。"""
+    empty = {"bars": [], "price": "adj", "close": None, "chg_pct": None, "close_date": None}
     if df is None:
-        return {"bars": [], "price": "adj", "close": None, "chg_pct": None, "close_date": None}
+        return empty
     adj = clean(df.loc[:asof])
     if not len(adj):
-        return {"bars": [], "price": "adj", "close": None, "chg_pct": None, "close_date": None}
+        return empty
     start = chart_start(adj.index, asof)
-    traded = adj[adj["volume"] > 0]
-    off = official_bars(code)
-    if off is not None and len(off) and off.index[0] <= start and len(traded) and off.loc[:asof].index[-1] >= traded.index[-1]:
-        o = off.loc[start:asof]
-        bars = [[str(d.date()), round(float(a), 2), round(float(h), 2), round(float(lo), 2), round(float(c), 2), int(v)]
-                for d, a, h, lo, c, v in zip(o.index, o["open"], o["high"], o["low"], o["close"], o["capacity"])]
-        last = o.iloc[-1]
-        ch = last.get("change")
-        chg = round(float(ch) / (float(last["close"]) - float(ch)) * 100, 3) if ch == ch and ch is not None and last["close"] != ch else None
-        return {"bars": bars, "price": "actual", "close": float(last["close"]), "chg_pct": chg, "close_date": str(o.index[-1].date())}
     a = adj.loc[start:]
-    bars = [[str(d.date()), round(o, 2), round(h, 2), round(lo, 2), round(c, 2), int(v)]
-            for d, o, h, lo, c, v in zip(a.index, a.open, a.high, a.low, a.close, a.volume)]
-    prev = a["close"].shift(1).iloc[-1]
-    chg = round((a["close"].iloc[-1] / prev - 1) * 100, 3) if prev == prev and prev else None
-    return {"bars": bars, "price": "adj", "close": round(float(a["close"].iloc[-1]), 2), "chg_pct": chg, "close_date": str(a.index[-1].date())}
+    prev = adj["close"].shift(1).iloc[-1]
+    chg = round((adj["close"].iloc[-1] / prev - 1) * 100, 3) if prev == prev and prev else None
+    src, price = a, "adj"
+    if raw is not None and len(raw):
+        r = raw.reindex(a.index)
+        if r["close"].notna().all():
+            src, price = r, "actual"
+    bars = [[str(d.date()), round(float(o), 2), round(float(h), 2), round(float(lo), 2), round(float(c), 2), int(v)]
+            for d, o, h, lo, c, v in zip(src.index, src["open"], src["high"], src["low"], src["close"], src["volume"])]
+    return {"bars": bars, "price": price, "close": bars[-1][4], "chg_pct": chg, "close_date": bars[-1][0]}
 
 
 def year_stats(g, year):
@@ -272,6 +271,7 @@ def publish(data, cal, check, log=print):
         return
     tab = ST.table()
     latest = ST.read_day(days[-1])
+    latest = dict(latest, rows=ST.all_rows(days[-1]))                  # 含補算的股票
     asof = pd.Timestamp(latest["date"])
     out = C.SITE_DATA
     for sub in ("stocks", "img"):
@@ -285,7 +285,9 @@ def publish(data, cal, check, log=print):
     recent = sorted(tab.date.unique())[-40:]
     rt = tab[tab.date.isin(recent)]
     preds_by = {c: g.assign(date=pd.to_datetime(g.date)).set_index("date") for c, g in rt.groupby("code")}
-    disp = {code: display_bars(code, data.get(U.ticker_of(code)), asof)
+    from .datasource import raw_store
+    rs = raw_store()
+    disp = {code: display_bars(code, data.get(U.ticker_of(code)), asof, rs.load(U.ticker_of(code)))
             for code, r in rows.items() if r["status"] != U.NOSUP}
     closes_by, active = {}, {}
     for code, r in rows.items():
@@ -325,7 +327,7 @@ def publish(data, cal, check, log=print):
     year = str(asof.year)
     shards = {}
     for code, r in rows.items():
-        if r["status"] in (U.NOSUP,):
+        if r["status"] in (U.NOSUP,) or (r["status"] == U.NODATA and U.nodata_reason(code)):
             continue
         dp = disp[code]
         g = hist_by.get(code)
@@ -336,7 +338,7 @@ def publish(data, cal, check, log=print):
                 sig.append({"date": s.date, "pred": s.stack_pred, "score": s.stack_score, "level": s.stack_level,
                             "truth": s.truth, "source": s.source})
         shards.setdefault(shard_of(code), {})[code] = _clean_nan({
-            "code": code, "name": U.name_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
+            "code": code, "name": U.name_of(code), "market": U.market_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
             "today": _public_row(r), "active": active.get(code, {}), "price": dp["price"], "close": dp["close"],
             "chg_pct": dp["chg_pct"], "close_date": dp["close_date"], "bars": dp["bars"], "signals": sig,
             "year": year_stats(g, year)})
@@ -348,8 +350,9 @@ def publish(data, cal, check, log=print):
     # 自動完成清單
     idx = []
     for code, info in U.symbols().items():
-        st = rows[code]["status"] if code in rows else U.NOSUP
-        reason = U.unsupported_reason(code) if st == U.NOSUP else ""
+        why = U.nodata_reason(code)
+        st = rows[code]["status"] if code in rows else (U.NODATA if why else U.NOSUP)
+        reason = U.unsupported_reason(code) if st == U.NOSUP else why if st == U.NODATA else ""
         idx.append([code, info["name"], st, info["type"], reason])
     idx.sort(key=lambda x: (x[2] == U.NOSUP, x[0]))
     _w(os.path.join(out, "index.json"), idx)

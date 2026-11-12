@@ -108,7 +108,7 @@ function typeTag(st) { const [n, c] = STATUS[st] || ['?', 't-none']; return `<sp
 function chips() {
   const byCode = Object.fromEntries((D.index || []).map(r => [r[0], r]));
   const pick = (pref, st) => byCode[pref]?.[2] === st ? byCode[pref] : (D.index || []).find(r => r[2] === st);
-  const list = [['2330', '台積電'], ['8046', '南電']];
+  const list = [['2330', '台積電'], ['8046', '南電'], ['3374', '精材']];
   for (const [pref, st] of [['2618', 'out'], ['2801', 'lowvol']]) { const r = pick(pref, st); if (r) list.push([r[0], r[1]]); }
   list.push(['0050', '元大台灣50']);
   return `<div class="chips">${list.map(([c, n]) => `<button type="button" class="chip" onclick="go('stock-${c}')">${c} ${esc(n)}</button>`).join('')}</div>`;
@@ -123,7 +123,7 @@ function ac(v) {
   const idx = D.index || [];
   ACL = idx.filter(r => r[0].startsWith(v)).concat(idx.filter(r => !r[0].startsWith(v) && r[1].includes(v))).slice(0, 8); ACSEL = 0;
   el.innerHTML = ACL.length ? ACL.map((r, i) => `<div class="${i === 0 ? 'sel' : ''}" onmousedown="go('stock-${r[0]}')"><span class="code">${r[0]}</span><span class="sp">${esc(r[1])}</span>${r[2] === 'nosup' ? `<span class="tag t-bad">${MARKET[r[3]] || '不支援'}</span>` : typeTag(r[2])}</div>`).join('')
-    : '<div style="color:var(--ink3)">找不到。目前只支援上市普通股</div>';
+    : '<div style="color:var(--ink3)">找不到這個代號或名稱</div>';
   el.classList.add('show');
 }
 function acKey(e) {
@@ -160,7 +160,7 @@ function kchart(S) {
     }
     if (i === bars.length - 1) g += `<rect x="${x - bw / 2}" y="${top - 6}" width="${bw}" height="${bot - top + 12}" fill="var(--accent)" opacity=".06"/><text x="${x - bw}" y="${top - 9}" font-size="10" font-weight="700" fill="var(--axis)" text-anchor="end">${md(d)} ▸</text>`;
   });
-  const t = `${S.price === 'actual' ? '實際成交價(證交所)' : '還原價(把除權息補回去)'},紅漲綠跌;三角形 = 這天的判斷,5 個交易日後對答案`;
+  const t = `${S.price === 'actual' ? '實際成交價(未還原)' : '還原價(把除權息補回去)'},紅漲綠跌;三角形 = 這天的判斷,5 個交易日後對答案`;
   const svg = `<svg viewBox="0 0 ${W} ${H}" ${zoomed ? `width="${W}" height="${H}"` : 'width="100%"'} style="display:block">${g}</svg>`;
   return `<div class="${zoomed ? 'chartscroll' : 'chartwrap'}"${ttl(t)}>${svg}</div>
   <div class="legend"><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--low)"/></svg>判低點</span><span><svg width="12" height="10"><path d="M1,1 L11,1 L6,9Z" fill="var(--high)"/></svg>判高點</span>
@@ -170,13 +170,13 @@ function bar(label, v, color, txt) {
   return `<div class="cls"><span>${label}</span><div class="bar" style="margin:0;height:8px"><i style="width:${Math.max(0, Math.min(1, v)) * 100}%;background:${color}"></i></div><span class="right">${txt}</span></div>`;
 }
 function pageSearch() {
-  const legend = [[REC(), 't-ok', `${REC()}成分股,每天的推薦清單只看這些`], ['池外', 't-warn', '其他上市普通股,可查,僅供參考'], ['低波動', 't-none', '推薦範圍以外、每日漲跌太小,判斷不適用'], ['不支援', 't-bad', 'ETF、上櫃、興櫃、特別股']];
+  const legend = [[REC(), 't-ok', `${REC()}成分股,每天的推薦清單只看這些`], ['池外', 't-warn', '其他上市、上櫃股票與 ETF,可查,僅供參考'], ['低波動', 't-none', '推薦範圍以外、每日漲跌太小,判斷不適用'], ['資料不足', 't-none', '興櫃股票、Yahoo 沒有資料或剛上市的股票'], ['不支援', 't-bad', '特別股、存託憑證']];
   return `<h1 class="pt">個股查詢</h1>${searchBox()}
   <div class="legendtags">${legend.map(([a, c, d]) => `<span class="tag ${c}"${tip(d)}>${a}</span>`).join('')}</div>${disc()}`;
 }
-/* 個股資料依代號前兩碼分檔(stocks/23.json 內含 2301–2399),讀過的分檔留在記憶體 */
+/* 個股資料依代號前兩碼分檔(stocks/23.json 內含 2301–2399;ETF 用前四碼,例 00878 → stocks/0087.json),讀過的分檔留在記憶體 */
 async function loadStock(code) {
-  const k = code.slice(0, 2);
+  const k = code.startsWith('00') ? code.slice(0, 4) : code.slice(0, 2);
   if (!D.shards[k]) D.shards[k] = await j(`data/stocks/${k}.json`);
   return D.shards[k][code];
 }
@@ -196,7 +196,9 @@ function activeCard(S) {
 }
 async function pageStock(code) {
   const ix = (D.index || []).find(r => r[0] === code);
-  if (!ix) return `<h1 class="pt">個股查詢</h1>${searchBox()}<div class="badbox">查無代號 ${esc(code)}。目前只支援上市普通股。</div>${disc()}`;
+  if (!ix) return `<h1 class="pt">個股查詢</h1>${searchBox()}<div class="badbox">查無代號 ${esc(code)}。</div>${disc()}`;
+  if (ix[2] === 'nodata' && ix[4]) return `<h1 class="pt">個股查詢</h1>${searchBox()}<div class="card"><div class="row"><h2 style="margin:0">${code} ${esc(ix[1])}</h2>${typeTag('nodata')}<span class="tag t-none">${MARKET[ix[3]] || ''}</span></div>
+    <div class="mutebox" style="margin-top:12px"><b>資料不足</b>・${esc(ix[4])}</div></div>${disc()}`;
   if (ix[2] === 'nosup') return `<h1 class="pt">個股查詢</h1>${searchBox()}<div class="card"><div class="row"><h2 style="margin:0">${code} ${esc(ix[1])}</h2>${typeTag('nosup')}<span class="tag t-none">${MARKET[ix[3]] || ''}</span></div>
     <div class="badbox" style="margin-top:12px"><b>目前不支援</b>・${esc(ix[4])}</div></div>${disc()}`;
   let S; try { S = await loadStock(code); } catch (e) { S = null; }
@@ -228,12 +230,12 @@ async function pageStock(code) {
   const pastTable = rows => `<div class="tblwrap"><table class="tbl"><tr><th>日期</th><th>判斷</th><th>機率</th><th>信心</th><th>結果</th></tr>${rows.map(pastRow).join('')}</table></div>`;
   const yrow = k => { const r = Y[k] || {}, wait = (r.n || 0) - (r.graded || 0);
     return `<tr><td><span class="tag ${tagCls(k)}">判${LBL[k]}</span></td><td>${r.n || 0} 天${wait ? ` <span class="wait"${ttl('還沒滿 5 個交易日,還沒有答案')}>+${wait} 待驗證</span>` : ''}</td><td>${r.graded ? `${r.hits} 天` : '—'}</td><td class="pctc">${pct(r.pct)}</td></tr>`; };
-  const pxTip = S.price === 'actual' ? '實際成交價(證交所官方資料)' : '還原價(把除權息補回去);這檔沒有證交所官方資料';
+  const pxTip = S.price === 'actual' ? '實際成交價(未還原);漲跌幅對參考價' : '還原價(把除權息補回去);這檔抓不到未還原價';
   const tile = (label, v, t) => `<div class="tile"${tip(t)}><div class="lbl">${label}</div><div class="kpi">${v}</div></div>`;
   const vtip = p === 'none' ? '' : `機率 ${fmt(P.score)}・信心 ${P.level}\n${S.status !== 'pool' ? `${(STATUS[S.status] || ['池外'])[0]}股票:命中率見上方` : lvTip(hit)}`;
   return `<h1 class="pt">個股查詢</h1>${searchBox()}
   <div class="stack">
-  <div class="card"><div class="row"><h2 style="margin:0;font-size:20px">${code} ${esc(S.name)}</h2>${typeTag(S.status)}<div class="sp"></div>
+  <div class="card"><div class="row"><h2 style="margin:0;font-size:20px">${code} ${esc(S.name)}</h2>${typeTag(S.status)}${S.market && S.market !== 'TWSE' ? `<span class="tag t-none">${MARKET[S.market] || ''}</span>` : ''}<div class="sp"></div>
    <div class="right"${ttl(pxTip)}><span class="px" style="font-size:20px">${fmt(S.close ?? t.close ?? last[4])}</span> ${chg(S.chg_pct ?? t.chg_pct)}
     <div class="asof">${S.close_date ? md(S.close_date) : md(S.date)} 收盤${S.price === 'adj' ? ' <span class="tag t-none">還原價</span>' : ''}</div></div></div></div>
   ${pre}
@@ -344,7 +346,7 @@ function pageAbout() {
   const yrs = a => (a || []).map(d => d.slice(0, 4)).filter((v, i, s) => s.indexOf(v) === i).join('–');
   const faq = [['判低點就會漲嗎?', '不一定。低點只代表 11 天內最低,之後可能只是小反彈。'],
     ['為什麼盤中查到的是昨天的判斷?', '判斷要用收盤價,每天 18:00 左右更新。'],
-    ['為什麼價格和看盤軟體不一樣?', '這裡用還原價(把除權息補回去),和訓練時一致。'],
+    ['價格和看盤軟體一樣嗎?', '畫面上的收盤、K 線是實際成交價(未還原),漲跌幅和看盤軟體一樣對參考價。模型判斷用的是還原價(把除權息補回去),和訓練時一致。股票分割後,分割前的價格會照比例換算。'],
     ['為什麼有些股票顯示「不適用」?', `${REC()}以外、每日漲跌幅中位數低於 ${D.meta.rules.min_move}% 的股票,高低點常常只差一兩檔,判斷沒有參考價值。`],
     ['過去的判斷會變嗎?', '不會。每天的判斷當天就存檔,之後不重算;除權息後還原價變動也不影響已存的判斷。']];
   return `<h1 class="pt">方法與說明</h1>

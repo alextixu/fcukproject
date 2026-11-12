@@ -1,4 +1,4 @@
-"""畫面用的價格:實際成交價(證交所官方資料)只用來顯示,模型與判斷一律用還原價;個股 K 線是今年整年;今年的對答案統計。"""
+"""畫面用的價格:實際成交價(Yahoo 未還原價)只用來顯示,模型與判斷一律用還原價;個股 K 線是今年整年;今年的對答案統計。"""
 import json
 import os
 
@@ -17,35 +17,41 @@ def _official(code):
     return o.set_index("date").sort_index()
 
 
-def test_display_uses_actual_price_not_adjusted(real_store):
-    """Given 中華電(2412)2026-07-09 除息,還原價把之前的價格往下調 / When 產生個股頁的 K 線 / Then 用證交所的實際成交價:
-    2026-01-02 收盤 132.00(還原價是 127.08);最後一天兩者相同 139.5;漲跌幅用證交所的漲跌價差"""
-    df = real_store.load("2412.TW")
-    d = PB.display_bars("2412", df, ASOF)
-    bars = {b[0]: b for b in d["bars"]}
-    assert d["price"] == "actual" and d["close_date"] == "2026-09-10"
-    assert bars["2026-01-02"][4] == 132.0 and round(df.loc["2026-01-02", "close"], 2) == pytest.approx(127.08, abs=0.01)
-    assert d["close"] == 139.5 == round(df.loc[ASOF, "close"], 2)
-    off = _official("2412").loc[ASOF]
-    assert d["chg_pct"] == pytest.approx(off["change"] / (off["close"] - off["change"]) * 100, abs=1e-3)
+def test_display_uses_actual_price_not_adjusted():
+    """Given 還原價(模型用)和 Yahoo 未還原價(除息前的價格比較高)/ When 產生個股頁的 K 線 / Then K 線與收盤用未還原價;
+    漲跌幅用還原價算(和看盤軟體一樣對參考價);日期和還原價相同"""
+    from kpweb_helpers import make_bars
+    adj = make_bars([95, 96, 97, 100, 99], start="2026-03-02")
+    raw = make_bars([100, 101, 102, 100, 99], start="2026-03-02")             # 03-05 除息:之前的未還原價比較高
+    d = PB.display_bars("9999", adj, pd.Timestamp("2026-03-06"), raw)
+    assert d["price"] == "actual" and [b[4] for b in d["bars"]] == [100, 101, 102, 100, 99]
+    assert d["close"] == 99 and d["chg_pct"] == pytest.approx(-1.0, abs=1e-3) and d["close_date"] == "2026-03-06"
 
 
-def test_display_drops_days_without_trading(real_store):
-    """Given 2026-07-10 休市,Yahoo 補了一根量 0 的 K 棒 / When 產生台積電的實際成交價 K 線 / Then 07-10 不出現、07-09 和 07-13 都在;
-    K 線的日期全部是證交所有交易的日子"""
-    df = real_store.load("2330.TW")
-    assert df.loc["2026-07-10", "volume"] == 0
-    dates = [b[0] for b in PB.display_bars("2330", df, ASOF)["bars"]]
-    assert "2026-07-10" not in dates and {"2026-07-09", "2026-07-13"} <= set(dates)
-    assert set(dates) <= set(str(d.date()) for d in _official("2330").index)
+def test_display_falls_back_when_raw_is_incomplete():
+    """Given 未還原價缺了其中一天(或根本沒有)/ When 產生 K 線 / Then 整段用還原價並標 price = adj(畫面標「還原價」),不混用"""
+    from kpweb_helpers import make_bars
+    adj = make_bars([95, 96, 97, 100, 99], start="2026-03-02")
+    raw = make_bars([100, 101, 102, 100, 99], start="2026-03-02").drop(pd.Timestamp("2026-03-04"))
+    for r in (raw, None):
+        d = PB.display_bars("9999", adj, pd.Timestamp("2026-03-06"), r)
+        assert d["price"] == "adj" and [b[4] for b in d["bars"]] == [95, 96, 97, 100, 99]
 
 
-def test_display_falls_back_to_adjusted_without_official(real_store, monkeypatch, tmp_path):
-    """Given 一檔沒有證交所官方資料的股票 / When 產生 K 線 / Then 用還原價並標 price = adj(畫面會標「還原價」)"""
-    monkeypatch.setattr(C, "OFFICIAL", str(tmp_path))
-    df = real_store.load("2330.TW")
-    d = PB.display_bars("2330", df, ASOF)
-    assert d["price"] == "adj" and d["bars"][0][0] == "2026-01-02" and d["bars"][-1][4] == round(df.loc[ASOF, "close"], 2)
+RAW = os.path.join(C.DATA, "prices_raw", "2412.TW.parquet")
+
+
+@pytest.mark.skipif(not os.path.exists(RAW), reason="還沒下載 Yahoo 未還原價")
+def test_yahoo_raw_matches_official_close():
+    """Given 已下載的 Yahoo 未還原價與 repo 裡的證交所官方日資料 / When 比對中華電 2026 年每天收盤 / Then 全部相同
+    (2026-01-02 是 132.00,還原價是 127.08)"""
+    raw = pd.read_parquet(RAW)
+    off = _official("2412")
+    common = raw.index.intersection(off.index)
+    common = common[(common >= "2026-01-01") & (common <= "2026-09-10")]
+    assert len(common) > 150
+    assert (raw.loc[common, "close"].round(2) == off.loc[common, "close"]).all()
+    assert raw.loc["2026-01-02", "close"] == 132.0
 
 
 def test_chart_is_whole_year_with_minimum_bars():
@@ -68,12 +74,11 @@ def test_year_stats_counts_days_hits_and_pending():
 
 
 def test_model_inputs_stay_adjusted(ran_daily, real_store):
-    """Given 每日批次產生的存檔與網頁資料 / When 比對同一天的判斷存檔和個股頁 / Then 判斷存檔(模型用的)收盤是還原價、沒有被改;
-    個股頁另外附實際成交價。中華電 2026-06-15(除息前):存檔收盤 = 還原價,個股頁收盤 = 證交所收盤,兩者不同"""
+    """Given 每日批次產生的存檔與網頁資料 / When 檢查判斷存檔 / Then 判斷存檔(模型用的)收盤是還原價,顯示用的價格不會寫進存檔;
+    個股頁標明價格種類(這個測試沒有下載未還原價 → 標還原價)"""
     from system import store as ST
     row = next(r for r in ST.read_day(DATE)["rows"] if r["code"] == "2412")
     with open(os.path.join(C.SITE_DATA, "stocks", "24.json"), encoding="utf-8") as f:
         s = json.load(f)["2412"]
-    assert s["price"] == "actual" and s["close"] == _official("2412").loc[DATE, "close"]
     assert row["close"] == pytest.approx(real_store.load("2412.TW").loc[DATE, "close"], abs=0.01)
-    assert row["close"] < s["close"]
+    assert s["price"] == "adj" and s["bars"][-1][4] == pytest.approx(row["close"], abs=0.01)

@@ -9,6 +9,7 @@
 回放(run_replay)
   上線前的日子用同一個正式模型逐日產生存檔(source = replay),讓成績追蹤有歷史可看。
   每一天只用到那天為止的 K 線(特徵本來就只用 t−5 ~ t),和每天收盤後跑批次的結果相同。
+  已經有存檔的日子,若計算範圍後來加了股票(例:上櫃、ETF),只補算那些股票,寫到 days_extra(原本的存檔不動)。
 """
 import time
 
@@ -16,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from . import config as C, model as MD, store as ST, universe as U
+from . import datasource as DS
 from .datasource import PriceStore
 from .features import live_frame, labels, grade_from
 
@@ -85,7 +87,7 @@ def judge_day(date, data, m, codes, moves=None, source="daily", check=None, fram
 
 def _status(code, df, pool, move):
     if not U.supported(code):
-        return U.NOSUP, None
+        return (U.NODATA if U.nodata_reason(code) else U.NOSUP), None
     if df is None or len(df) < C.MIN_BARS:
         return U.NODATA, None
     if U.ticker_of(code) in pool:
@@ -105,8 +107,6 @@ def grade_pending(data, cal, log=print):
         ts = pd.Timestamp(d)
         if (cal > ts).sum() >= C.HOLD:
             todo.append(ts)
-    if not todo:
-        return 0
     cache = {}
 
     def answers(code):
@@ -121,7 +121,13 @@ def grade_pending(data, cal, log=print):
             if r.get("stack"):
                 out[r["code"]] = grade_from(answers(r["code"]), ts)
         ST.write_grade(ts, out)
-    log(f"對答案:{len(todo)} 天")
+    extra = [pd.Timestamp(d) for d in ST.list_days()
+             if ST.has_extra(d) and not ST.has_extra_grade(d) and (cal > pd.Timestamp(d)).sum() >= C.HOLD]
+    for ts in extra:                                                          # 補算的股票也一樣 5 天後對答案
+        ST.write_extra_grade(ts, {r["code"]: grade_from(answers(r["code"]), ts)
+                                  for r in ST.read_extra(ts)["rows"] if r.get("stack")})
+    if todo or extra:
+        log(f"對答案:{len(todo)} 天" + (f"(另補算 {len(extra)} 天)" if extra else ""))
     return len(todo)
 
 
@@ -135,21 +141,35 @@ def check_data(data, pool, cal, today=None, online=True):
             "stale": stale, "online": online, "checked": str(now)[:16]}
 
 
+def update_prices(today, kind="all", store=None, m=None, log=print):
+    """下載到 today 為止的 K 線:ETF 先確認 Yahoo 代號 → 還原價(模型用)→ 未還原價(畫面用)。回傳下載報告。"""
+    store = store or PriceStore()
+    if kind == "all":
+        n = DS.resolve_etf_tickers([c for c in U.symbols() if U.market_of(c) == "ETF"], today, store.download)
+        if n:
+            log(f"ETF 代號:新查 {n} 檔")
+    codes = [U.code_of(t) for t in U.universe(kind)]
+    rec = U.recommend_list()
+    pool = m["pool"] if m else []
+    r = store.update(sorted(set(U.ticker_of(c) for c in codes) | set(pool) | set(rec)), today)
+    log(f"更新 K 線:{len(r.updated)} 檔有新資料、{len(r.refreshed)} 檔重抓、{len(r.failed)} 檔失敗"
+        + (f"({r.error})" if r.error else ""))
+    if store.download is DS.yf_download:                                  # 畫面用的實際成交價(測試的假下載函式不抓)
+        rr = DS.raw_store().update(sorted(set(U.ticker_of(c) for c in codes) | set(rec)), today)
+        log(f"更新實際成交價:{len(rr.updated) + len(rr.refreshed)} 檔、{len(rr.failed)} 檔失敗")
+    return {"online": True, **r.as_dict()}
+
+
 def run_daily(asof=None, online=True, kind="all", store=None, log=print, publish=True):
     from . import publish as PB
     t0 = time.time()
     store = store or PriceStore()
     today = pd.Timestamp(asof) if asof else pd.Timestamp.now(tz="Asia/Taipei").tz_localize(None).normalize()
     m = MD.ensure(today.year, store, log)
+    rep = update_prices(today, kind, store, m, log) if online else {"online": False}
     codes = [U.code_of(t) for t in U.universe(kind)]
     rec = U.recommend_list()
     tickers = sorted(set(U.ticker_of(c) for c in codes) | set(m["pool"]) | set(rec))
-    rep = {"online": online}
-    if online:
-        r = store.update(tickers, today)
-        rep = {"online": True, **r.as_dict()}
-        log(f"更新 K 線:{len(r.updated)} 檔有新資料、{len(r.refreshed)} 檔重抓、{len(r.failed)} 檔失敗"
-            + (f"({r.error})" if r.error else ""))
     data = store.load_many(tickers, end=today)
     cal = _calendar(data, rec)
     check = check_data(data, rec, cal, None if asof is None else today, online) | {"update": rep}
@@ -201,8 +221,16 @@ def run_replay(start, end=None, kind="all", store=None, log=print, publish=True)
     data = store.load_many(tickers, end=end)
     cal = _calendar(data, rec)
     days = [d for d in cal if d >= pd.Timestamp(start) and not ST.has_day(d)]
-    log(f"回放 {len(days)} 天({days[0].date() if days else '-'} ~ {days[-1].date() if days else '-'}),{len(codes)} 檔")
-    moves = _moves_by_day(data, codes, days)
+    back = {}                                                             # 已有存檔、但計算範圍後來加了股票的日子
+    for d in cal:
+        if d >= pd.Timestamp(start) and ST.has_day(d) and not ST.has_extra(d):
+            have = {r["code"] for r in ST.read_day(d)["rows"]}
+            miss = [c for c in codes if c not in have]
+            if miss:
+                back[d] = miss
+    log(f"回放 {len(days)} 天({days[0].date() if days else '-'} ~ {days[-1].date() if days else '-'}),{len(codes)} 檔"
+        + (f";補算 {len(back)} 天(每天 {max(len(v) for v in back.values())} 檔)" if back else ""))
+    moves = _moves_by_day(data, codes, sorted(set(days) | set(back)))
     frames = {}
     for tk, df in data.items():
         fr = live_frame(tk, df)
@@ -216,6 +244,12 @@ def run_replay(start, end=None, kind="all", store=None, log=print, publish=True)
                                check={"asof": str(d.date()), "replay": True}, frames=frames))
         if (i + 1) % 20 == 0:
             log(f"  {i + 1}/{len(days)}  ({time.time() - t0:.0f}s)")
+    for i, (d, miss) in enumerate(sorted(back.items())):
+        m = pool_cache.get(d.year) or pool_cache.setdefault(d.year, MD.ensure(d.year, store, log))
+        ST.write_extra(judge_day(d, data, m, miss, moves=moves[d], source="backfill",
+                                 check={"asof": str(d.date()), "backfill": True}, frames=frames))
+        if (i + 1) % 40 == 0:
+            log(f"  補算 {i + 1}/{len(back)}  ({time.time() - t0:.0f}s)")
     grade_pending(data, cal, log)
     if publish:
         PB.publish(data, cal, check_data(data, rec, cal, cal[-1], online=False) | {"update": {"online": False}}, log=log)

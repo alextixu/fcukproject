@@ -5,7 +5,11 @@
 - update():只下載最後一天之後的資料(往前多抓 OVERLAP 天核對)。
   重疊區間的收盤價差超過 ADJ_TOL,代表除權息後還原價整段重算了,就重抓這檔的完整歷史。
 - 下載函式可以替換(測試用假的下載函式;沒有網路時 update 回報失敗,系統照樣用快取跑)。
+- 畫面用的實際成交價(Yahoo 未還原價)另外放在 data/prices_raw/,用同一個類別、換成 yf_download_raw;只用來顯示,模型不讀。
+- ETF 有上市(.TW)也有上櫃(.TWO):resolve_etf_tickers 第一次兩種都試,結果寫在 data/tickers.json。
 """
+import json
+import time
 import os
 from dataclasses import dataclass, field
 
@@ -16,7 +20,7 @@ from . import config as C
 COLS = ["open", "high", "low", "close", "volume"]
 OVERLAP = 10          # 往前多抓幾天核對
 ADJ_TOL = 0.002       # 重疊區間收盤價相對差 > 0.2% → 還原價變了,重抓完整歷史
-BATCH = 80            # yfinance 一次下載幾檔
+BATCH = 40            # yfinance 一次下載幾檔(太多容易被 Yahoo 限流)
 
 
 def _norm(df):
@@ -36,21 +40,86 @@ def _norm(df):
     return df[~df.index.duplicated(keep="last")].sort_index().astype(float)
 
 
-def yf_download(tickers, start, end):
-    """預設下載函式:yfinance 還原價。回傳 {代號: DataFrame}(抓不到的不放)。end 不含。"""
+THROTTLE = ("ratelimit", "too many requests", "invalid crumb", "unauthorized", "timed out", "timeout", "connection")
+
+
+def _throttled(msg):
+    m = str(msg).lower()
+    return any(k in m for k in THROTTLE)
+
+
+def yf_download(tickers, start, end, adjust=True, rounds=5):
+    """預設下載函式:yfinance 還原價(adjust=False 為未還原的實際成交價)。回傳 {代號: DataFrame}(抓不到的不放)。end 不含。
+    Yahoo 限流(Too Many Requests、Invalid Crumb、逾時)的代號會等一下再重抓,最多 rounds 輪;
+    只有 Yahoo 明確回「沒有資料」的代號才當作沒資料,不會因為限流被當成沒資料。"""
     import yfinance as yf
-    raw = yf.download(list(tickers), start=start, end=end, auto_adjust=True, progress=False,
-                      group_by="ticker", threads=True)
-    out = {}
-    for tk in tickers:
+    import yfinance.shared as yfs
+    out, todo = {}, list(tickers)
+    for k in range(rounds):
+        if k:
+            time.sleep(min(90, 10 * 2 ** (k - 1)))
+        yfs._ERRORS.clear()
         try:
-            df = raw[tk] if isinstance(raw.columns, pd.MultiIndex) else raw
-        except KeyError:
+            raw = yf.download(todo, start=start, end=end, auto_adjust=adjust, progress=False,
+                              group_by="ticker", threads=8)
+        except Exception as e:                                            # noqa: BLE001
+            if k == rounds - 1:
+                raise
+            if not _throttled(e):
+                time.sleep(5)
             continue
-        df = _norm(df)
-        if len(df):
-            out[tk] = df
+        errs = dict(yfs._ERRORS)
+        retry = []
+        for tk in todo:
+            try:
+                df = raw[tk] if isinstance(raw.columns, pd.MultiIndex) else raw
+            except KeyError:
+                df = None
+            df = _norm(df)
+            if len(df):
+                out[tk] = df
+            elif _throttled(errs.get(tk, "")):
+                retry.append(tk)
+        if not retry:
+            break
+        todo = retry
     return out
+
+
+def yf_download_raw(tickers, start, end):
+    """實際成交價(未還原):畫面上的收盤、K 線用。"""
+    return yf_download(tickers, start, end, adjust=False)
+
+
+def resolve_etf_tickers(codes, today, downloader=yf_download, path=None):
+    """ETF 的 Yahoo 代號:先試 .TW,沒資料再試 .TWO,兩種都沒有記 None。已經查過的不再查。回傳新查到幾檔。"""
+    from . import universe as U
+    path = path or U.ticker_map_path()
+    known = {}
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            known = json.load(f)
+    todo = [c for c in codes if c not in known]
+    if not todo:
+        return 0
+    start = str((pd.Timestamp(today) - pd.Timedelta(days=40)).date())
+    end = str((pd.Timestamp(today) + pd.Timedelta(days=1)).date())
+    left = list(todo)
+    for suffix in (".TW", ".TWO"):
+        for i in range(0, len(left), BATCH):
+            part = left[i:i + BATCH]
+            got = downloader([c + suffix for c in part], start, end)
+            for c in part:
+                if c + suffix in got and len(got[c + suffix]):
+                    known[c] = c + suffix
+        left = [c for c in left if c not in known]
+    for c in left:
+        known[c] = None
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(dict(sorted(known.items())), f, ensure_ascii=False, indent=0)
+    U.ticker_map.cache_clear()
+    return len(todo)
 
 
 @dataclass
@@ -68,10 +137,12 @@ class UpdateReport:
 
 
 class PriceStore:
-    def __init__(self, root=None, seed_dir=None, downloader=yf_download):
+    def __init__(self, root=None, seed_dir=None, downloader=yf_download, history_start=None):
         self.root = root or C.data_dir("prices")
         self.seed_dir = seed_dir if seed_dir is not None else C.P.YF_2026_CACHE
         self.download = downloader
+        self.history_start = history_start or C.HISTORY_START
+        self.pause = 1.0 if downloader in (yf_download, yf_download_raw) else 0.0   # 真的連 Yahoo 時每批之間停一下
         os.makedirs(self.root, exist_ok=True)
 
     def path(self, tk):
@@ -104,7 +175,9 @@ class PriceStore:
         return out
 
     def save(self, tk, df):
-        _norm(df).to_parquet(self.path(tk))
+        tmp = self.path(tk) + ".tmp"                                        # 先寫暫存檔再換掉,讀的人不會讀到寫一半的檔
+        _norm(df).to_parquet(tmp)
+        os.replace(tmp, self.path(tk))
 
     def update(self, tickers, today):
         """把每檔更新到 today(含)。網路失敗不丟例外,記在報告裡。"""
@@ -116,13 +189,14 @@ class PriceStore:
         groups = {}
         for tk in need:                                                     # 依起始日分組下載
             df = have[tk]
-            start = C.HISTORY_START if df is None or not len(df) else str((df.index[-1] - pd.Timedelta(days=OVERLAP * 2)).date())
+            start = self.history_start if df is None or not len(df) else str((df.index[-1] - pd.Timedelta(days=OVERLAP * 2)).date())
             groups.setdefault(start, []).append(tk)
         end = str((today + pd.Timedelta(days=1)).date())
         full = []
         for start, tks in groups.items():
             for i in range(0, len(tks), BATCH):
                 part = tks[i:i + BATCH]
+                time.sleep(self.pause)
                 try:
                     got = self.download(part, start, end)
                 except Exception as e:                                      # noqa: BLE001  網路或 API 錯誤
@@ -154,7 +228,7 @@ class PriceStore:
         for i in range(0, len(full), BATCH):                                # 還原價變了:重抓完整歷史
             part = full[i:i + BATCH]
             try:
-                got = self.download(part, C.HISTORY_START, end)
+                got = self.download(part, self.history_start, end)
             except Exception as e:                                          # noqa: BLE001
                 rep.failed += part
                 rep.error = f"{type(e).__name__}: {e}"[:300]
@@ -167,3 +241,8 @@ class PriceStore:
                 else:
                     rep.failed.append(tk)
         return rep
+
+
+def raw_store(root=None, downloader=yf_download_raw):
+    """畫面用的實際成交價(Yahoo 未還原價)快取:data/prices_raw/,從 RAW_START 起。"""
+    return PriceStore(root=root or C.data_dir("prices_raw"), seed_dir="", downloader=downloader, history_start=C.RAW_START)

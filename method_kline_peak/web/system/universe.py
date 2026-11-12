@@ -1,6 +1,8 @@
-"""股票分類:池內 / 池外 / 低波動 / 不支援。
+"""股票分類:池內 / 池外 / 低波動 / 資料不足 / 不支援。
 
-- 支援範圍:上市(TWSE)普通股,代號 4 位數字、不是 0 開頭。ETF、上櫃、興櫃、特別股、存託憑證都不支援。
+- 計算範圍:上市(TWSE)、上櫃(OTC)普通股(代號 4 位數字、不是 0 開頭)與 ETF,全部用同一個 Stacking 模型判斷。
+  Yahoo 代號:上市 .TW、上櫃 .TWO;ETF 有上市也有上櫃,第一次下載時兩種都試,結果記在 data/tickers.json。
+- 興櫃不計算,顯示「資料不足」;特別股、存託憑證等非普通股不支援。
   名稱與市場別來自 backtest/ncku/backtest/stock_api/stock_symbol_map.json。
 - 推薦範圍(status = pool):config.RECOMMEND,預設台灣 50。50 檔全部給判斷,低波動股也照樣出判斷。
   訓練用的股票池是另一份(config.POOL,預設 TW200 剔除低波動股,存在模型檔裡)。
@@ -32,8 +34,32 @@ def code_of(ticker):
     return ticker.split(".")[0]
 
 
+def ticker_map_path():
+    return C.data_dir("tickers.json")
+
+
+@lru_cache(maxsize=1)
+def ticker_map():
+    """ETF 的 Yahoo 代號(.TW 或 .TWO;None = Yahoo 兩種都沒有資料)。由 datasource.resolve_etf_tickers 寫入。"""
+    p = ticker_map_path()
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def ticker_of(code):
+    """Yahoo 代號:上市 .TW、上櫃 .TWO;ETF 照 data/tickers.json(還沒查過的先當 .TW)。"""
+    info = symbols().get(code, {})
+    if info.get("type") == "OTC":
+        return f"{code}.TWO"
+    if info.get("type") == "ETF":
+        return ticker_map().get(code) or f"{code}.TW"
     return f"{code}.TW"
+
+
+def market_of(code):
+    return symbols().get(code, {}).get("type")
 
 
 def name_of(code):
@@ -41,21 +67,31 @@ def name_of(code):
 
 
 def supported(code):
-    """上市普通股才支援。"""
+    """會計算判斷的股票:上市、上櫃普通股與 ETF(ETF 若 Yahoo 兩種代號都沒有資料就不算)。"""
     info = symbols().get(code)
-    return bool(info) and info["type"] == "TWSE" and bool(_CODE.fullmatch(code))
+    if not info:
+        return False
+    if info["type"] == "ETF":
+        return ticker_map().get(code, "") is not None
+    return info["type"] in ("TWSE", "OTC") and bool(_CODE.fullmatch(code))
 
 
 def unsupported_reason(code):
     info = symbols().get(code)
     if not info:
         return "查無此代號"
-    if info["type"] == "ETF":
-        return "ETF 不支援:成分與走勢特性和個股不同,模型沒有在 ETF 上測試過"
-    if info["type"] in ("OTC", "ESB"):
-        return f"{MARKET_NAMES[info['type']]}股票目前不支援,第一版只支援上市普通股"
-    if not _CODE.fullmatch(code):
+    if not _CODE.fullmatch(code) and info["type"] != "ETF":
         return "特別股、存託憑證等非普通股不支援"
+    return ""
+
+
+def nodata_reason(code):
+    """不計算、但顯示「資料不足」的原因(興櫃、Yahoo 沒有資料的 ETF)。"""
+    info = symbols().get(code) or {}
+    if info.get("type") == "ESB":
+        return "興櫃股票不在計算範圍"
+    if info.get("type") == "ETF" and ticker_map().get(code, "") is None:
+        return "Yahoo 沒有這檔的日 K 資料"
     return ""
 
 
@@ -70,7 +106,7 @@ def recommend_list():
 
 
 def universe(kind="all"):
-    """每日要計算的股票代號(.TW)。all = 全部上市普通股;tw200 = 研究用 TW200 清單裡的上市普通股。"""
+    """每日要計算的股票代號。all = 全部上市、上櫃普通股與 ETF;tw200 = 研究用 TW200 清單裡的上市普通股。"""
     if kind == "tw200":
         from data_loader import TICKER_SETS  # noqa: E402  (feasibility 已把 chartgcn/core 加進 sys.path)
         return [t for t in TICKER_SETS["tw200"] if supported(code_of(t))]
@@ -88,7 +124,7 @@ def daily_move(df, upto=None):
 def classify(code, df, pool, upto=None):
     """回傳 (分類, 每日漲跌幅中位數)。pool 為推薦範圍代號(.TW)的集合;推薦範圍內的低波動股仍算 pool。"""
     if not supported(code):
-        return NOSUP, None
+        return (NODATA if nodata_reason(code) else NOSUP), None
     if df is None or len(df) < C.MIN_BARS:
         return NODATA, None
     move = daily_move(df, upto)

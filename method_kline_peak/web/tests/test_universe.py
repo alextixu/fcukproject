@@ -36,14 +36,40 @@ def test_threshold_same_as_research():
     assert (C.MIN_MOVE, C.MOVE_FROM) == (ML.MIN_MOVE, ML.MOVE_FROM)
 
 
-def test_unsupported_etf_otc_esb():
-    """Given ETF 0050、上櫃 6488、興櫃股票 / When 分類 / Then 都是不支援,並說明原因"""
+def test_otc_and_etf_are_computed(tmp_data):
+    """Given 上櫃的精材(3374)、上櫃 6488、ETF 0050 / When 分類 / Then 都會計算(Yahoo 代號:上櫃 .TWO、ETF 還沒查過先當 .TW);
+    不在台灣 50 → 池外(照算、標推薦範圍外);ETF 每天漲跌小 → 低波動(不適用)"""
+    U.ticker_map.cache_clear()
+    assert U.supported("3374") and U.ticker_of("3374") == "3374.TWO" and U.ticker_of("6488") == "6488.TWO"
+    assert U.supported("0050") and U.ticker_of("0050") == "0050.TW"
+    assert U.classify("3374", _walk(2.0), POOL)[0] == U.OUT
+    assert U.classify("0050", _walk(0.3), POOL)[0] == U.LOWVOL
+
+
+def test_esb_is_nodata_and_special_shares_unsupported(tmp_data):
+    """Given 興櫃股票、存託憑證(910322)/ When 分類 / Then 興櫃顯示「資料不足」並說明不在計算範圍(不計算);存託憑證不支援"""
+    U.ticker_map.cache_clear()
     df = _walk(2.0)
-    for code in ("0050", "6488"):
-        assert U.classify(code, df, POOL)[0] == U.NOSUP
-        assert U.unsupported_reason(code)
     esb = next(c for c, v in U.symbols().items() if v["type"] == "ESB")
-    assert U.classify(esb, df, POOL)[0] == U.NOSUP
+    assert not U.supported(esb) and U.classify(esb, df, POOL)[0] == U.NODATA and "興櫃" in U.nodata_reason(esb)
+    assert U.classify("910322", df, POOL)[0] == U.NOSUP and U.unsupported_reason("910322")
+
+
+def test_etf_ticker_resolution(tmp_data):
+    """Given(假的下載)0050 在 Yahoo 是 .TW、0051 只有 .TWO、0052 兩種都沒有 / When 查 ETF 代號 / Then 記下 .TW、.TWO、None;
+    沒有資料的 ETF 不計算、顯示「資料不足」;查過的不再查"""
+    from system import datasource as DS
+    have = {"0050.TW", "0051.TWO"}
+    calls = []
+
+    def fake(tks, start, end):
+        calls.append(list(tks))
+        return {t: make_bars([10, 11, 12]) for t in tks if t in have}
+    assert DS.resolve_etf_tickers(["0050", "0051", "0052"], "2026-11-12", fake) == 3
+    assert U.ticker_of("0050") == "0050.TW" and U.ticker_of("0051") == "0051.TWO"
+    assert not U.supported("0052") and U.classify("0052", _walk(2.0), POOL)[0] == U.NODATA and U.nodata_reason("0052")
+    n = len(calls)
+    assert DS.resolve_etf_tickers(["0050", "0051", "0052"], "2026-11-12", fake) == 0 and len(calls) == n
 
 
 def test_too_little_data():
@@ -65,8 +91,10 @@ def test_recommend_pool_is_tw50_with_low_vol():
     assert U.classify("2412", _walk(0.3), set(rec))[0] == U.POOL
 
 
-def test_universe_all_is_listed_common_stocks():
-    """Given 全部支援的股票 / When 列出 / Then 都是 4 位數代號的上市股票,不含 ETF(00 開頭)"""
+def test_universe_all_is_listed_otc_and_etf(tmp_data):
+    """Given 全部要計算的股票 / When 列出 / Then 包含上市、上櫃普通股與 ETF(約 2,200 檔),不含興櫃與存託憑證"""
+    U.ticker_map.cache_clear()
     u = U.universe("all")
-    assert len(u) > 900
-    assert all(U.symbols()[U.code_of(t)]["type"] == "TWSE" and not t.startswith("0") for t in u)
+    kinds = {U.symbols()[U.code_of(t)]["type"] for t in u}
+    assert kinds == {"TWSE", "OTC", "ETF"} and len(u) > 2000
+    assert "3374.TWO" in u and "0050.TW" in u and "910322.TW" not in u

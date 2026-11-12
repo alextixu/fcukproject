@@ -25,9 +25,12 @@ REAL_DATA = C.DATA
 @pytest.fixture
 def tmp_data(tmp_path, monkeypatch):
     """把存檔位置換成暫存資料夾。"""
+    from system import universe as U
     monkeypatch.setattr(C, "DATA", str(tmp_path / "data"))
     monkeypatch.setattr(C, "SITE_DATA", str(tmp_path / "site_data"))
-    return tmp_path
+    U.ticker_map.cache_clear()                     # ETF 代號表跟著存檔位置換(暫存資料夾裡沒有 → 全部先當 .TW)
+    yield tmp_path
+    U.ticker_map.cache_clear()
 
 
 @pytest.fixture(scope="session")
