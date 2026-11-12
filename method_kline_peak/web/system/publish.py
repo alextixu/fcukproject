@@ -350,7 +350,7 @@ def publish(data, cal, check, log=print):
     # 自動完成清單
     idx = []
     for code, info in U.symbols().items():
-        why = U.nodata_reason(code)
+        why = U.nodata_reason(code) or ("這次批次沒有計算這檔" if code not in rows and U.supported(code) else "")
         st = rows[code]["status"] if code in rows else (U.NODATA if why else U.NOSUP)
         reason = U.unsupported_reason(code) if st == U.NOSUP else why if st == U.NODATA else ""
         idx.append([code, info["name"], st, info["type"], reason])

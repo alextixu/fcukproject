@@ -57,7 +57,7 @@ def test_no_lookahead(real_store, date):
 
 def test_daily_equals_replay(prod_model, real_store):
     """Given 同一天、同一個模型 / When 用每日批次的算法(只有到那天的資料)和回放的算法(整段先算好特徵)各判斷一次 /
-    Then 每一檔的分類、判斷、機率完全相同;台灣 50 的低波動股(2412 中華電)也算推薦範圍、照樣判斷,範圍以外的低波動股(2801)不適用"""
+    Then 每一檔的分類、判斷、機率完全相同;台灣 50 的低波動股(2412 中華電)也算推薦範圍、照樣判斷,範圍以外的低波動股(2801)與 ETF 0050 不適用"""
     codes = ["2330", "2379", "8454", "2618", "2412", "2801", "0050"]
     data = real_store.load_many([U.ticker_of(c) for c in codes])
     daily = PL.judge_day(DATE, {tk: df.loc[:DATE] for tk, df in data.items()}, prod_model, codes)
@@ -67,7 +67,7 @@ def test_daily_equals_replay(prod_model, real_store):
     assert daily["rows"] == replay["rows"]
     rows = {r["code"]: r for r in daily["rows"]}
     st = {c: r["status"] for c, r in rows.items()}
-    assert st["2330"] == U.POOL and st["2412"] == U.POOL and st["0050"] == U.NOSUP and st["2801"] == U.LOWVOL and st["2618"] == U.OUT
+    assert st["2330"] == U.POOL and st["2412"] == U.POOL and st["0050"] == U.LOWVOL and st["2801"] == U.LOWVOL and st["2618"] == U.OUT
     assert "stack" in rows["2412"] and "main" not in rows["2330"]
 
 
@@ -109,7 +109,7 @@ def test_today_lists_only_recommend_pool_sorted(ran_daily):
 
 def test_stock_files_and_index(ran_daily):
     """Given 每日批次產生的網頁資料 / When 檢查個股檔(依代號前兩碼分檔)與自動完成清單 / Then 台灣 50、池外、低波動股都有資料並標好分類;
-    K 線是今年整年(第一個交易日到判斷基準日),附今年的對答案統計;個股資料只有 Stacking(沒有主軸欄位);ETF 0050 清單裡標不支援並附原因;分檔數量不超過 Artifact 一次發布的上限"""
+    K 線是今年整年(第一個交易日到判斷基準日),附今年的對答案統計;個股資料只有 Stacking(沒有主軸欄位);興櫃標資料不足、存託憑證標不支援並附原因,這次沒算到的 ETF 標資料不足;分檔數量不超過 Artifact 一次發布的上限"""
     out = C.SITE_DATA
 
     def shard(code):
@@ -123,7 +123,10 @@ def test_stock_files_and_index(ran_daily):
     assert len(os.listdir(os.path.join(out, "stocks"))) <= 100
     with open(os.path.join(out, "index.json"), encoding="utf-8") as f:
         idx = {r[0]: r for r in json.load(f)}
-    assert idx["0050"][2] == U.NOSUP and "ETF" in idx["0050"][4]
+    esb = next(c for c, v in U.symbols().items() if v["type"] == "ESB")
+    assert idx[esb][2] == U.NODATA and "興櫃" in idx[esb][4]
+    assert idx["910322"][2] == U.NOSUP and idx["910322"][4]
+    assert idx["0050"][2] == U.NODATA and idx["0050"][4]                 # 這次只算 TW200:ETF 沒算到 → 資料不足並說明
     assert idx["2330"][2] == U.POOL
 
 

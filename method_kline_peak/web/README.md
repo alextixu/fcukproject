@@ -102,10 +102,10 @@ python method_kline_peak/web/build_artifact.py       # 打包成 dist/(index.htm
 ## 測試
 
 ```bash
-python -m pytest method_kline_peak/web/tests        # 網頁系統 56 項
+python -m pytest method_kline_peak/web/tests        # 網頁系統 61 項
 python -m pytest method_kline_peak/tests            # 研究程式碼原本的測試
 ```
 
-網頁系統的測試涵蓋:資料更新(增量、還原價變動重抓、網路失敗、休市)、畫面用實際成交價而模型仍用還原價、個股 K 線是今年整年、今年的對答案統計、判斷存檔不覆蓋、5 天後才對答案、
+網頁系統的測試涵蓋:資料更新(增量、還原價變動重抓、網路失敗、休市、Yahoo 限流重抓)、上櫃 / ETF / 興櫃分類與 ETF 代號查詢、後來加入的股票只補算不動原存檔、畫面用實際成交價而模型仍用還原價、個股 K 線是今年整年、今年的對答案統計、判斷存檔不覆蓋、5 天後才對答案、
 台灣 50 / 池外 / 低波動 / 不支援判定、判斷檔格式(只有 Stacking)、股票池與訓練門檻設定、信心等級、連續天數與沒破底天數(不偷看未來)、
 研究發現的數字和結果檔一致、網頁資料沒有回測與報酬欄位、特徵不偷看未來、每日批次與回放結果相同、正式模型重現研究 TW200 2026 年的成績。
