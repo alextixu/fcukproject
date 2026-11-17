@@ -28,6 +28,10 @@ OTHER, TOP, BOTTOM, AMBIG = 0, 1, 2, -1
 CLASS_NAMES = {OTHER: '其他', TOP: '頂', BOTTOM: '底'}
 VARIANTS = ('hl', 'close', 'hl_atr')
 
+FLAT, UP, DOWN = 0, 1, 2
+ORDER = [UP, FLAT, DOWN]
+NAMES = {FLAT: "平/非極值", UP: "低點(看漲)", DOWN: "高點(看跌)"}
+
 
 def side_extreme(s: pd.Series, half: int, future: bool, how: str) -> pd.Series:
     """t 左側(future=False)或右側 half 日的 max / min,不含 t;不足 half 日為 NaN。"""
@@ -152,3 +156,21 @@ if __name__ == '__main__':
     f2 = causal_features(df2)
     assert np.allclose(f1.iloc[:41].fillna(0), f2.iloc[:41].fillna(0)), '特徵用到未來資料'
     print(f"causal_features: {f1.shape[1]} 欄,改動 t+1 之後資料不影響 ≤ t 的特徵 ✓")
+
+
+def summarize(y, pred, names=NAMES):
+    from sklearn.metrics import confusion_matrix, f1_score
+    cm = confusion_matrix(y, pred, labels=ORDER)
+    col = cm.sum(axis=0)
+    row = cm.sum(axis=1)
+    f1 = f1_score(y, pred, labels=ORDER, average=None, zero_division=0)
+    return {
+        "acc": float((y == pred).mean()),
+        "majority_acc": float(max((y == c).mean() for c in ORDER)),
+        "macro_f1": float(f1.mean()),
+        "bal_acc": float(np.mean([cm[i, i] / row[i] for i in range(3) if row[i]])),
+        "confusion_rows_true_cols_pred(漲,不漲不跌,跌)": cm.tolist(),
+        "precision": {names[c]: float(cm[i, i] / col[i]) if col[i] else None for i, c in enumerate(ORDER)},
+        "recall": {names[c]: float(cm[i, i] / row[i]) if row[i] else None for i, c in enumerate(ORDER)},
+        "f1": {names[c]: float(f1[i]) for i, c in enumerate(ORDER)},
+    }

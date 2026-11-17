@@ -114,11 +114,18 @@ def universe(kind="all"):
 
 
 def daily_move(df, upto=None):
-    """2020-01 起(到 upto 為止)每日收盤漲跌幅絕對值的中位數(%);同 mainline.daily_move。"""
-    import mainline as ML
+    """2020-01 起(到 upto 為止)每日收盤漲跌幅絕對值的中位數(%)。"""
     if upto is not None:
         df = df.loc[:pd.Timestamp(upto)]
-    return ML.daily_move(df)
+    from feasibility import clean
+    c = clean(df)
+    return float(c["close"].loc[C.MOVE_FROM:].pct_change().abs().median() * 100)
+
+
+def low_vol(data, min_move=None):
+    min_move = C.MIN_MOVE if min_move is None else min_move
+    med = {tk: daily_move(df) for tk, df in data.items()}
+    return sorted((tk for tk, m in med.items() if m < min_move), key=med.get)
 
 
 def classify(code, df, pool, upto=None):
@@ -139,18 +146,18 @@ def pool_for_year(year, store=None, pool=None):
     """year 年使用的股票池(.TW 代號)。pool 預設為設定值 config.POOL。
     2026 年(含)以前且研究結果檔有這個股票池:直接用結果檔記錄的清單(TW100、TW200、台灣50 剔除低波動股),和研究完全相同
     (研究 2024–2026 的 walk-forward 每年都用同一份清單);
-    2027 年起:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。
-    順序照 TICKER_SETS[pool](同 mainline.load_data):訓練資料的列順序會影響 AE / OC-SVM 的結果,順序不同就無法和研究完全一致。"""
-    import mainline as ML
+    2027 年起:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股。"""
     from data_loader import TICKER_SETS  # noqa: E402
     pool = pool or C.POOL
     if year <= 2026 and pool in C.RESEARCH_POOL_FILES:
-        with open(os.path.join(C.RESULTS, C.RESEARCH_POOL_FILES[pool]), encoding="utf-8") as f:
-            keep = set(json.load(f)["pool"])
-        return [tk for tk in TICKER_SETS[pool] if tk in keep]
+        r_file = os.path.join(C.RESULTS, C.RESEARCH_POOL_FILES[pool])
+        if os.path.exists(r_file):
+            with open(r_file, encoding="utf-8") as f:
+                keep = set(json.load(f)["pool"])
+            return [tk for tk in TICKER_SETS[pool] if tk in keep]
     from .datasource import PriceStore
     store = store or PriceStore()
     data = store.load_many(TICKER_SETS[pool], end=f"{year - 1}-12-31")
     data = {tk: df for tk, df in data.items() if len(df) >= 250}
-    drop = set(ML.low_vol(data))
+    drop = set(low_vol(data))
     return [tk for tk in data if tk not in drop]

@@ -31,9 +31,8 @@ def test_low_volatility_stock():
 
 def test_threshold_same_as_research():
     """Given 研究的低波動門檻 / When 比對網頁系統的門檻 / Then 相同(0.725%,2020-01 起)"""
-    import mainline as ML
     from system import config as C
-    assert (C.MIN_MOVE, C.MOVE_FROM) == (ML.MIN_MOVE, ML.MOVE_FROM)
+    assert (C.MIN_MOVE, C.MOVE_FROM) == (0.725, "2020-01-01")
 
 
 def test_otc_and_etf_are_computed(tmp_data):

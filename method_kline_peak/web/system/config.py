@@ -18,7 +18,8 @@ DATA = os.environ.get("KPWEB_DATA") or os.path.join(WEB, "data")       # 存檔(
 SITE_DATA = os.path.join(SITE, "data")                                 # 前端讀的 JSON(每次批次重寫)
 OFFICIAL = os.environ.get("KPWEB_OFFICIAL") or P.OFFICIAL                # 證交所官方日資料(實際成交價,未還原);只用來顯示,模型一律用還原價
 RESULTS = os.path.join(KP, "results")
-SYMBOLS = os.path.join(ROOT, "backtest", "ncku", "backtest", "stock_api", "stock_symbol_map.json")
+_common_symbols = os.path.join(P.COMMON, "stock_symbol_map.json")
+SYMBOLS = _common_symbols if os.path.exists(_common_symbols) else os.path.join(ROOT, "backtest", "ncku", "backtest", "stock_api", "stock_symbol_map.json")
 
 
 def data_dir(*parts):

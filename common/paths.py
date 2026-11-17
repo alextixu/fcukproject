@@ -23,9 +23,9 @@ METHOD_XGB = os.path.join(ROOT, "method_xgb")
 METHOD_KLINE = os.path.join(ROOT, "method_kline")
 METHOD_CHARTGCN = os.path.join(ROOT, "method_chartgcn")
 METHOD_TOMT = os.path.join(ROOT, "method_tomt")
-XGB_SRC = os.path.join(METHOD_XGB, "src")
+XGB_SRC = os.path.join(METHOD_XGB, "src") if os.path.exists(os.path.join(METHOD_XGB, "src")) else COMMON
 XGB_EXP = os.path.join(METHOD_XGB, "experiments")
-CHARTGCN_CORE = os.path.join(METHOD_CHARTGCN, "core")   # TICKER_SETS 目前仍在這裡的 data_loader.py
+CHARTGCN_CORE = os.path.join(METHOD_CHARTGCN, "core") if os.path.exists(os.path.join(METHOD_CHARTGCN, "core")) else COMMON
 
 BACKTEST = os.path.join(ROOT, "backtest")
 NCKU = os.path.join(BACKTEST, "ncku")

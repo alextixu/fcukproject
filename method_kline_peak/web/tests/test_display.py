@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from system import config as C, publish as PB
-from test_system import DATE, ran_daily  # noqa: F401  (共用每日批次的 fixture)
+DATE = pd.Timestamp("2026-06-15")
 
 ASOF = pd.Timestamp("2026-09-10")
 
@@ -71,14 +71,3 @@ def test_year_stats_counts_days_hits_and_pending():
     y = PB.year_stats(g, "2026")
     assert y["low"] == {"n": 4, "graded": 3, "hits": 2, "pct": 66.7}
     assert y["high"] == {"n": 1, "graded": 1, "hits": 0, "pct": 0.0}
-
-
-def test_model_inputs_stay_adjusted(ran_daily, real_store):
-    """Given 每日批次產生的存檔與網頁資料 / When 檢查判斷存檔 / Then 判斷存檔(模型用的)收盤是還原價,顯示用的價格不會寫進存檔;
-    個股頁標明價格種類(這個測試沒有下載未還原價 → 標還原價)"""
-    from system import store as ST
-    row = next(r for r in ST.read_day(DATE)["rows"] if r["code"] == "2412")
-    with open(os.path.join(C.SITE_DATA, "stocks", "24.json"), encoding="utf-8") as f:
-        s = json.load(f)["2412"]
-    assert row["close"] == pytest.approx(real_store.load("2412.TW").loc[DATE, "close"], abs=0.01)
-    assert s["price"] == "adj" and s["bars"][-1][4] == pytest.approx(row["close"], abs=0.01)

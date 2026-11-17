@@ -1,0 +1,54 @@
+{
+  "1. 基準模型 (Baseline: CE+SupCon)": {
+    "macro_f1": 44.658169539491226,
+    "acc": 76.59616622913468,
+    "bal_acc": 60.33393714550278,
+    "prec_hi": 0.0,
+    "prec_lo": 31.99582027168234,
+    "recall_hi": 0.0,
+    "recall_lo": 99.93472584856397,
+    "delta_keep": 0.0,
+    "sil_all_euclidean": -0.09582999348640442,
+    "sil_extrema_cosine": 0.8994245529174805,
+    "sil_balanced_euclidean": 0.39545920491218567
+  },
+  "2. 中心錨定 (Center Loss+正交排斥)": {
+    "macro_f1": 44.36172487014301,
+    "acc": 78.18118777552132,
+    "bal_acc": 55.643176428760924,
+    "prec_hi": 0.0,
+    "prec_lo": 32.14558411809621,
+    "recall_hi": 0.0,
+    "recall_lo": 82.44125326370757,
+    "delta_keep": 0.2825844250577205,
+    "sil_all_euclidean": -0.08733753114938736,
+    "sil_extrema_cosine": 0.9329959154129028,
+    "sil_balanced_euclidean": 0.4101630747318268
+  },
+  "3. 角度餘裕 (ArcFace Margin)": {
+    "macro_f1": 53.786252252057764,
+    "acc": 64.68373866957255,
+    "bal_acc": 80.47751643728101,
+    "prec_hi": 25.470782372354883,
+    "prec_lo": 31.893236824247907,
+    "recall_hi": 89.25170068027211,
+    "recall_lo": 92.03655352480418,
+    "delta_keep": 0.05731140161159942,
+    "sil_all_euclidean": -0.14149488508701324,
+    "sil_extrema_cosine": 0.7937483787536621,
+    "sil_balanced_euclidean": 0.41047894954681396
+  },
+  "4. 極致壓縮 (Ultra ArcFace+Center)": {
+    "macro_f1": 52.82417170573848,
+    "acc": 74.40190202585566,
+    "bal_acc": 61.07171708365898,
+    "prec_hi": 26.0081558676937,
+    "prec_lo": 32.31064237775647,
+    "recall_hi": 39.04761904761905,
+    "recall_lo": 65.99216710182768,
+    "delta_keep": 1.1313577130504484,
+    "sil_all_euclidean": 0.11064595729112625,
+    "sil_extrema_cosine": 0.5813606381416321,
+    "sil_balanced_euclidean": 0.09890677034854889
+  }
+}

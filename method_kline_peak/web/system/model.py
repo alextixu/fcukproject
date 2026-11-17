@@ -20,12 +20,10 @@ import torch
 from . import config as C
 from .features import CODE2KIND
 from .universe import pool_for_year
-import mainline as ML  # noqa: E402
-import walkforward as WF  # noqa: E402
-import stacking as S  # noqa: E402
-from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
+from peak_labels import FLAT, UP, DOWN
 
 LEVELS = ("高", "中", "低")
+STACKING_INPUTS = {"score": ["s_lo", "s_hi"], "all": ["s_lo", "s_hi", "d_lo", "d_hi", "e_lo", "e_hi"]}
 
 
 def model_path(year):
@@ -119,7 +117,7 @@ def predict(m, frame):
     frame = frame.reset_index(drop=True)
     st = m["stack"]
     F = st.base.transform(frame)
-    Xs = st.meta.fsc.transform(F[S.INPUTS[st.meta.inputs]].to_numpy())
+    Xs = st.meta.fsc.transform(F[STACKING_INPUTS[st.meta.inputs]].to_numpy())
     proba = st.meta.model.predict_proba(Xs)
     pred = st.meta.model.predict(Xs)
     cls_idx = {c: i for i, c in enumerate(st.meta.model.classes_)}

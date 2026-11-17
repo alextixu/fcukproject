@@ -52,6 +52,9 @@ def main():
     a = ap.parse_args()
     C.set_profile(a.pool, a.train_min_amp)
     print(f"設定:{C.profile()}(股票池 {C.POOL}、訓練門檻 {C.TRAIN_MIN_AMP:g}%)", flush=True)
+    if a.cmd == "serve":
+        serve(a.port)
+        return
     log = functools.partial(print, flush=True)
     from system import pipeline as PL, model as MD, datasource as DS  # noqa: E402
     if a.cmd == "update":

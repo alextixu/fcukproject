@@ -1,0 +1,34 @@
+{
+  "1. Baseline (CE + SupCon)": {
+    "sil_all_euclidean": -0.09663643687963486,
+    "sil_all_cosine": -0.12318263947963715,
+    "sil_balanced_euclidean": 0.37078744173049927,
+    "sil_balanced_cosine": 0.4576101303100586,
+    "sil_extrema_euclidean": 0.7719592452049255,
+    "sil_extrema_cosine": 0.8948352336883545
+  },
+  "2. Center Loss + Orthogonal Repulsion": {
+    "sil_all_euclidean": -0.052430883049964905,
+    "sil_all_cosine": -0.09396354109048843,
+    "sil_balanced_euclidean": 0.39705613255500793,
+    "sil_balanced_cosine": 0.46781519055366516,
+    "sil_extrema_euclidean": 0.8300527930259705,
+    "sil_extrema_cosine": 0.9345518350601196
+  },
+  "3. ArcFace Angular Margin": {
+    "sil_all_euclidean": -0.12985239923000336,
+    "sil_all_cosine": -0.15434999763965607,
+    "sil_balanced_euclidean": 0.43567463755607605,
+    "sil_balanced_cosine": 0.4312594532966614,
+    "sil_extrema_euclidean": 0.7832557559013367,
+    "sil_extrema_cosine": 0.7601978778839111
+  },
+  "4. Ultra Compression (ArcFace + Center Loss) 🏆": {
+    "sil_all_euclidean": 0.21836823225021362,
+    "sil_all_cosine": 0.2191321849822998,
+    "sil_balanced_euclidean": 0.15214429795742035,
+    "sil_balanced_cosine": 0.20623469352722168,
+    "sil_extrema_euclidean": 0.4541167616844177,
+    "sil_extrema_cosine": 0.586748480796814
+  }
+}
