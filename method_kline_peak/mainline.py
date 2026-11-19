@@ -14,7 +14,9 @@
                ctx  5–60 日報酬、距 20 / 60 日高低點、均線乖離、20 日波動、ATR、RSI、量比
                mkt  大盤(0050)1 / 5 / 20 日報酬、距 20 日高點、20 日波動
                chip 三大法人 / 融資券 / 外資持股 40 欄(method_xgb 的 chip_features,整組延後 1 日避免未公布資料)
-  --latent / --epochs   AE 潛在維度 / 訓練輪數(預設 16 / 60;原系統 4 / 60)
+  --features 特徵組:shape29(預設,6 根 K 的 O/H/L/C/量,29 維)/ 2day10(原系統 method_kline 的 features_2day,10 維)
+             / 2day9(2day10 拿掉 trend);2day 兩組 AE 潛在維度預設 4(原系統 2 日 K 的設定),shape29 仍為 16
+  --latent / --epochs   AE 潛在維度 / 訓練輪數(預設依特徵組:shape29 16、2day 4 / 60;原系統 4 / 60)
   --arch     AE 結構:shallow(預設,2026-10-19 起;輸入 → latent 一層線性,不先升維)
              / orig(原系統,輸入 → 2×輸入 → 8 → latent)
              / shallow-tanh(同 shallow,潛在層加 tanh)
@@ -58,6 +60,7 @@ from paper_aeocsvm import NAMES, SPLITS, paper_label, label_amp, label_side, rul
 SPLITS = {**SPLITS, "測試 2024": {"train": ("2020-01-01", "2023-12-31"), "test": ("2024-01-01", "2024-12-31")}}
 import ae_ocsvm  # noqa: E402
 import kline.autoencoder as KA  # noqa: E402   (ae_ocsvm 已把 method_kline 加入 sys.path)
+from kline.features import features_2day  # noqa: E402
 
 OUT = os.path.join(HERE, "results")
 LOG = os.path.join(OUT, "experiments.csv")
@@ -67,6 +70,8 @@ POOL = "tw100"                                    # 2026-11-02 起(分支 claude
 MIN_MOVE, MOVE_FROM = 0.725, "2020-01-01"
 VOL_MA = 10                                       # 量的基準均量天數(2026-10-19 改為 10,之前為 20)
 ARCH, LATENT = "shallow", 16                      # AE 編碼器 29 → 16 一層(2026-10-19 起;之前為原系統 29 → 58 → 8 → 4)
+FEATURES = "shape29"                              # 特徵組(2026-11-19 起可選 2day10 / 2day9;預設不變)
+LATENT_BY_FEATURES = {"shape29": LATENT, "2day10": 4, "2day9": 4}   # 2day:原系統 2 日 K 的 AE 潛在維度 4
 CAND = {DOWN: "cand_hi", UP: "cand_lo"}
 LABEL_COLS = ("date", "y", "cand_hi", "cand_lo", "ticker", "r5", "amp", "side_l", "side_r")   # 不是特徵的欄(含只能當標籤用的未來資訊)
 N_RANDOM, N_BOOT, BLOCK = 20, 500, 10
@@ -94,7 +99,16 @@ def shape_features(df, n, vol_ma=VOL_MA):
     return pd.DataFrame(f, index=df.index)
 
 
-def build_panel(data, window, extra, vol_ma=VOL_MA):
+def kline_2day(df, drop_trend=False):
+    """轉接原系統 method_kline 的 features_2day(欄位名 Open/High/Low/Close/Volume);公式不改,drop_trend 時拿掉 trend。"""
+    f = features_2day(df.rename(columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}))
+    return f.drop(columns="trend") if drop_trend else f
+
+
+def build_panel(data, window, extra, vol_ma=VOL_MA, features=None):
+    """features:shape29(預設)/ 2day10 / 2day9。2day 時 shape29 的欄仍保留在 panel(只用來篩出相同的樣本列,
+    以及 Stacking 位置特徵用的 c1–c5),但不進特徵。"""
+    features = features or FEATURES
     mkt = clean(pd.read_parquet(os.path.join(P.YF_2026_CACHE, "0050.TW.parquet"))) if "mkt" in extra else None
     chips = {}
     if "chip" in extra:
@@ -106,7 +120,8 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
     for tk, df in data.items():
         df = clean(df)
         y, cand_hi, cand_lo = paper_label(df["close"])
-        feats = [shape_features(df, window, vol_ma)]
+        shape = shape_features(df, window, vol_ma)
+        feats = [shape] if features == "shape29" else [kline_2day(df, drop_trend=features == "2day9"), shape]
         if set(extra) & {"pos", "ctx", "mkt"}:
             cf = causal_features(df, mkt)
             feats.append(cf[[c for g in extra if g in GROUPS for c in GROUPS[g]]])
@@ -121,10 +136,12 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
         part.index.name = "date"
         parts.append(part.reset_index())
     panel = pd.concat(parts, ignore_index=True)
-    shape_cols = list(feats[0].columns)
+    shape_cols = list(shape.columns)
     panel = panel[panel["y"].notna() & panel[shape_cols].notna().all(axis=1) & (panel["date"] >= START)]
     panel["y"] = panel["y"].astype(int)
     feat_cols = [c for c in panel.columns if c not in LABEL_COLS]
+    if features != "shape29":
+        feat_cols = [c for c in feat_cols if c not in shape_cols]
     return panel.reset_index(drop=True), feat_cols
 
 
@@ -195,8 +212,10 @@ ARCHS = {"orig": KA.Autoencoder,
          "shallow-tanh": lambda d, k: ShallowAE(d, k, tanh=True)}
 
 
-def setup_ae(arch=ARCH, latent=LATENT, epochs=60):
-    """設定 kline.autoencoder.train_ae 要建的結構、潛在維度與訓練輪數(train_ae 依模組內的名稱建模型)。"""
+def setup_ae(arch=None, latent=None, epochs=60):
+    """設定 kline.autoencoder.train_ae 要建的結構、潛在維度與訓練輪數(train_ae 依模組內的名稱建模型)。
+    沒給時:arch = ARCH、latent = 目前特徵組(FEATURES)的預設值(shape29 16、2day 4)。"""
+    arch, latent = arch or ARCH, latent or LATENT_BY_FEATURES[FEATURES]
     KA.LATENT_DIM, KA.EPOCHS = latent, epochs
     KA.Autoencoder = ARCHS[arch]
 
@@ -431,12 +450,14 @@ def log_contrast(args, n_feat, sp_name, res):
 
 
 def main():
+    global FEATURES
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", required=True)
     ap.add_argument("--window", type=int, default=6)
     ap.add_argument("--vol-ma", type=int, default=VOL_MA)
     ap.add_argument("--extra", nargs="*", default=[], choices=["pos", "ctx", "mkt", "chip"])
-    ap.add_argument("--latent", type=int, default=LATENT)
+    ap.add_argument("--features", default=FEATURES, choices=list(LATENT_BY_FEATURES))
+    ap.add_argument("--latent", type=int, default=None, help="預設依特徵組:shape29 16、2day 4")
     ap.add_argument("--arch", default=ARCH, choices=list(ARCHS))
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--nu", type=float, nargs="+", default=[0.1, 0.2, 0.3, 0.5])
@@ -448,12 +469,14 @@ def main():
     ap.add_argument("--mode", default="oneclass", choices=["oneclass", "contrast"])
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
+    FEATURES = args.features
+    args.latent = args.latent or LATENT_BY_FEATURES[FEATURES]
     setup_ae(args.arch, args.latent, args.epochs)
     ae_ocsvm.DIST_THRESH = args.dist
     t0 = time.time()
     plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
 
-    panel, feat_cols = build_panel(load_data(), args.window, args.extra, args.vol_ma)
+    panel, feat_cols = build_panel(load_data(), args.window, args.extra, args.vol_ma, args.features)
     print(f"[{args.tag}] window {args.window}、量基準 {args.vol_ma} 日均量、extra {args.extra or '-'}:{len(feat_cols)} 個特徵,"
           f"AE {args.arch}、latent {args.latent}、epochs {args.epochs}、nu {args.nu}、gamma {args.gamma}、weight {args.weight}、dist {args.dist}"
           f"  ({time.time() - t0:.0f}s)", flush=True)

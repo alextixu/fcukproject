@@ -45,10 +45,15 @@ FOLDS = FOLD_SETS["train2020-23"]
 BATCH = 500
 
 
+LAST_COUNTS = None                                     # 最近一次 neighbor_purity 每個樣本的相似樣本數
+
+
 def neighbor_purity(X, y, cls):
     """每個 cls 樣本:距離 ≤ DIST_THRESH 的其他樣本中同為 cls 的比例(原系統重要性權重的替代)。"""
+    global LAST_COUNTS
     seeds = np.flatnonzero(y == cls)
     out = np.zeros(len(seeds))
+    LAST_COUNTS = np.zeros(len(seeds), dtype=int)           # 每個樣本的相似樣本數(只記錄,不影響結果)
     batch = max(20, min(BATCH, int(2e7 // len(X))))        # 每批距離矩陣約 2,000 萬格,大池不爆記憶體
     same = y == cls
     for i in range(0, len(seeds), batch):
@@ -56,6 +61,7 @@ def neighbor_purity(X, y, cls):
         d[np.arange(len(d)), seeds[i:i + batch]] = np.inf
         near = d <= DIST_THRESH
         n = near.sum(axis=1)
+        LAST_COUNTS[i:i + batch] = n
         out[i:i + batch] = np.where(n > 0, (near & same).sum(axis=1) / np.maximum(n, 1), 0)
     return seeds, out
 
