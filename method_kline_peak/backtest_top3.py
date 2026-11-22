@@ -1,4 +1,4 @@
-"""只交易模型前 3 檔的回測(2026-11-02 使用者要求):2 個方法(主軸、Stacking 邏輯迴歸)× 2024、2025、2026,共 6 個。
+"""只交易模型前 3 檔的回測(2026-11-02 使用者要求):主軸 × 2024、2025、2026。
 
 交易規則(其餘同 backtest_years.py)
   - 低點訊號 → 做多:t+1 開盤買,t+5 收盤賣;同時最多 3 檔
@@ -8,16 +8,13 @@
   - 同一檔股票同時只會有一個部位;不加碼;漲停 / 跌停照樣成交
   - 成本:做多 買 0.1425% + 賣 0.1425% + 稅 0.3%;做空 放空時 0.1425% + 稅 0.3%、回補時 0.1425%(不計借券費)
   - 每年獨立 100 萬,年底結清;另列成本設 0 的結果(扣成本前)
-訓練:測哪一年就用前 4 年(主軸 4 年;Stacking 前 3 年基底層 + 第 4 年元學習器)
+訓練:測哪一年就用前 4 年
 股票池:mainline.load_data()(mainline.POOL 剔除 mainline.low_vol 的低波動股;目前 TW100 → 73 檔);同時記錄分類分數(用原本的標籤對答案)
 --train-min-amp 3:訓練時只把兩邊幅度 ≥ 3% 的點當高點 / 低點(對答案仍用原本的標籤),輸出檔名加 _amp3
 --train-min-side 3:訓練時只把每邊對方向 ≥ 3 天的點當高點 / 低點(做法 2;對答案仍用原本的標籤),輸出檔名加 _side3
 --pool tw200:換股票池(預設 mainline.POOL = tw100),同樣剔除 mainline.low_vol 的低波動股,輸出檔名用股票池名稱(或 --tag)
-  例:34 檔、訓練門檻 6% → --pool tw50 --tag 34 --train-min-amp 6 → results/backtest_long_only_34_amp6.json
 用法: python method_kline_peak/backtest_top3.py [--pool tw200] [--short-slots 0 | 3] [--train-min-amp 3] [--train-min-side 3]
 輸出: results/backtest_long_only_<股票池>.json(只做多,例 _tw100)或 results/backtest_long_short_<股票池>.json(做多 + 做空)
-      34 檔(TW50 剔除 16 檔)的結果保留在 results/backtest_long_only.json(及 _amp*、_side3)
-      剔除前(TW50 50 檔)的結果保留在 results/backtest_long_only_tw50.json、results/backtest_long_short_tw50.json
 """
 import argparse
 import json
@@ -34,7 +31,7 @@ from learn5_trade6 import UP, DOWN
 from paper_aeocsvm import NAMES
 
 YEARS = (2024, 2025, 2026)
-SOURCES = ["主軸", "Stacking 邏輯迴歸"]
+SOURCES = ["主軸"]
 COLS = ["date", "ticker", "score"]
 
 

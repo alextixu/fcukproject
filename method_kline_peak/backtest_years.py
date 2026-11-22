@@ -11,8 +11,7 @@
 另列「扣成本前」報酬(同規則、成本設 0),用來分開「訊號好不好」與「成本吃掉多少」
 訓練:每年用前 4 年重新訓練(walkforward.py),同時列出當年的分類指標
 
-訊號來源(--sources,預設 主軸、規則):主軸、規則、Stacking 邏輯迴歸(在 stacking.py)。
-每個來源都用前 4 年訓練(Stacking:前 3 年基底層 + 第 4 年元學習器),訓練長度相同。
+訊號來源(--sources,預設 主軸、規則):主軸、規則(對照:t 收盤為近 6 日最低 → 低點)。每個來源都用前 4 年訓練。
 用法: python method_kline_peak/backtest_years.py [--years 2020 ... 2026] [--random-reps 20] [--sources ...] [--out 檔名]
 輸出: results/backtest_years.json(或 --out 指定的檔名)
 """
@@ -28,7 +27,6 @@ import pandas as pd
 
 import mainline as ML
 import walkforward as WF
-import stacking as S
 from feasibility import P, END, clean
 from learn5_trade6 import UP, DOWN
 from paper_aeocsvm import NAMES
@@ -39,7 +37,6 @@ NO_COST = dict(buy_fee=0.0, sell_fee=0.0, tax=0.0)
 SOURCE_FACTORIES = {
     "主軸": WF.MainlineSource,
     "規則": WF.RuleSource,
-    "Stacking 邏輯迴歸": lambda: S.StackingSource("lr", "score"),
 }
 DAYS_PER_YEAR = 246
 

@@ -1,7 +1,7 @@
-"""用現有判斷找可能賺錢的交易策略:2024–2025 探索、2026 驗證(2026-11-22 使用者要求;不訓練新模型或新特徵)。
+"""用主軸的判斷試不同的交易策略(2024–2025;不訓練新模型或新特徵)。
 
-判斷:主軸、Stacking 邏輯迴歸,shape29,TW200 剔除低波動 168 檔,walk-forward 測 2024 / 2025 / 2026(1–9 月),種子 42、門檻 0%;
-      每年的混淆矩陣須和 results/confusion_2024_2026_tw200_amp0.json 相同(腳本內核對)。
+判斷:主軸,TW200 剔除低波動 168 檔,walk-forward 測 2024 / 2025(前 4 年訓練),種子 42、門檻 0%;
+      每年的混淆矩陣須和 results/confusion_2024_2026_tw200.json 相同(腳本內核對)。
 交易慣例(同 backtest_top3 / backtest_years.simulate):t 收盤出訊號 → t+1 開盤買;「持有 N 天」= 進場日算第 1 天,第 N 個交易日收盤賣
       (= 訊號日之後第 N 個交易日);訊號出場與停損 = 訊號(或觸發)隔天開盤賣;期末最後一天收盤平倉。還原價;只做多;
       成本一趟來回 0.585%(買 0.1425%、賣 0.1425% + 稅 0.3%),每個結果另列沒扣成本;起始 100 萬,最多同時 K 檔,
@@ -12,18 +12,12 @@
   C 判低點後 t+1 ~ t+k 收盤都不低於 t 收盤才在 t+k 收盤確認、隔天開盤買,持有 10 天(k = 1、2、3;K = 5)
   D A(K = 5、N = 10)加過濾:D1 個股收盤 > 60 日均線;D2 0050 收盤 > 60 日均線;D3 兩者都要(都用 t 當天以前的資料)
   E 168 檔等權各一份:一開始全部持有,判高點隔天開盤賣、之後判低點隔天開盤買回(和 168 檔等權買進持有比)
-  F A(K = 5、N = 10)只取高信心:Stacking 最大機率 ≥ 0.7;主軸取當天判低點裡分數前 10%(至少 1 檔)
+  F A(K = 5、N = 10)只取高信心:當天判低點裡 OC-SVM 分數前 10%(至少 1 檔)
   停損版:A、B、C、D 各加「收盤虧損超過 8%(收盤 < 進場價 × 0.92)→ 隔天開盤賣」
-階段
-  --phase explore :只用 2024 + 2025(2024-01-01 起 100 萬連續跑到 2025 年底),全部組合 × 兩個方法,
-                   依扣成本兩年合計總報酬排序,挑前 3 名 → results/backtest_strategies_explore_2024_2025.json
-  --phase validate:只跑前 3 名(參數不動)2026(2026-01-01 起 100 萬),加對照組(0050 買進持有、168 檔等權買進持有、
-                   隨機進場 200 次:同樣的進場日、筆數與持有天數,換成隨機股票,seed 0–199)
-                   → results/backtest_strategies_validate_2026.json、results/backtest_strategies_curves.png
-用法: python method_kline_peak/backtest_strategies.py --phase explore
-      python method_kline_peak/backtest_strategies.py --phase validate
+輸出:全部組合(扣成本 / 沒扣成本,合計與逐年)、依扣成本合計排序,另列 0050 買進持有、168 檔等權買進持有
+      → results/backtest_strategies_2024_2025.json
+用法: python method_kline_peak/backtest_strategies.py
 """
-import argparse
 import json
 import math
 import os
@@ -36,19 +30,16 @@ import pandas as pd
 
 import mainline as ML
 import walkforward as WF
-import backtest_years as BY
 from confusion import summarize
-from feasibility import P, END, clean
+from feasibility import P, clean
 from learn5_trade6 import UP, DOWN
 from paper_aeocsvm import NAMES
 
-POOL, SOURCES = "tw200", ["主軸", "Stacking 邏輯迴歸"]
+POOL = "tw200"
 INIT = 1_000_000.0
 STOP = 0.08
-N_RANDOM = 200
 CACHE = os.path.join(ML.OUT, ".cache_strategy_signals")             # 每日判斷快取(不進 git)
-EXPLORE_JSON = os.path.join(ML.OUT, "backtest_strategies_explore_2024_2025.json")
-VALIDATE_JSON = os.path.join(ML.OUT, "backtest_strategies_validate_2026.json")
+OUT_JSON = os.path.join(ML.OUT, "backtest_strategies_2024_2025.json")
 KEY = "confusion_rows_true_cols_pred(漲,不漲不跌,跌)"
 
 
@@ -216,27 +207,25 @@ def perf_by_year(res, init=INIT):
 
 # ─────────────────────────── 判斷與策略 ───────────────────────────
 def load_signals(years, data):
-    """每年 walk-forward 的每日判斷(主軸、Stacking),並核對混淆矩陣 = confusion_2024_2026_tw200_amp0.json。"""
+    """每年 walk-forward 的主軸每日判斷,並核對混淆矩陣 = confusion_2024_2026_tw200.json。"""
     os.makedirs(CACHE, exist_ok=True)
     with open(os.path.join(CACHE, ".gitignore"), "w") as f:                 # 快取不進 git
         f.write("*\n")
-    ref = json.load(open(os.path.join(ML.OUT, "confusion_2024_2026_tw200_amp0.json"), encoding="utf-8"))
-    tmap = {"主軸": "① 主軸", "Stacking 邏輯迴歸": "② Stacking 邏輯迴歸"}
-    out, panel = {m: [] for m in SOURCES}, None
+    ref = json.load(open(os.path.join(ML.OUT, "confusion_2024_2026_tw200.json"), encoding="utf-8"))
+    out, panel = [], None
     for y in years:
-        for m in SOURCES:
-            path = os.path.join(CACHE, f"{POOL}_{y}_{'main' if m == '主軸' else 'stack'}.pkl")
-            if os.path.exists(path):
-                sig = pickle.load(open(path, "rb"))
-            else:
-                if panel is None:
-                    panel, fc = ML.build_panel(data, 6, [])
-                sig, _ = WF.run_year(panel, fc, y, BY.SOURCE_FACTORIES[m]())
-                pickle.dump(sig, open(path, "wb"))
-            cm = summarize(sig["y"].to_numpy(), sig["pred"].to_numpy(), NAMES)[KEY]
-            assert cm == ref[str(y)][tmap[m]][KEY], (y, m)
-            out[m].append(sig)
-    return {m: pd.concat(v, ignore_index=True) for m, v in out.items()}
+        path = os.path.join(CACHE, f"{POOL}_{y}_main.pkl")
+        if os.path.exists(path):
+            sig = pickle.load(open(path, "rb"))
+        else:
+            if panel is None:
+                panel, fc = ML.build_panel(data, 6, [])
+            sig, _ = WF.run_year(panel, fc, y, WF.MainlineSource())
+            pickle.dump(sig, open(path, "wb"))
+        cm = summarize(sig["y"].to_numpy(), sig["pred"].to_numpy(), NAMES)[KEY]
+        assert cm == ref[str(y)]["主軸"][KEY], y
+        out.append(sig)
+    return pd.concat(out, ignore_index=True)
 
 
 def ma_filter(px, mkt_px, sig, kind):
@@ -284,7 +273,7 @@ def strategies():
     return out
 
 
-def build(spec, method, sig, px, mkt_px):
+def build(spec, sig, px, mkt_px):
     """策略參數 → (orders, sells)。"""
     lows = sig[sig.pred == UP][["date", "ticker", "score"]]
     sells = None
@@ -293,43 +282,23 @@ def build(spec, method, sig, px, mkt_px):
     elif spec["kind"] == "D":
         lows = ma_filter(px, mkt_px, lows, spec["filt"])
     elif spec["kind"] == "F":
-        if method == "主軸":
-            s = lows.sort_values(["date", "score", "ticker"], ascending=[True, False, True])
-            rank = s.groupby("date").cumcount().to_numpy()
-            n = s.groupby("date")["ticker"].transform("size").to_numpy()
-            lows = s[rank < np.maximum(1, np.floor(n * 0.10))]
-        else:
-            lows = lows[lows.score >= 0.7]
+        s = lows.sort_values(["date", "score", "ticker"], ascending=[True, False, True])
+        rank = s.groupby("date").cumcount().to_numpy()
+        n = s.groupby("date")["ticker"].transform("size").to_numpy()
+        lows = s[rank < np.maximum(1, np.floor(n * 0.10))]
     if spec["kind"] == "B":
         sells = sig[sig.pred == DOWN][["date", "ticker"]]
     return lows.assign(hold=spec["N"]), sells
 
 
-def run_spec(spec, method, sig, px, mkt_px, mkt, cost=COST):
+def run_spec(spec, sig, px, mkt_px, mkt, cost=COST):
     if spec["kind"] == "E":
         return run_switch(mkt, sig, cost)
-    orders, sells = build(spec, method, sig, px, mkt_px)
+    orders, sells = build(spec, sig, px, mkt_px)
     return run(mkt, orders, spec["K"], cost, sells=sells, stop=spec.get("stop"))
 
 
-def random_runs(mkt, trades, K, n=N_RANDOM, cost=COST):
-    """隨機進場:同樣的進場日、每天筆數與持有天數,股票換成當天有交易的隨機股票(seed 0 … n−1)。"""
-    cal = {d: i for i, d in enumerate(mkt.cal)}
-    prev = {mkt.cal[i]: mkt.cal[i - 1] for i in range(1, len(mkt.cal))}
-    plan = [(prev.get(r.entry), cal[r.exit] - cal[r.entry] + 1) for r in trades.itertuples(index=False) if r.entry in prev]
-    out = []
-    for s in range(n):
-        rng = np.random.default_rng(s)
-        rows = []
-        for t, h in plan:
-            cands = [tk for tk in mkt.by_day.get(t, {}) if tk in mkt.by_day[mkt.cal[cal[t] + 1]]]
-            rows.append((t, cands[rng.integers(len(cands))], rng.random(), h))
-        orders = pd.DataFrame(rows, columns=["date", "ticker", "score", "hold"])
-        out.append(perf(**{k: v for k, v in run(mkt, orders, K, cost, seed=s).items() if k in ("equity", "trades")})["total_return_pct"])
-    return out
-
-
-# ─────────────────────────── 兩個階段 ───────────────────────────
+# ─────────────────────────── 執行 ───────────────────────────
 def setup(years):
     data = ML.load_data(pool=POOL)
     px = {tk: clean(df)[["open", "close"]] for tk, df in data.items()}
@@ -339,105 +308,33 @@ def setup(years):
 
 def explore():
     t0 = time.time()
-    data, px, mkt_px, sigs = setup((2024, 2025))
+    data, px, mkt_px, sig = setup((2024, 2025))
     ref = json.load(open(os.path.join(ML.OUT, "backtest_long_only_tw200.json"), encoding="utf-8"))["years"]
-    for y in (2024, 2025):                                        # 核對:A K3 N5 單年 = 既有 TW200 回測(backtest_top3)
-        for m in SOURCES:
-            s = sigs[m][sigs[m].date.dt.year == y]
-            r = run(Market(px, f"{y}-01-01", f"{y}-12-31"), s[s.pred == UP][["date", "ticker", "score"]].assign(hold=5), 3)
-            assert round(r["equity"].iloc[-1] / INIT * 100 - 100, 2) == ref[str(y)][m]["扣成本"]["total_return_pct"], (y, m)
+    for y in (2024, 2025):                                        # 核對:A K3 N5 單年 = backtest_top3 的 TW200 回測
+        s = sig[sig.date.dt.year == y]
+        r = run(Market(px, f"{y}-01-01", f"{y}-12-31"), s[s.pred == UP][["date", "ticker", "score"]].assign(hold=5), 3)
+        assert round(r["equity"].iloc[-1] / INIT * 100 - 100, 2) == ref[str(y)]["主軸"]["扣成本"]["total_return_pct"], y
     mkt = Market(px, "2024-01-01", "2025-12-31")
     res = {"period": ["2024-01-01", "2025-12-31"], "init_cash": INIT, "cost_round_trip_pct": 0.585, "results": {}, "baselines": {}}
-    for m in SOURCES:
-        for name, spec in strategies().items():
-            net = run_spec(spec, m, sigs[m], px, mkt_px, mkt, COST)
-            gross = run_spec(spec, m, sigs[m], px, mkt_px, mkt, NO_COST)
-            res["results"][f"{m} | {name}"] = {"method": m, "strategy": name, "spec": spec, "扣成本": perf_by_year(net),
-                                               "沒扣成本": perf_by_year(gross)}
-            r = res["results"][f"{m} | {name}"]["扣成本"]["合計"]
-            print(f"{m:<10} {name:<28} 扣成本 {r['total_return_pct']:+8.2f}%  回撤 {r['max_dd_pct']}%  {r['n_trades']} 筆  ({time.time() - t0:.0f}s)",
-                  flush=True)
+    for name, spec in strategies().items():
+        net = run_spec(spec, sig, px, mkt_px, mkt, COST)
+        gross = run_spec(spec, sig, px, mkt_px, mkt, NO_COST)
+        res["results"][name] = {"spec": spec, "扣成本": perf_by_year(net), "沒扣成本": perf_by_year(gross)}
+        r = res["results"][name]["扣成本"]["合計"]
+        print(f"{name:<28} 扣成本 {r['total_return_pct']:+8.2f}%  回撤 {r['max_dd_pct']}%  {r['n_trades']} 筆  ({time.time() - t0:.0f}s)", flush=True)
     res["baselines"]["0050 買進持有"] = {"扣成本": perf_by_year(buy_hold_one(mkt, mkt_px)), "沒扣成本": perf_by_year(buy_hold_one(mkt, mkt_px, NO_COST))}
-    res["baselines"]["168 檔等權買進持有"] = {"扣成本": perf_by_year(run_switch(mkt, sigs["主軸"], COST, use_signals=False)),
-                                         "沒扣成本": perf_by_year(run_switch(mkt, sigs["主軸"], NO_COST, use_signals=False))}
+    res["baselines"]["168 檔等權買進持有"] = {"扣成本": perf_by_year(run_switch(mkt, sig, COST, use_signals=False)),
+                                         "沒扣成本": perf_by_year(run_switch(mkt, sig, NO_COST, use_signals=False))}
     rank = sorted(res["results"], key=lambda k: -res["results"][k]["扣成本"]["合計"]["total_return_pct"])
     res["ranking"] = [{"key": k, "total_return_net_pct": res["results"][k]["扣成本"]["合計"]["total_return_pct"],
                        "max_dd_net_pct": res["results"][k]["扣成本"]["合計"]["max_dd_pct"]} for k in rank]
-    res["top3"] = rank[:3]
-    with open(EXPLORE_JSON, "w", encoding="utf-8") as f:
+    with open(OUT_JSON, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1, default=str)
-    print("前 3 名:", res["top3"])
-
-
-def validate():
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    ex = json.load(open(EXPLORE_JSON, encoding="utf-8"))
-    data, px, mkt_px, sigs = setup((2024, 2025, 2026))
-    s26 = {m: s[s.date.dt.year == 2026] for m, s in sigs.items()}
-    s2y = {m: s[s.date.dt.year <= 2025] for m, s in sigs.items()}
-    mkt = Market(px, "2026-01-01", END)
-    mkt_ex = Market(px, "2024-01-01", "2025-12-31")
-    res = {"period": ["2026-01-01", END], "top3": ex["top3"], "results": {}, "baselines": {}}
-    curves = {}
-    for key in ex["top3"]:
-        r0 = ex["results"][key]
-        spec = r0["spec"]
-        old = run_spec(spec, r0["method"], s2y[r0["method"]], px, mkt_px, mkt_ex, COST)          # 探索期重跑(只為畫曲線)
-        assert round(old["equity"].iloc[-1] / INIT * 100 - 100, 2) == r0["扣成本"]["合計"]["total_return_pct"]
-        net = run_spec(spec, r0["method"], s26[r0["method"]], px, mkt_px, mkt, COST)
-        gross = run_spec(spec, r0["method"], s26[r0["method"]], px, mkt_px, mkt, NO_COST)
-        e = {"method": r0["method"], "strategy": r0["strategy"], "spec": spec, "扣成本": perf(net["equity"], net["trades"]),
-             "沒扣成本": perf(gross["equity"], gross["trades"])}
-        if spec["kind"] != "E":
-            rnd = random_runs(mkt, net["trades"], spec["K"])
-            e["隨機進場_扣成本"] = {"n": len(rnd), "median": round(float(np.median(rnd)), 2), "p5": round(float(np.percentile(rnd, 5)), 2),
-                              "p95": round(float(np.percentile(rnd, 95)), 2), "all": rnd}
-            e["高於隨機95分位"] = bool(e["扣成本"]["total_return_pct"] > e["隨機進場_扣成本"]["p95"])
-            e["贏過隨機次數"] = int(sum(x < e["扣成本"]["total_return_pct"] for x in rnd))
-        res["results"][key] = e
-        curves[key] = (old["equity"], net["equity"])
-        print(key, e["扣成本"], e.get("隨機進場_扣成本", {}).get("p95"), flush=True)
-    bh = {"0050 買進持有": lambda mk, c: buy_hold_one(mk, mkt_px, c),
-          "168 檔等權買進持有": lambda mk, c: run_switch(mk, sigs["主軸"], c, use_signals=False)}
-    for name, fn in bh.items():
-        net = fn(mkt, COST)
-        res["baselines"][name] = {"扣成本": perf(net["equity"], net["trades"]), "沒扣成本": perf(**{k: v for k, v in fn(mkt, NO_COST).items()})}
-        curves[name] = (fn(mkt_ex, COST)["equity"], net["equity"])
-    with open(VALIDATE_JSON, "w", encoding="utf-8") as f:
-        json.dump(res, f, ensure_ascii=False, indent=1, default=str)
-
-    plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
-    plt.rcParams["axes.unicode_minus"] = False
-    fig, ax = plt.subplots(figsize=(15, 7), dpi=150, facecolor="white")
-    colors = ["#2a78d6", "#eb6834", "#1baf7a", "#52514e", "#9a9994"]
-    for (name, (a, b)), col in zip(curves.items(), colors):
-        chained = pd.concat([a, b / INIT * a.iloc[-1]]) / INIT * 100 - 100
-        ls = "--" if name in bh else "-"
-        ax.plot(chained.index, chained.values, color=col, lw=2 if name not in bh else 1.5, ls=ls,
-                label=f"{name}:探索 {a.iloc[-1] / INIT * 100 - 100:+.1f}%、2026 {b.iloc[-1] / INIT * 100 - 100:+.1f}%")
-    ax.axvline(pd.Timestamp("2026-01-01"), color="#0b0b0b", lw=1, ls=":")
-    ax.text(pd.Timestamp("2025-12-20"), ax.get_ylim()[1], "探索(2024–2025)", ha="right", va="top", fontsize=11)
-    ax.text(pd.Timestamp("2026-01-12"), ax.get_ylim()[1], "驗證(2026)", ha="left", va="top", fontsize=11)
-    ax.axhline(0, color="#52514e", lw=0.8, ls=":")
-    for k in ("top", "right"):
-        ax.spines[k].set_visible(False)
-    ax.grid(axis="y", color="#e4e3df", lw=0.8)
-    ax.set_ylabel("相對 100 萬的報酬(%,扣成本;2026 接在探索期期末後面)")
-    ax.legend(frameon=False, fontsize=9.5, loc="upper left")
-    ax.set_title("探索期前 3 名策略與對照組的資產曲線(TW200 168 檔、訓練門檻 0%、種子 42;成本 0.585%)", loc="left", fontsize=13)
-    fig.tight_layout()
-    fig.savefig(os.path.join(ML.OUT, "backtest_strategies_curves.png"), facecolor="white")
-    print(json.dumps({k: (v["扣成本"]["total_return_pct"], v.get("隨機進場_扣成本", {}).get("p95")) for k, v in res["results"].items()},
-                     ensure_ascii=False))
+    print("前 3 名:", rank[:3])
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", required=True, choices=["explore", "validate"])
-    a = ap.parse_args()
-    explore() if a.phase == "explore" else validate()
+    explore()
 
 
 if __name__ == "__main__":
