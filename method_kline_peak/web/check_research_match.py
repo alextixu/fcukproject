@@ -6,6 +6,7 @@
      另外用研究程式(walkforward.run_year + MainlineSource)重跑一次 2026,逐列比判斷與分數。
   2. 2024、2025 年:網頁系統用同一套程式訓練那兩年的模型(存在暫存資料夾,不碰正式存檔),混淆矩陣要等於結果檔。
   3. 網頁的回放存檔(data/tw200/days):168 檔 2026 年 1–9 月存下的判斷,和研究逐列比;不同的列附上原因(K 線不同)。
+  4. 成績追蹤用的資料:推薦範圍(status = pool,= 168 檔)2026 年 1–9 月的判斷與網頁自己對的答案,混淆矩陣要等於結果檔。
 資料:1、2 用研究快取(common/cache/yf_2026,和 final 同一份);3 是網頁系統自己的 K 線快取算出來的存檔。
 用法: python method_kline_peak/web/check_research_match.py
 """
@@ -104,6 +105,16 @@ def main():
                                 "判斷不同": len(diff), "原因(K 線和研究快取不同)": why,
                                 "混淆矩陣(研究標籤)": s[CM], "macro-F1": round(s["macro_f1"] * 100, 4)}
         print(json.dumps(out["網頁回放存檔_vs_研究"], ensure_ascii=False), flush=True)
+
+        # 4. 成績追蹤:推薦範圍的判斷 + 網頁對的答案(同一段日期)
+        g = ST.table()
+        g = g[(g.status == "pool") & g.truth.notna() & g.pred.notna() & g.date.between(r.date.min(), r.date.max())]
+        s4 = summarize(g.truth.map(KIND2CODE).to_numpy(), g.pred.map(KIND2CODE).to_numpy(), NAMES)
+        ref = ref_year(2026)
+        out["成績追蹤資料_推薦範圍"] = {"日期": [r.date.min(), r.date.max()], "股票數": int(g.code.nunique()), "股票日": len(g),
+                                 "混淆矩陣": s4[CM], "macro-F1": round(s4["macro_f1"] * 100, 4), "完全相同": s4[CM] == ref[CM],
+                                 "高低點判反": int(s4[CM][0][2] + s4[CM][2][0])}
+        print(json.dumps(out["成績追蹤資料_推薦範圍"], ensure_ascii=False), flush=True)
     path = os.path.join(C.WEB, "samples", "research_match.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)

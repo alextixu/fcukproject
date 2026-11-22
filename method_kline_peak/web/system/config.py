@@ -26,14 +26,16 @@ def data_dir(*parts):
 
 # ── 股票池與訓練門檻:設定值(環境變數或 run.py 的 --pool / --train-min-amp),改了不用改程式 ──
 # 每組設定的存檔(判斷、答案、模型)放在 data/<設定名稱>/ 底下,互不混用;K 線快取共用 data/prices/
-# 2026-11-09 使用者決定:模型用研究版 TW200(剔除低波動股)訓練;推薦範圍是台灣 50(50 檔全部給判斷,低波動股也照樣出判斷)
+# 模型用研究版 TW200(剔除低波動股)訓練。2026-11-22 使用者決定:推薦範圍和 final 一致,就是訓練用的這 168 檔(RECOMMEND = "pool")
 POOL = os.environ.get("KPWEB_POOL", "tw200")                           # 訓練用股票池:data_loader.TICKER_SETS 的名稱,再剔除低波動股
 TRAIN_MIN_AMP = float(os.environ.get("KPWEB_TRAIN_MIN_AMP", "0"))       # 訓練門檻(%):同 walkforward.relabel,對答案仍用原本的標籤
 # 研究結果檔裡記錄的股票池清單:2026 年直接用這份,和研究完全相同(final 只留 TW200 的結果檔)
 RESEARCH_POOL_FILES = {"tw200": "backtest_long_only_tw200.json"}
 RESEARCH_LAST_YEAR = 2026            # 研究(final 分支)涵蓋的最後一年:這年(含)以前的模型用研究快取訓練,和研究完全相同
-POOL_LABELS = {"tw50": "台灣 50", "tw100": "TW100", "tw200": "TW200", "tw500": "TW500"}
-RECOMMEND = os.environ.get("KPWEB_RECOMMEND", "tw50")                   # 推薦範圍:今日判斷、成績追蹤只看這些股票(不剔除低波動股)
+POOL_LABELS = {"tw50": "台灣 50", "tw100": "台灣 100", "tw200": "台灣 200", "tw500": "台灣 500"}
+# 推薦範圍:今日判斷、成績追蹤只看這些股票。"pool" = 和訓練股票池相同(預設:TW200 剔除低波動股,2026 年 168 檔,同 final);
+# 也可以設成 data_loader.TICKER_SETS 的名稱(例 tw50,不剔除低波動股)
+RECOMMEND = os.environ.get("KPWEB_RECOMMEND", "pool")
 
 
 def set_profile(pool=None, train_min_amp=None):
@@ -53,9 +55,16 @@ def profile_dir(*parts):
     return data_dir(profile(), *parts)
 
 
+def recommend_label():
+    """畫面上推薦範圍的名稱,例:台灣 200(剔除低波動股)。"""
+    if RECOMMEND == "pool":
+        return f"{POOL_LABELS.get(POOL, POOL.upper())}(剔除低波動股)"
+    return POOL_LABELS.get(RECOMMEND, RECOMMEND.upper())
+
+
 def profile_info(n_pool=None):
     return {"name": profile(), "pool": POOL, "pool_label": POOL_LABELS.get(POOL, POOL.upper()),
-            "recommend": RECOMMEND, "recommend_label": POOL_LABELS.get(RECOMMEND, RECOMMEND.upper()),
+            "recommend": RECOMMEND, "recommend_label": recommend_label(),
             "n_pool": n_pool, "train_min_amp": TRAIN_MIN_AMP}
 
 

@@ -63,8 +63,8 @@ def test_no_lookahead(real_store, date):
 
 def test_daily_equals_replay(prod_model, real_store):
     """Given 同一天、同一個模型 / When 用每日批次的算法(只有到那天的資料)和回放的算法(整段先算好特徵)各判斷一次 /
-    Then 每一檔的分類、判斷、分數完全相同;台灣 50 的低波動股(2412 中華電)也算推薦範圍、照樣判斷,範圍以外的低波動股(2801)與 ETF 0050 不適用"""
-    codes = ["2330", "2379", "8454", "2618", "2412", "2801", "0050"]
+    Then 每一檔的分類、判斷、分數完全相同;推薦範圍 = 訓練股票池(2330、2454、2618);TW200 剔除的低波動股(2412、2801)與 ETF 0050 不適用"""
+    codes = ["2330", "2454", "8454", "2618", "2412", "2801", "0050"]
     data = real_store.load_many([U.ticker_of(c) for c in codes])
     daily = PL.judge_day(DATE, {tk: df.loc[:DATE] for tk, df in data.items()}, prod_model, codes)
     frames = {tk: live_frame(tk, df).set_index("date", drop=False).rename_axis(None) for tk, df in data.items()}
@@ -73,7 +73,8 @@ def test_daily_equals_replay(prod_model, real_store):
     assert daily["rows"] == replay["rows"]
     rows = {r["code"]: r for r in daily["rows"]}
     st = {c: r["status"] for c, r in rows.items()}
-    assert st["2330"] == U.POOL and st["2412"] == U.POOL and st["0050"] == U.LOWVOL and st["2801"] == U.LOWVOL and st["2618"] == U.OUT
+    assert st["2330"] == st["2454"] == st["2618"] == U.POOL
+    assert st["2412"] == U.LOWVOL and st["2801"] == U.LOWVOL and st["0050"] == U.LOWVOL
     assert "judge" in rows["2412"] and "stack" not in rows["2330"]
 
 
@@ -95,13 +96,14 @@ def test_daily_run_freezes_and_does_not_recompute(ran_daily):
 
 
 def test_today_lists_only_recommend_pool_sorted(ran_daily):
-    """Given 每日批次產生的今日判斷 / When 檢查推薦清單 / Then 只列台灣 50 的股票、清單裡每檔都是那一類的判斷、
-    依「沒破底天數」分組、組內依分數由高到低;台灣 50 的 50 檔都有判斷"""
+    """Given 每日批次產生的今日判斷 / When 檢查推薦清單 / Then 只列推薦範圍(訓練股票池 168 檔)的股票、清單裡每檔都是那一類的判斷、
+    依「沒破底天數」分組、組內依分數由高到低;168 檔都有判斷;同一檔不會同時出現在判低點和判高點"""
     with open(os.path.join(C.SITE_DATA, "today.json"), encoding="utf-8") as f:
         t = json.load(f)
     day = {r["code"]: r for r in ST.read_day(DATE)["rows"]}
-    rec = {U.code_of(tk) for tk in U.recommend_list()}
-    assert len(rec) == 50 and t["n_pool"] == 50
+    rec = {U.code_of(tk) for tk in U.recommend_list(2026)}
+    assert len(rec) == 168 and t["n_pool"] == 168
+    assert not {i["code"] for i in t["lists"]["low"]} & {i["code"] for i in t["lists"]["high"]}
     assert all(day[c]["status"] == U.POOL and "judge" in day[c] for c in rec)
     for kind in ("low", "high"):
         items = t["lists"][kind]
@@ -115,13 +117,13 @@ def test_today_lists_only_recommend_pool_sorted(ran_daily):
 
 def test_stock_files_and_index(ran_daily):
     """Given 每日批次產生的網頁資料 / When 檢查個股檔(依代號前兩碼分檔)與自動完成清單 / Then 台灣 50、池外、低波動股都有資料並標好分類;
-    K 線是今年整年(第一個交易日到判斷基準日),附今年的對答案統計;個股資料是判斷、規則候選、分數(沒有機率);興櫃標資料不足、存託憑證標不支援並附原因,這次沒算到的 ETF 標資料不足;分檔數量不超過 Artifact 一次發布的上限"""
+    K 線是今年整年(第一個交易日到判斷基準日),附今年的對答案統計;個股資料是判斷、規則候選、分數(沒有機率);TW200 剔除的低波動股標低波動;興櫃標資料不足、存託憑證標不支援並附原因,這次沒算到的 ETF 標資料不足;分檔數量不超過 Artifact 一次發布的上限"""
     out = C.SITE_DATA
 
     def shard(code):
         with open(os.path.join(out, "stocks", f"{PB.shard_of(code)}.json"), encoding="utf-8") as f:
             return json.load(f)
-    for code, st in (("2330", U.POOL), ("2412", U.POOL), ("2618", U.OUT), ("2801", U.LOWVOL)):
+    for code, st in (("2330", U.POOL), ("2454", U.POOL), ("2412", U.LOWVOL), ("2801", U.LOWVOL)):
         s = shard(code)[code]
         assert s["status"] == st and s["bars"][0][0] == "2026-01-02" and s["bars"][-1][0] == str(DATE.date())   # 今年整年
         assert set(s["year"]) == {"year", "low", "high"} and s["year"]["year"] == "2026"
@@ -152,9 +154,10 @@ def test_no_backtest_or_return_in_site_data(ran_daily):
 
 
 def test_site_text_has_no_banned_words():
-    """Given 前端檔案與網頁系統程式 / When 檢查文字 / Then 畫面沒有「機率」「Stacking」「邏輯迴歸」、沒有信心等級;程式與說明也沒有 Stacking"""
+    """Given 前端檔案與網頁系統程式 / When 檢查文字 / Then 畫面沒有「機率」「Stacking」「邏輯迴歸」、沒有信心等級、沒有「台灣 50」
+    (ETF 0050 的名稱「元大台灣50」除外);程式與說明也沒有 Stacking"""
     site = "".join(open(os.path.join(C.SITE, f), encoding="utf-8").read() for f in ("app.js", "index.html", "style.css"))
-    assert not [b for b in ("機率", "Stacking", "stacking", "邏輯迴歸", "主軸", "回測", "73 檔", "信心") if b in site]
+    assert not [b for b in ("機率", "Stacking", "stacking", "邏輯迴歸", "主軸", "回測", "73 檔", "信心", "台灣 50") if b in site]
     import glob
     files = glob.glob(os.path.join(C.WEB, "system", "*.py")) + [os.path.join(C.WEB, f) for f in ("run.py", "build_artifact.py",
                                                                                                    "check_research_match.py", "README.md")]

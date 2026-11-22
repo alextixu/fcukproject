@@ -52,7 +52,7 @@ def test_active_signal_broken_or_too_old():
 
 def test_no_lookahead_with_real_archive(real_store):
     """Given 回放存檔(每天當天凍結的判斷)與真實 K 線 / When 只給到 D 日為止的 K 線和存檔算標記,和給完整 K 線、完整存檔(到 2026-09-10)算 /
-    Then 每檔、每天、兩個方法的標記完全相同;把 D 日之後的價格全部改掉也一樣(不偷看未來)"""
+    Then 每檔、每天的標記完全相同;把 D 日之後的價格全部改掉也一樣(不偷看未來)"""
     import os
     import pytest
     from system import config as C, publish as PB, store as ST
@@ -73,3 +73,14 @@ def test_no_lookahead_with_real_archive(real_store):
             assert full == cut == alt
             checked += bool(full)
     assert checked > 0                                    # 至少有幾天真的有訊號,測試才有意義
+
+
+def test_newest_signal_replaces_older_opposite_one():
+    """Given 一檔 11-19 判高點(到今天還沒創高)、11-20 又判低點(還沒破底)/ When 產生今日判斷清單 / Then 只留比較新的判低點;
+    只有一個方向時原樣保留;個股頁用的原始資料不被改動"""
+    act = {"high": {"date": "2026-11-19", "days": 1}, "low": {"date": "2026-11-20", "days": 0}}
+    assert SG.newest_only(act) == {"low": {"date": "2026-11-20", "days": 0}}
+    assert set(act) == {"high", "low"}
+    old_low = {"low": {"date": "2026-11-16", "days": 4}, "high": {"date": "2026-11-18", "days": 2}}
+    assert list(SG.newest_only(old_low)) == ["high"]
+    assert SG.newest_only({"high": {"date": "2026-11-19"}}) == {"high": {"date": "2026-11-19"}} and SG.newest_only({}) == {}

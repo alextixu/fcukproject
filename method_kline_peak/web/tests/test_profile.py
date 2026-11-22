@@ -9,8 +9,10 @@ from learn5_trade6 import FLAT  # noqa: E402
 
 
 def test_default_profile():
-    """Given 沒有另外設定 / When 讀目前設定 / Then 訓練股票池 tw200、訓練門檻 0%,設定名稱 tw200;推薦範圍台灣 50"""
-    assert (C.POOL, C.TRAIN_MIN_AMP, C.profile(), C.RECOMMEND) == ("tw200", 0.0, "tw200", "tw50")
+    """Given 沒有另外設定 / When 讀目前設定 / Then 訓練股票池 tw200、訓練門檻 0%,設定名稱 tw200;
+    推薦範圍和訓練股票池相同,畫面稱「台灣 200(剔除低波動股)」"""
+    assert (C.POOL, C.TRAIN_MIN_AMP, C.profile(), C.RECOMMEND) == ("tw200", 0.0, "tw200", "pool")
+    assert C.recommend_label() == "台灣 200(剔除低波動股)" and C.profile_info()["recommend_label"] == C.recommend_label()
 
 
 def test_profile_separates_storage(tmp_data, monkeypatch):

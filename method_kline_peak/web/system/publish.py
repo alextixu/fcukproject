@@ -3,7 +3,8 @@
 輸出沒有機率:每檔只有判斷(高點 / 低點 / 非極值)、是否為規則候選、OC-SVM 分數(不是機率;排序用)。
 
   meta.json        基準日、資料檢查、模型資訊
-  today.json       今日判斷:推薦範圍(台灣 50)內判低點 / 判高點,依「沒破底 / 沒創高」天數分組、組內依分數排序
+  today.json       今日判斷:推薦範圍(預設 = 訓練股票池,TW200 剔除低波動股)內判低點 / 判高點,依「沒破底 / 沒創高」天數分組、
+                   組內依分數排序;同一檔同時有兩個方向的訊號時只列比較新的那個
   track.json       成績追蹤:每日前 3 檔(分數最高)對答案、命中率、池外命中率
   index.json       自動完成用的股票清單(代號、名稱、分類、市場別)
   research.json    研究結果:TW200 168 檔 2024–2026 的分類成績(直接讀 results/confusion_2024_2026_tw200.json,不重算)
@@ -292,7 +293,7 @@ def publish(data, cal, check, log=print):
     for kind in KINDS:
         items = []
         for code, a in active.items():
-            x = a.get(kind)
+            x = SG.newest_only(a).get(kind)                                  # 新訊號蓋掉舊訊號:同一檔不會同時出現在兩邊
             if x is None or rows[code]["status"] != U.POOL:
                 continue
             r = rows[code]

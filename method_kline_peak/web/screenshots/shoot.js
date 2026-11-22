@@ -9,7 +9,6 @@ const pages = [['today', 'today'], ['stock-2454', 'stock_pool_2454'], ['stock-80
     pg.on('pageerror', e => errs.push(e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
     for (const [h, name] of (scheme === 'dark' ? pages.filter(p => ['today', 'findings'].includes(p[1])) : pages)) {
       await pg.goto(`${base}/#${h}`); await pg.waitForSelector('main h1'); await pg.waitForTimeout(300);
-      if (name === 'today') await pg.evaluate(() => document.querySelector('details.more')?.setAttribute('open', ''));
       await pg.addStyleTag({content: '.bottomnav{position:static!important}'});
       await pg.screenshot({path: path.join(dir, `${name}_${vw}.png`), fullPage: true});
     }

@@ -75,7 +75,7 @@ def test_findings_match_final_results():
 
 def test_method_configured():
     """Given 網站設定 / When 讀方法、股票池、推薦範圍 / Then 方法同 final(規則候選 + AE + OC-SVM),沒有其他方法的設定;
-    訓練股票池預設 TW200;推薦範圍預設台灣 50"""
+    訓練股票池預設 TW200;推薦範圍預設和訓練股票池相同"""
     assert C.METHOD_NAME == "規則候選 + AE + OC-SVM"
     assert not hasattr(C, "METHODS") and not hasattr(C, "DEFAULT_METHOD")
-    assert C.POOL == "tw200" and C.RECOMMEND == "tw50"
+    assert C.POOL == "tw200" and C.RECOMMEND == "pool"

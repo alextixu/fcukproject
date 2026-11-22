@@ -3,7 +3,7 @@
 信心等級 = 分數(OC-SVM decision 值)在訓練期同類判斷裡的三分位(高 ≥ 2/3 分位、中 ≥ 1/3 分位、其餘低);
 切點用正式模型對自己的訓練期(2022–2025)判斷一次算出來。檢查的結果是拿掉,所以網頁系統本身沒有信心等級的程式,只留這支檢查。
 事先定好的規則:判低點、判高點兩類都要「高 > 中 > 低」而且三個等級的命中率卡方檢定 p < 0.05,才保留信心等級;否則拿掉。
-主要看推薦範圍(台灣 50,和成績追蹤同一群);另外列計算範圍全部股票(池外 + 台灣 50)當參考。
+主要看推薦範圍(和成績追蹤同一群;2026-11-22 起是訓練股票池 168 檔);另外列推薦範圍 + 池外的全部股票當參考。
 用法: python method_kline_peak/web/check_levels.py   → samples/level_check.json
 """
 import json
@@ -56,9 +56,9 @@ def main():
     cuts = {y: cuts_of(MD.load(y)) for y in sorted({int(d[:4]) for d in tab.date})}
     tab["lv"] = [level(r.score, cuts[int(r.date[:4])][r.pred]) for r in tab.itertuples()]
     out = {"期間": [tab.date.min(), tab.date.max()], "切點(訓練期三分位)": cuts}
-    for name, t in (("台灣 50", tab[tab.status == U.POOL]), ("全部(台灣 50 + 池外)", tab[tab.status.isin([U.POOL, U.OUT])])):
+    for name, t in (("推薦範圍", tab[tab.status == U.POOL]), ("全部(推薦範圍 + 池外)", tab[tab.status.isin([U.POOL, U.OUT])])):
         out[name] = {KINDS[k]: rates(t[t.pred == k], k) for k in KINDS}
-    keep = all(out["台灣 50"][KINDS[k]]["有差"] for k in KINDS)
+    keep = all(out["推薦範圍"][KINDS[k]]["有差"] for k in KINDS)
     out["結論"] = "保留信心等級" if keep else "拿掉信心等級(各等級命中率沒有明顯差別)"
     print(json.dumps(out, ensure_ascii=False, indent=1))
     with open(os.path.join(C.WEB, "samples", "level_check.json"), "w", encoding="utf-8") as f:

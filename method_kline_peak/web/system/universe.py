@@ -4,10 +4,10 @@
   Yahoo 代號:上市 .TW、上櫃 .TWO;ETF 有上市也有上櫃,第一次下載時兩種都試,結果記在 data/tickers.json。
 - 興櫃不計算,顯示「資料不足」;特別股、存託憑證等非普通股不支援。
   名稱與市場別來自 web/system/stock_symbol_map.json(原 backtest/ncku 的代號表;final 分支沒有 backtest/,複製一份到這裡)。
-- 推薦範圍(status = pool):config.RECOMMEND,預設台灣 50。50 檔全部給判斷,低波動股也照樣出判斷。
-  訓練用的股票池是另一份(config.POOL,預設 TW200 剔除低波動股,存在模型檔裡)。
-- 低波動:推薦範圍以外、2020-01 起每日收盤漲跌幅(絕對值)中位數 < 0.725%(同 mainline.low_vol),判斷不適用。
-- 池外:推薦範圍以外的其餘上市普通股,判斷照算,畫面加提示。
+- 推薦範圍(status = pool):config.RECOMMEND,預設 "pool" = 和訓練股票池相同(TW200 剔除低波動股,2026 年 168 檔,同 final)。
+- 低波動:訓練股票池剔除的低波動股(TW200 的 48 檔),以及推薦範圍以外、2020-01 起每日收盤漲跌幅(絕對值)中位數
+  < 0.725%(同 mainline.low_vol)的股票,判斷不適用。
+- 池外:推薦範圍以外的其餘上市、上櫃股票與 ETF,判斷照算,畫面標「推薦範圍外」。
 """
 import json
 import os
@@ -19,7 +19,7 @@ import pandas as pd
 from . import config as C
 
 POOL, OUT, LOWVOL, NOSUP, NODATA = "pool", "out", "lowvol", "nosup", "nodata"
-STATUS_NAMES = {POOL: "台灣 50", OUT: "池外", LOWVOL: "低波動", NOSUP: "不支援", NODATA: "資料不足"}
+STATUS_NAMES = {POOL: "推薦範圍", OUT: "池外", LOWVOL: "低波動", NOSUP: "不支援", NODATA: "資料不足"}
 MARKET_NAMES = {"TWSE": "上市", "OTC": "上櫃", "ESB": "興櫃", "ETF": "ETF"}
 _CODE = re.compile(r"[1-9]\d{3}")
 
@@ -99,10 +99,25 @@ def all_supported():
     return sorted(c for c in symbols() if supported(c))
 
 
-def recommend_list():
-    """推薦範圍的股票代號(.TW),順序照 TICKER_SETS。"""
+def _year(year):
+    return int(year) if year is not None else pd.Timestamp.now(tz="Asia/Taipei").year
+
+
+def recommend_list(year=None):
+    """推薦範圍的股票代號(.TW),year 年用的(預設今年)。config.RECOMMEND = "pool":和 year 年的訓練股票池相同
+    (TW200 剔除低波動股,順序照 TICKER_SETS);其他值:TICKER_SETS 那份清單(不剔除低波動股)。"""
+    if C.RECOMMEND == "pool":
+        return [t for t in pool_for_year(_year(year)) if supported(code_of(t))]
     from data_loader import TICKER_SETS  # noqa: E402
     return [t for t in TICKER_SETS[C.RECOMMEND] if supported(code_of(t))]
+
+
+def lowvol_excluded(year=None):
+    """訓練股票池剔除的低波動股(.TW,year 年;推薦範圍是 "pool" 時才有):畫面一律標「不適用」。
+    2026 年(含)以前用研究結果檔記錄的 excluded(TW200 48 檔);之後照 mainline.low_vol 的規則。"""
+    if C.RECOMMEND != "pool":
+        return []
+    return _pool_split(_year(year), None, C.POOL)[1]
 
 
 def universe(kind="all"):
@@ -121,8 +136,8 @@ def daily_move(df, upto=None):
     return ML.daily_move(df)
 
 
-def classify(code, df, pool, upto=None):
-    """回傳 (分類, 每日漲跌幅中位數)。pool 為推薦範圍代號(.TW)的集合;推薦範圍內的低波動股仍算 pool。"""
+def classify(code, df, pool, upto=None, lowvol=()):
+    """回傳 (分類, 每日漲跌幅中位數)。pool 為推薦範圍代號(.TW)的集合;lowvol 為訓練池剔除的低波動股(一律不適用)。"""
     if not supported(code):
         return (NODATA if nodata_reason(code) else NOSUP), None
     if df is None or len(df) < C.MIN_BARS:
@@ -130,7 +145,7 @@ def classify(code, df, pool, upto=None):
     move = daily_move(df, upto)
     if ticker_of(code) in pool:
         return POOL, move
-    if not move == move or move < C.MIN_MOVE:                                # NaN(2020 年後資料太少)也當低波動
+    if ticker_of(code) in lowvol or not move == move or move < C.MIN_MOVE:   # 訓練池剔除的低波動股;NaN(資料太少)也當低波動
         return LOWVOL, move
     return OUT, move
 
@@ -141,16 +156,27 @@ def pool_for_year(year, store=None, pool=None):
     (研究 2024–2026 的 walk-forward 每年都用同一份清單);
     2027 年起:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。
     順序照 TICKER_SETS[pool](同 mainline.load_data):訓練資料的列順序會影響 AE / OC-SVM 的結果,順序不同就無法和研究完全一致。"""
+    return _pool_split(year, store, pool or C.POOL)[0]
+
+
+_SPLIT = {}
+
+
+def _pool_split(year, store, pool):
+    """(股票池, 剔除的低波動股)。研究結果檔的清單會記住(同一年、同一股票池不重讀);規則算的每次重算。"""
     import mainline as ML
     from data_loader import TICKER_SETS  # noqa: E402
-    pool = pool or C.POOL
-    if year <= 2026 and pool in C.RESEARCH_POOL_FILES:
-        with open(os.path.join(C.RESULTS, C.RESEARCH_POOL_FILES[pool]), encoding="utf-8") as f:
-            keep = set(json.load(f)["pool"])
-        return [tk for tk in TICKER_SETS[pool] if tk in keep]
+    if year <= C.RESEARCH_LAST_YEAR and pool in C.RESEARCH_POOL_FILES:
+        key = (pool, C.RESULTS)
+        if key not in _SPLIT:
+            with open(os.path.join(C.RESULTS, C.RESEARCH_POOL_FILES[pool]), encoding="utf-8") as f:
+                r = json.load(f)
+            keep, drop = set(r["pool"]), set(r["excluded"])
+            _SPLIT[key] = ([tk for tk in TICKER_SETS[pool] if tk in keep], [tk for tk in TICKER_SETS[pool] if tk in drop])
+        return _SPLIT[key]
     from .datasource import PriceStore
     store = store or PriceStore()
     data = store.load_many(TICKER_SETS[pool], end=f"{year - 1}-12-31")
     data = {tk: df for tk, df in data.items() if len(df) >= 250}
     drop = set(ML.low_vol(data))
-    return [tk for tk in data if tk not in drop]
+    return [tk for tk in data if tk not in drop], [tk for tk in data if tk in drop]

@@ -56,6 +56,15 @@ def active_signal(preds, closes, kind, cap=CAP):
     return {"date": str(pd.Timestamp(t).date()), "days": days, "run": run_length(reversed(seq), kind)}
 
 
+def newest_only(active):
+    """今日判斷用:同一檔同時有「還沒破底的低點訊號」和「還沒創高的高點訊號」時,只留訊號日比較新的那個
+    (新訊號蓋掉舊訊號)。active = {low / high: {date, ...}};舊訊號仍留在存檔、個股頁與成績追蹤,只是不在今日判斷重複出現。"""
+    if len(active) < 2:
+        return dict(active)
+    k = max(active, key=lambda x: active[x]["date"])
+    return {k: active[k]}
+
+
 def group_of(days):
     """推薦頁的分組:剛出現 / 已 1–2 天 / 已 3 天以上。"""
     return "new" if days == 0 else "d12" if days <= 2 else "d3"

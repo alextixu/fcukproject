@@ -69,9 +69,10 @@ def main():
         from system import store as ST, universe as U  # noqa: E402
         st = DS.PriceStore()
         m = MD.load(int(ST.list_days()[-1][:4])) or MD.load(int(ST.list_days()[-1][:4]) - 1)
-        ticks = sorted(set(U.universe(a.universe)) | set(m["pool"]) | set(U.recommend_list()))
+        yr = int(ST.list_days()[-1][:4])
+        ticks = sorted(set(U.universe(a.universe)) | set(m["pool"]) | set(U.recommend_list(yr)))
         data = st.load_many(ticks, end=ST.list_days()[-1])
-        cal = PL._calendar(data, U.recommend_list())
+        cal = PL._calendar(data, U.recommend_list(yr))
         last = ST.read_day(ST.list_days()[-1])
         from system import publish as PB  # noqa: E402
         PB.publish(data, cal, last.get("check") or {}, log=log)

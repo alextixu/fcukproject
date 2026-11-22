@@ -48,7 +48,8 @@ def judge_day(date, data, m, codes, moves=None, source="daily", check=None, fram
     """對 date 這天做判斷,回傳存檔用的 dict(不寫檔)。data 只能含 date(含)以前的資料。
     frames(回放用):{代號: live_frame 依日期索引},事先對整段資料算好;特徵只用 t−5 ~ t,結果和逐日計算相同。"""
     date = pd.Timestamp(date)
-    pool = set(U.recommend_list())                     # 推薦範圍(台灣 50):status = pool,低波動股也照樣判斷
+    pool = set(U.recommend_list(date.year))           # 推薦範圍(預設 = 訓練股票池 168 檔):status = pool
+    lowvol = set(U.lowvol_excluded(date.year))         # 訓練池剔除的低波動股:status = lowvol(不適用)
     rows, feats, keys = [], [], []
     for code in codes:
         tk = U.ticker_of(code)
@@ -56,7 +57,7 @@ def judge_day(date, data, m, codes, moves=None, source="daily", check=None, fram
         if df is not None:
             df = df.loc[:date]
         move = moves.get(code) if moves is not None else None
-        status, mv = U.classify(code, df, pool, upto=date) if moves is None else _status(code, df, pool, move)
+        status, mv = U.classify(code, df, pool, upto=date, lowvol=lowvol) if moves is None else _status(code, df, pool, move, lowvol)
         if status in (U.NOSUP, U.NODATA):
             rows.append(_row(code, status, mv, None, date))
             continue
@@ -82,14 +83,14 @@ def judge_day(date, data, m, codes, moves=None, source="daily", check=None, fram
             "model": MD.info(m), "check": check or {}, "rows": rows}
 
 
-def _status(code, df, pool, move):
+def _status(code, df, pool, move, lowvol=()):
     if not U.supported(code):
         return (U.NODATA if U.nodata_reason(code) else U.NOSUP), None
     if df is None or len(df) < C.MIN_BARS:
         return U.NODATA, None
     if U.ticker_of(code) in pool:
         return U.POOL, move
-    if move is None or move != move or move < C.MIN_MOVE:
+    if U.ticker_of(code) in lowvol or move is None or move != move or move < C.MIN_MOVE:
         return U.LOWVOL, move
     return U.OUT, move
 
@@ -146,7 +147,7 @@ def update_prices(today, kind="all", store=None, m=None, log=print):
         if n:
             log(f"ETF 代號:新查 {n} 檔")
     codes = [U.code_of(t) for t in U.universe(kind)]
-    rec = U.recommend_list()
+    rec = U.recommend_list(pd.Timestamp(today).year)
     pool = m["pool"] if m else []
     r = store.update(sorted(set(U.ticker_of(c) for c in codes) | set(pool) | set(rec)), today)
     log(f"更新 K 線:{len(r.updated)} 檔有新資料、{len(r.refreshed)} 檔重抓、{len(r.failed)} 檔失敗"
@@ -165,7 +166,7 @@ def run_daily(asof=None, online=True, kind="all", store=None, log=print, publish
     m = MD.ensure(today.year, store, log)
     rep = update_prices(today, kind, store, m, log) if online else {"online": False}
     codes = [U.code_of(t) for t in U.universe(kind)]
-    rec = U.recommend_list()
+    rec = U.recommend_list(today.year)
     tickers = sorted(set(U.ticker_of(c) for c in codes) | set(m["pool"]) | set(rec))
     data = store.load_many(tickers, end=today)
     cal = _calendar(data, rec)
@@ -213,7 +214,7 @@ def run_replay(start, end=None, kind="all", store=None, log=print, publish=True)
     end = pd.Timestamp(end) if end else None
     codes = [U.code_of(t) for t in U.universe(kind)]
     m0 = MD.ensure(pd.Timestamp(start).year, store, log)
-    rec = U.recommend_list()
+    rec = U.recommend_list(pd.Timestamp(start).year)
     tickers = sorted(set(U.ticker_of(c) for c in codes) | set(m0["pool"]) | set(rec))
     data = store.load_many(tickers, end=end)
     cal = _calendar(data, rec)

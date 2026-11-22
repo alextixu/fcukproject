@@ -38,7 +38,7 @@ def test_threshold_same_as_research():
 
 def test_otc_and_etf_are_computed(tmp_data):
     """Given 上櫃的精材(3374)、上櫃 6488、ETF 0050 / When 分類 / Then 都會計算(Yahoo 代號:上櫃 .TWO、ETF 還沒查過先當 .TW);
-    不在台灣 50 → 池外(照算、標推薦範圍外);ETF 每天漲跌小 → 低波動(不適用)"""
+    不在推薦範圍 → 池外(照算、標推薦範圍外);ETF 每天漲跌小 → 低波動(不適用)"""
     U.ticker_map.cache_clear()
     assert U.supported("3374") and U.ticker_of("3374") == "3374.TWO" and U.ticker_of("6488") == "6488.TWO"
     assert U.supported("0050") and U.ticker_of("0050") == "0050.TW"
@@ -84,11 +84,16 @@ def test_pool_2026_is_research_pool():
     assert U.pool_for_year(2024) == U.pool_for_year(2025) == p
 
 
-def test_recommend_pool_is_tw50_with_low_vol():
-    """Given 推薦範圍台灣 50 / When 列出並分類 / Then 50 檔都是上市普通股;低波動的中華電(2412)在推薦範圍內仍算 pool(照樣給判斷)"""
-    rec = U.recommend_list()
-    assert len(rec) == 50 and "2412.TW" in rec and "8046.TW" in rec
-    assert U.classify("2412", _walk(0.3), set(rec))[0] == U.POOL
+def test_recommend_is_training_pool():
+    """Given 推薦範圍設定 pool(預設)/ When 列出 2026 年的推薦範圍並分類 / Then 就是訓練股票池 168 檔(TW200 剔除低波動股,同 final);
+    TW200 被剔除的 48 檔低波動股(例 2412 中華電)一律「不適用」,就算漲跌幅夠大也一樣;其他股票照漲跌幅分池外 / 低波動"""
+    rec, low = U.recommend_list(2026), U.lowvol_excluded(2026)
+    assert rec == U.pool_for_year(2026) and len(rec) == 168 and "2454.TW" in rec and "8046.TW" in rec
+    assert len(low) == 48 and "2412.TW" in low and not set(low) & set(rec)
+    assert U.classify("2330", _walk(2.0), set(rec), lowvol=set(low))[0] == U.POOL
+    assert U.classify("2412", _walk(2.0), set(rec), lowvol=set(low))[0] == U.LOWVOL
+    assert U.classify("3374", _walk(2.0), set(rec), lowvol=set(low))[0] == U.OUT
+    assert U.classify("3374", _walk(0.3), set(rec), lowvol=set(low))[0] == U.LOWVOL
 
 
 def test_universe_all_is_listed_otc_and_etf(tmp_data):

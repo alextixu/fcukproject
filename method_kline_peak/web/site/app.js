@@ -1,9 +1,9 @@
 /* K 線高低點判斷:靜態前端。資料全部來自 data/*.json(每日批次產生)。
-   判斷方法同 final 分支:規則挑候選 → AE + OC-SVM;每檔只有判斷、規則候選、分數(OC-SVM 分數,只用來排序)。推薦範圍是台灣 50;定位為看盤輔助。
+   判斷方法同 final 分支:規則挑候選 → AE + OC-SVM;每檔只有判斷、規則候選、分數(OC-SVM 分數,只用來排序)。推薦範圍和訓練用的股票相同(台灣 200 剔除低波動股);定位為看盤輔助。
    版面原則:畫面只放數字、圖和 2–6 字的標籤;說明文字放在提示框(data-tip / title)或「展開看更多」裡。 */
 const D = {shards: {}};
 const LBL = {low: '低點', high: '高點', none: '非極值'};
-const STATUS = {pool: ['台灣 50', 't-ok'], out: ['池外', 't-warn'], lowvol: ['低波動', 't-none'], nosup: ['不支援', 't-bad'], nodata: ['資料不足', 't-none'], halted: ['今日無交易', 't-none']};
+const STATUS = {pool: ['台灣 200', 't-ok'], out: ['池外', 't-warn'], lowvol: ['低波動', 't-none'], nosup: ['不支援', 't-bad'], nodata: ['資料不足', 't-none'], halted: ['今日無交易', 't-none']};
 const MARKET = {TWSE: '上市', OTC: '上櫃', ESB: '興櫃', ETF: 'ETF'};
 let TK = 'low', Q = '';
 
@@ -14,8 +14,8 @@ const WD = '日一二三四五六';
 const dlabel = d => { const t = new Date(d + 'T00:00:00'); return `${d}(${WD[t.getDay()]})`; };
 const md = d => d ? d.slice(5).replace('-', '/') : '';
 const tagCls = k => k === 'low' ? 't-low' : k === 'high' ? 't-high' : 't-none';
-const REC = () => D.meta?.profile?.recommend_label || '台灣 50';
-const TRAIN = () => `${D.meta?.profile?.pool_label || 'TW200'}(剔除低波動股)`;
+const REC = () => D.meta?.profile?.recommend_label || '台灣 200(剔除低波動股)';
+const TRAIN = () => `${D.meta?.profile?.pool_label || '台灣 200'}(剔除低波動股)`;
 const MOBILE = () => innerWidth < 760;
 /* 提示框:滑鼠移上去或點一下(手機)才出現;tip 用在卡片,ttl 用在整列可點的元素(只給桌機 hover) */
 const tip = t => t ? ` data-tip="${esc(t)}" tabindex="0"` : '';
@@ -100,7 +100,7 @@ function chips() {
   const byCode = Object.fromEntries((D.index || []).map(r => [r[0], r]));
   const pick = (pref, st) => byCode[pref]?.[2] === st ? byCode[pref] : (D.index || []).find(r => r[2] === st);
   const list = [['2454', '聯發科'], ['2330', '台積電'], ['8046', '南電'], ['3374', '精材']];
-  for (const [pref, st] of [['2618', 'out'], ['2801', 'lowvol']]) { const r = pick(pref, st); if (r) list.push([r[0], r[1]]); }
+  for (const [pref, st] of [['2412', 'lowvol']]) { const r = pick(pref, st); if (r) list.push([r[0], r[1]]); }   /* 3374 精材 = 推薦範圍外的例子 */
   list.push(['0050', '元大台灣50']);
   return `<div class="chips">${list.map(([c, n]) => `<button type="button" class="chip" onclick="go('stock-${c}')">${c} ${esc(n)}</button>`).join('')}</div>`;
 }
@@ -158,7 +158,7 @@ function kchart(S) {
   <span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--low)"/></svg>對</span><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4"/></svg>錯</span><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg>待驗證</span></div>`;
 }
 function pageSearch() {
-  const legend = [[REC(), 't-ok', `${REC()}成分股,每天的推薦清單只看這些`], ['池外', 't-warn', '其他上市、上櫃股票與 ETF,可查,僅供參考'], ['低波動', 't-none', '推薦範圍以外、每日漲跌太小,判斷不適用'], ['資料不足', 't-none', '興櫃股票、Yahoo 沒有資料或剛上市的股票'], ['不支援', 't-bad', '特別股、存託憑證']];
+  const legend = [[STATUS.pool[0], 't-ok', `${REC()},每天的推薦清單只看這些`], ['池外', 't-warn', '推薦範圍外:其他上市、上櫃股票與 ETF,可查,僅供參考'], ['低波動', 't-none', '台灣 200 剔除的低波動股,和其他每日漲跌太小的股票,判斷不適用'], ['資料不足', 't-none', '興櫃股票、Yahoo 沒有資料或剛上市的股票'], ['不支援', 't-bad', '特別股、存託憑證']];
   return `<h1 class="pt">個股查詢</h1>${searchBox()}
   <div class="legendtags">${legend.map(([a, c, d]) => `<span class="tag ${c}"${tip(d)}>${a}</span>`).join('')}</div>${disc()}`;
 }
@@ -209,7 +209,7 @@ async function pageStock(code) {
     : cand ? `今天${CW[cand]},是${LBL[cand]}候選;但和過去真的${LBL[cand]}不夠像(分數 ${sc(P.score)} ≤ 0),所以判 <b>非極值</b>。`
     : '今天收盤不是最近 6 天最高、也不是最低,不是候選,直接判 <b>非極值</b>(一般日子)。';
   const R = (D.research?.classification || []).find(r => r.year === '2026') || {};
-  const RS = '研究結果 TW200 2026 1–9 月';
+  const RS = `研究結果 ${TRAIN()} 2026 1–9 月`;
   const past = (S.signals || []).filter(x => x.pred !== 'none').slice().reverse();
   const Y = S.year || {}, yr = Y.year || S.date.slice(0, 4);
   const pastRow = x => `<tr><td>${md(x.date)}</td><td><span class="tag ${tagCls(x.pred)}">${LBL[x.pred]}</span></td><td>${sc(x.score)}</td>
@@ -278,7 +278,7 @@ function pageTrack() {
   return `<div class="row pt"><h1${ttl(sub)}>成績追蹤</h1><div class="sp"></div>${seg(TK, [['low', '判低點'], ['high', '判高點']], 'TK')}</div>
   <div class="grid4 k2" style="margin-bottom:16px">
    ${stat('近 20 天・前 3', pct(T.top_20?.pct), `每天分數最高的 3 檔,${n(T.top_20)}`)}${stat('近 60 天・前 3', pct(T.top_60?.pct), `每天分數最高的 3 檔,${n(T.top_60)}`)}
-   ${stat(`${T.all_ytd?.year || ''} 全部`, pct(T.all_ytd?.pct), `全部判斷,${n(T.all_ytd)}\n研究結果 TW200 2026 1–9 月 ${pct(TK === 'low' ? R.prec_low : R.prec_high)}`)}
+   ${stat(`${T.all_ytd?.year || ''} 全部`, pct(T.all_ytd?.pct), `全部判斷,${n(T.all_ytd)}\n研究結果 ${TRAIN()} 2026 1–9 月 ${pct(TK === 'low' ? R.prec_low : R.prec_high)}`)}
    ${stat('隨機猜中', pct(T.base_rate?.pct), `隨便挑一天剛好是${LBL[TK]}(${REC()}、已對答案的日子)`)}
   </div>
   <div class="card" style="margin-bottom:16px"><h3${ttl(`${REC()}全部判斷的命中率,60 天移動`)}>命中率・60 天移動</h3>
@@ -337,7 +337,7 @@ function pageAbout() {
     ['分數是什麼?', 'OC-SVM 的分數。大於 0 代表今天的 K 線落在模型學過的真高點(低點)範圍內,才會判高點(低點);越大越像,只用來排序,不能當成會對的比例。'],
     ['為什麼盤中查到的是昨天的判斷?', '判斷要用收盤價,每天 18:00 左右更新。'],
     ['價格和看盤軟體一樣嗎?', '畫面上的收盤、K 線是實際成交價(未還原),漲跌幅和看盤軟體一樣對參考價。模型判斷用的是還原價(把除權息補回去),和訓練時一致。股票分割後,分割前的價格會照比例換算。'],
-    ['為什麼有些股票顯示「不適用」?', `${REC()}以外、每日漲跌幅中位數低於 ${D.meta.rules.min_move}% 的股票,高低點常常只差一兩檔,判斷沒有參考價值。`],
+    ['為什麼有些股票顯示「不適用」?', `每日漲跌幅中位數低於 ${D.meta.rules.min_move}% 的股票(包括台灣 200 裡被剔除的低波動股),高低點常常只差一兩檔,判斷沒有參考價值。`],
     ['過去的判斷會變嗎?', '不會。每天的判斷當天就存檔,之後不重算;除權息後還原價變動也不影響已存的判斷。']];
   return `<h1 class="pt">方法與說明</h1>
   <div class="vstack">
@@ -353,7 +353,7 @@ function pageAbout() {
    <p><b>2.</b> 今天和前 5 天的開高低收(除以今天收盤)和成交量(除以 10 日均量),共 29 個數字。</p>
    <p><b>3.</b> 高點、低點各一組:AE 把 29 個數字壓成 16 個,OC-SVM 只學過去「真的」高點(低點)長什麼樣子。候選落在 OC-SVM 的範圍內(分數 &gt; 0)才判高點(低點),否則改判非極值。分數越大越像,只用來排序。</p>
    <p>訓練:${esc(TRAIN())} ${mi.n_pool || ''} 檔一起訓練一組模型。判哪一年就用前 4 年訓練,${mi.year} 年用 ${yrs(mi.train)},訓練期最後 5 個交易日剔除;標籤門檻 ${D.meta.profile?.train_min_amp || 0}%,種子 ${mi.seed}。每年 1 月第 6 個交易日後自動重訓。</p>
-   <p>推薦範圍:${REC()}成分股,每天全部給判斷(低波動股也照樣判斷)。</p>`)}</div>
+   <p>推薦範圍:和訓練用的股票相同,${esc(REC())} ${mi.n_pool || ''} 檔;今日判斷、成績追蹤只看這些。台灣 200 裡被剔除的低波動股標「不適用」,其他上市、上櫃股票與 ETF 可以查,標「推薦範圍外」。</p>`)}</div>
   <div class="card"><h2${ttl(`研究結果,${TRAIN()}。錯的都是和非極值混淆,高點和低點沒有互相判錯。`)}>歷史命中率</h2><div class="tblwrap"><table class="tbl">
    <tr><th>年</th><th>macro-F1</th><th>低點命中</th><th>高點命中</th><th>低點找到</th><th>高點找到</th><th>隨機(低點)</th><th>判反</th></tr>
    ${C.map(r => `<tr><td>${r.year}${r.year === '2026' ? '(1–9 月)' : ''}</td><td>${pct(r.macro_f1, 2)}</td><td>${pct(r.prec_low)}</td><td>${pct(r.prec_high)}</td><td>${pct(r.rec_low)}</td><td>${pct(r.rec_high)}</td><td>${pct(r.base_low)}</td><td>${r.cross} 次</td></tr>`).join('')}</table></div></div>
@@ -370,7 +370,7 @@ function go(h) { location.hash = h; }
 function header() {
   const M = D.meta, c = M.check || {};
   const yrs = (M.model?.train || []).map(d => d.slice(0, 4));
-  const t = [`判斷基準日 ${M.asof} 收盤`, `產生於 ${(M.created || '').slice(0, 16)}`, `模型 ${M.method || ''}・${M.profile?.pool_label || 'TW200'} ${M.model?.n_pool || ''} 檔訓練 ${yrs[0] || ''}–${yrs[1] || ''}`, `推薦範圍 ${REC()}`];
+  const t = [`判斷基準日 ${M.asof} 收盤`, `產生於 ${(M.created || '').slice(0, 16)}`, `模型 ${M.method || ''}・${TRAIN()} ${M.model?.n_pool || ''} 檔訓練 ${yrs[0] || ''}–${yrs[1] || ''}`, `推薦範圍 ${REC()}`];
   if (c.online === false && M.source !== 'replay') t.push(`這次批次沒有連網,K 線只到 ${M.asof}`);
   document.getElementById('hmeta').innerHTML = `<span${ttl(t.join('\n'))}>判斷基準日 <b>${dlabel(M.asof)}</b></span>${M.source === 'replay' ? ` <span class="tag t-replay"${ttl('回放:上線前用同一個模型逐日產生的判斷')}>回放</span>` : ''}`;
   const b = [];
