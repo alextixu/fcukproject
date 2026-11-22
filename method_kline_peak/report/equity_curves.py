@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
 INK, MUTED, GRID, SURF = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
-COLORS = {"主軸": ("#2a78d6", "#86b6ef"), "Stacking 邏輯迴歸": ("#eb6834", "#f0956b")}
+COLORS = {"主軸": ("#2a78d6", "#86b6ef")}
 plt.rcParams["font.family"] = "WenQuanYi Zen Hei"
 plt.rcParams["axes.unicode_minus"] = False
 
