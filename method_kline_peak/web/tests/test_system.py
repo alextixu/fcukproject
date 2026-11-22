@@ -128,6 +128,7 @@ def test_stock_files_and_index(ran_daily):
         assert s["status"] == st and s["bars"][0][0] == "2026-01-02" and s["bars"][-1][0] == str(DATE.date())   # 今年整年
         assert set(s["year"]) == {"year", "low", "high"} and s["year"]["year"] == "2026"
         assert set(s["today"]["judge"]) == {"pred", "cand", "score"} and all("level" not in x for x in s["signals"])
+        assert s["excluded"] == (code in ("2412", "2801"))                 # TW200 剔除的低波動股另外標出來(畫面不寫漲跌幅不等式)
     assert len(os.listdir(os.path.join(out, "stocks"))) <= 100
     with open(os.path.join(out, "index.json"), encoding="utf-8") as f:
         idx = {r[0]: r for r in json.load(f)}

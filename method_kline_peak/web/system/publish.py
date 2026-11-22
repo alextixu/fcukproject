@@ -314,6 +314,7 @@ def publish(data, cal, check, log=print):
     hist = tab[tab.pred.isin(KINDS)]
     hist_by = {c: g for c, g in hist.groupby("code")}
     year = str(asof.year)
+    excluded = {U.code_of(t) for t in U.lowvol_excluded(asof.year)}         # 訓練股票池剔除的低波動股(TW200 48 檔)
     shards = {}
     for code, r in rows.items():
         if r["status"] in (U.NOSUP,) or (r["status"] == U.NODATA and U.nodata_reason(code)):
@@ -327,6 +328,7 @@ def publish(data, cal, check, log=print):
                 sig.append({"date": s.date, "pred": s.pred, "score": s.score, "truth": s.truth, "source": s.source})
         shards.setdefault(shard_of(code), {})[code] = _clean_nan({
             "code": code, "name": U.name_of(code), "market": U.market_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
+            "excluded": code in excluded,
             "today": _public_row(r), "active": active.get(code, {}), "price": dp["price"], "close": dp["close"],
             "chg_pct": dp["chg_pct"], "close_date": dp["close_date"], "bars": dp["bars"], "signals": sig,
             "year": year_stats(g, year)})

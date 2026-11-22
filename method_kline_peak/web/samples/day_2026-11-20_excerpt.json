@@ -1,6 +1,6 @@
 {
  "date": "2026-11-20",
- "created": "2026-11-22 14:46:13",
+ "created": "2026-11-22 16:06:07",
  "source": "replay",
  "model": {
   "year": 2026,
@@ -71,7 +71,7 @@
   },
   {
    "code": "2412",
-   "status": "pool",
+   "status": "lowvol",
    "move": 0.426,
    "close": 162.5,
    "chg_pct": -2.108,
@@ -83,7 +83,7 @@
   },
   {
    "code": "2618",
-   "status": "out",
+   "status": "pool",
    "move": 1.153,
    "close": 44.65,
    "chg_pct": -3.772,

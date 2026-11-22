@@ -194,7 +194,7 @@ async function pageStock(code) {
   const outHit = trk('low').out_pool;
   if (S.status === 'out') pre = `<div class="warnbox"${tip(`這檔不在${REC()}推薦範圍,判斷照算,僅供參考。回放期間推薦範圍以外股票的判低點命中率 ${pct(outHit?.pct)}(${outHit?.n || 0} 筆)`)}>
     <b>⚠ 推薦範圍外</b>・僅供參考・池外命中 ${pct(outHit?.pct)}</div>`;
-  if (S.status === 'lowvol') pre = `<div class="mutebox"${ttl('這類股票的「11 天最低」常常只差一兩檔,判斷沒有參考價值')}><b>低波動・判斷不適用</b>・漲跌中位數 ${fmt(S.move)}% &lt; ${D.meta.rules.min_move}%
+  if (S.status === 'lowvol') pre = `<div class="mutebox"${ttl(S.excluded ? `台灣 200 裡每日漲跌幅中位數 < ${D.meta.rules.min_move}% 的股票,研究和訓練都剔除;這類股票的「11 天最低」常常只差一兩檔,判斷沒有參考價值` : '這類股票的「11 天最低」常常只差一兩檔,判斷沒有參考價值')}><b>低波動・判斷不適用</b>・${S.excluded ? '台灣 200 剔除的低波動股' : `漲跌中位數 ${fmt(S.move)}% &lt; ${D.meta.rules.min_move}%`}
    <details style="margin-top:6px"><summary style="cursor:pointer">看模型輸出</summary><div style="margin-top:6px">今天判${LBL[p]}${P.score != null ? `(分數 ${sc(P.score)})` : ''}。</div></details></div>`;
   if (S.status === 'halted') pre = `<div class="badbox"${ttl('停牌、處置或資料未更新')}><b>${S.date} 無交易</b>・今天沒有判斷</div>`;
   if (S.status === 'nodata') pre = `<div class="mutebox"><b>資料不足</b>・${(S.bars || []).length ? '至少要 16 個交易日的 K 線' : '還沒有這檔的 K 線'}</div>`;
