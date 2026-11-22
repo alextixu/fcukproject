@@ -67,6 +67,24 @@ t−5 ~ t 六根 K 線,全部取 log、相對 t 收盤(與股價高低無關):
   - 高低點最多:3653 健策
 - 每張圖對應一個 `.csv`,每天一列:真實標籤、主軸判斷、分數、前 3 檔回測的買進日。
 
+### 每檔股票的成績與範例股(`report/per_stock_rank.py`,`results/per_stock_mainline_2024_2026.json`)
+- 把上面 168 檔的每日判斷按股票拆開統計,不改模型;逐檔混淆矩陣加總 = 168 檔的混淆矩陣。
+- 每檔 × 每年與三年合計,都有以下欄位:
+  - 真高 / 低點數;判高 / 判低的天數、對、錯
+  - 當天與 ±2 天找到率、命中率
+  - 單檔 macro-F1、判反次數
+  - 漲跌幅、年化波動
+- 4 種排名各取前 10,單年與三年合計各一份:找到個數、找到率、命中率、macro-F1。找到率和命中率只列真高、真低各至少 12 個的股票。
+- 三年合計第一名都是 2707 晶華:找到個數 121、命中率 40.8%、macro-F1 63.25%;找到率第一名是 2206 三陽工業,98.1%。
+
+簡報範例(找到率高、命中率也高、股價起伏明顯;圖 `results/outputs_<代號>_<年>_tw200.png`):
+
+| 股票 × 年 | 真高 / 真低 | 判高(對 / 錯) | 判低(對 / 錯) | 找到率 高 / 低 | ±2 天找到率 高 / 低 | 命中率 高 / 低 | macro-F1 | 判反 | 漲跌幅 | 年化波動 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2707 晶華 2024 | 22 / 23 | 47(22 / 25) | 60(22 / 38) | 100.0 / 95.7% | 100.0 / 100.0% | 46.8 / 36.7% | 65.83% | 0 | −9.2% | 21.8% |
+| 2454 聯發科 2025 | 26 / 22 | 58(24 / 34) | 54(20 / 34) | 92.3 / 90.9% | 92.3 / 95.5% | 41.4 / 37.0% | 62.52% | 0 | +5.2% | 37.7% |
+| 3413 京鼎 2024 | 19 / 22 | 47(16 / 31) | 50(21 / 29) | 84.2 / 95.5% | 89.5 / 100.0% | 34.0 / 42.0% | 62.77% | 0 | +49.6% | 44.3% |
+
 ### 回測:只做多,扣成本後全部虧損
 
 交易慣例:
@@ -113,6 +131,9 @@ python method_kline_peak/report/equity_curves.py method_kline_peak/results/backt
 python method_kline_peak/backtest_strategies.py                               # 30 種策略(2024–2025)+ 對照
 python method_kline_peak/report/stock_outputs.py 8046.TW --years 2024         # 個股每天的判斷
 python method_kline_peak/report/stock_outputs.py 1519.TW 3661.TW 2388.TW 3653.TW --years 2024 2025 2026
+python method_kline_peak/report/per_stock_rank.py                             # 每檔成績與排名
+python method_kline_peak/report/stock_outputs.py 2707.TW 3413.TW --years 2024   # 範例股
+python method_kline_peak/report/stock_outputs.py 2454.TW --years 2025
 ```
 
 - `backtest_strategies.py` 與 `stock_outputs.py` 共用每日判斷快取 `results/.cache_strategy_signals/`(不進 git)。
@@ -133,6 +154,7 @@ python method_kline_peak/report/stock_outputs.py 1519.TW 3661.TW 2388.TW 3653.TW
 | `backtest_strategies.py` | 30 種策略組合 + 0050、168 檔等權對照 |
 | `report/confusion_2024_2026.py`、`report/confusion_compare.py` | 混淆矩陣圖 |
 | `report/stock_outputs.py` | 個股每天的判斷圖與 csv |
+| `report/per_stock_rank.py` | 每檔股票的成績與排名 |
 | `report/equity_curves.py` | 回測資產曲線 |
 | `report/feat_fig.py`、`report/features_chart.png` | 29 維特徵示意圖 |
 | `tests/` | 行為契約測試;`tests/REPORT.md` 為最近一次的測試報告 |
