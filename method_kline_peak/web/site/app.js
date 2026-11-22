@@ -284,9 +284,9 @@ function pageTrack() {
   <div class="card" style="margin-bottom:16px"><h3${ttl(`${REC()}全部判斷的命中率,60 天移動`)}>命中率・60 天移動</h3>
    ${series.length > 1 ? `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}</svg></div>` : '<div class="mutebox">對答案的天數還不夠畫圖(至少 20 天)。</div>'}</div>
   <div style="margin-bottom:16px">
-   <div class="card"><h3${ttl('個股查詢可以查其他上市、上櫃股票與 ETF,判斷照算,這是它們過去的命中率')}>推薦範圍以外</h3><table class="tbl rtable"><tr><th>股票</th><th>命中率</th><th>對 / 判斷</th></tr>
+   <div class="card"><h3${ttl(`推薦範圍(${REC()})和範圍外的其他上市、上櫃股票與 ETF 比較;範圍外的判斷照算,可在個股查詢看`)}>推薦範圍內外</h3><table class="tbl rtable"><tr><th>股票</th><th>命中率</th><th>對 / 判斷</th></tr>
     <tr><td>${REC()}</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr>
-    <tr><td>池外</td><td>${pct(T.out_pool?.pct)}</td><td>${T.out_pool ? `${T.out_pool.hits} / ${T.out_pool.n}` : '—'}</td></tr></table></div></div>
+    <tr><td>推薦範圍外</td><td>${pct(T.out_pool?.pct)}</td><td>${T.out_pool ? `${T.out_pool.hits} / ${T.out_pool.n}` : '—'}</td></tr></table></div></div>
   <div class="card"><h3${ttl('每天判' + LBL[TK] + '裡分數最高的 3 檔')}>每日明細・前 3 檔</h3>${dailyTable(daily.slice(0, 10))}
    ${daily.length > 10 ? `<details class="more"><summary>還有 ${daily.length - 10} 天</summary>${dailyTable(daily.slice(10))}</details>` : ''}</div>
   ${disc()}`;
