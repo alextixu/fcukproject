@@ -13,7 +13,6 @@
                pos  收盤相對前 5 日最高 / 最低的突破幅度、上 / 下影線(ATR 倍數)
                ctx  5–60 日報酬、距 20 / 60 日高低點、均線乖離、20 日波動、ATR、RSI、量比
                mkt  大盤(0050)1 / 5 / 20 日報酬、距 20 日高點、20 日波動
-               chip 三大法人 / 融資券 / 外資持股 40 欄(method_xgb 的 chip_features,整組延後 1 日避免未公布資料)
   --latent / --epochs   AE 潛在維度 / 訓練輪數(預設 16 / 60;原系統 4 / 60)
   --arch     AE 結構:shallow(預設,2026-10-19 起;輸入 → latent 一層線性,不先升維)
              / orig(原系統,輸入 → 2×輸入 → 8 → latent)
@@ -33,7 +32,6 @@
 
 用法: python method_kline_peak/mainline.py --tag base
       python method_kline_peak/mainline.py --tag win20 --window 20
-      python method_kline_peak/mainline.py --tag chip --extra chip
       python method_kline_peak/mainline.py --tag contrast --mode contrast
 """
 import argparse
@@ -96,12 +94,6 @@ def shape_features(df, n, vol_ma=VOL_MA):
 
 def build_panel(data, window, extra, vol_ma=VOL_MA):
     mkt = clean(pd.read_parquet(os.path.join(P.YF_2026_CACHE, "0050.TW.parquet"))) if "mkt" in extra else None
-    chips = {}
-    if "chip" in extra:
-        os.environ.setdefault("FINMIND_DIR", P.FINMIND_2026)
-        from chip_data import load_chip  # noqa: E402  (method_xgb/src,feasibility 已加入 sys.path)
-        from features.chip import chip_features  # noqa: E402
-        chips = load_chip(list(data), START, END)
     parts = []
     for tk, df in data.items():
         df = clean(df)
@@ -110,9 +102,6 @@ def build_panel(data, window, extra, vol_ma=VOL_MA):
         if set(extra) & {"pos", "ctx", "mkt"}:
             cf = causal_features(df, mkt)
             feats.append(cf[[c for g in extra if g in GROUPS for c in GROUPS[g]]])
-        if "chip" in extra:
-            cp = chip_features(df, chips.get(tk, {})).shift(1)          # 籌碼延後 1 日:t 日只用 t−1 的籌碼
-            feats.append(cp.add_prefix("chip_"))
         part = pd.concat(feats, axis=1).replace([np.inf, -np.inf], np.nan)
         part["y"], part["cand_hi"], part["cand_lo"], part["ticker"] = y, cand_hi, cand_lo, tk
         part["amp"] = label_amp(df["close"], y)                          # 標籤幅度,只用於訓練時的幅度門檻,不進特徵
@@ -435,7 +424,7 @@ def main():
     ap.add_argument("--tag", required=True)
     ap.add_argument("--window", type=int, default=6)
     ap.add_argument("--vol-ma", type=int, default=VOL_MA)
-    ap.add_argument("--extra", nargs="*", default=[], choices=["pos", "ctx", "mkt", "chip"])
+    ap.add_argument("--extra", nargs="*", default=[], choices=["pos", "ctx", "mkt"])
     ap.add_argument("--latent", type=int, default=LATENT)
     ap.add_argument("--arch", default=ARCH, choices=list(ARCHS))
     ap.add_argument("--epochs", type=int, default=60)

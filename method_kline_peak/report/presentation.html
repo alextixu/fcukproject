@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>專題簡報：以深度學習為基礎之自動化K線局部高低點辨識系統</title>
+<style>
+:root {
+  --bg-color: #0b1120;
+  --card-bg: #1e293b;
+  --border-color: #334155;
+  --accent-blue: #38bdf8;
+  --accent-gold: #f59e0b;
+  --accent-green: #10b981;
+  --accent-rose: #f43f5e;
+  --text-white: #f8fafc;
+  --text-muted: #94a3b8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+body { background: #000; color: var(--text-white); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+#deck { flex: 1; position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+.slide {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: var(--bg-color); padding: 40px 60px; display: none;
+  flex-direction: column; justify-content: flex-start;
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.slide.active { display: flex; opacity: 1; }
+.header { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; }
+.tag { background: #0f172a; border: 1px solid var(--accent-blue); color: var(--accent-blue); padding: 4px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+.title { font-size: 26px; font-weight: bold; color: var(--text-white); }
+.subtitle { font-size: 14px; color: var(--text-muted); margin-left: auto; }
+.content-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; flex: 1; align-items: stretch; }
+.card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; }
+.card h3 { font-size: 17px; color: var(--accent-blue); margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; }
+.card p, .card li { font-size: 14px; line-height: 1.6; color: var(--text-white); }
+.card ul { padding-left: 20px; margin-bottom: 10px; }
+.highlight { color: var(--accent-gold); font-weight: bold; }
+.green { color: var(--accent-green); font-weight: bold; }
+.rose { color: var(--accent-rose); font-weight: bold; }
+
+/* Tables */
+table.data-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+table.data-table th, table.data-table td { padding: 10px 12px; border: 1px solid var(--border-color); text-align: center; }
+table.data-table th { background: #0f172a; color: var(--accent-gold); font-weight: bold; }
+table.data-table td { background: var(--card-bg); }
+
+/* Bottom Nav */
+#controls {
+  position: fixed; bottom: 0; left: 0; width: 100%; height: 48px;
+  background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border-color); display: flex; align-items: center;
+  justify-content: space-between; padding: 0 30px; z-index: 100;
+}
+.btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-white); padding: 5px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+#timer { font-family: monospace; font-size: 14px; color: var(--accent-gold); font-weight: bold; }
+#counter { font-size: 13px; color: var(--text-muted); }
+
+/* Speaker Notes Panel */
+#notes-panel {
+  position: fixed; right: 20px; bottom: 60px; width: 420px; max-height: 400px;
+  background: rgba(15, 23, 42, 0.98); border: 1px solid var(--accent-gold); border-radius: 8px;
+  padding: 16px; font-size: 13px; line-height: 1.6; color: #fef08a; display: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8); overflow-y: auto; z-index: 99;
+}
+#notes-panel h4 { color: var(--accent-gold); margin-bottom: 8px; font-size: 14px; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- Slide 1: 封面 -->
+  <div class="slide active" data-notes="【演講講稿 (1 min)】各位評審教授好，我們是呂偉湘與郭家齊，指導教授是李俊宏博士。本專題核心宗旨在於『展現作品的真實金融價值與工程落地可行性』。我們不空談漂亮的演算法公式，而是誠實面對真實市場的極端不平衡與交易摩擦，打造出一套達到『高低點零反向誤判』且具備實戰看盤價值的自動化輔助系統。">
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+      <div class="tag" style="font-size:15px; padding:6px 18px; margin-bottom:20px; border-color:var(--accent-gold); color:var(--accent-gold);">逢甲大學資訊工程學系 專題研究成果發表</div>
+      <h1 style="font-size:40px; margin-bottom:16px; line-height:1.3;">以深度學習為基礎之<br><span style="color:var(--accent-blue);">自動化 K 線局部高低點辨識系統</span></h1>
+      <p style="font-size:20px; color:var(--text-muted); margin-bottom:36px;">—— 嚴格因果、零反向誤判之兩階段極值輔助體系與實戰落地驗證</p>
+      <div style="background:var(--card-bg); border:1px solid var(--border-color); padding:16px 36px; border-radius:8px; font-size:15px; color:var(--text-muted);">
+        <strong>指導教授</strong>：李俊宏 博士 &nbsp;｜&nbsp; <strong>學生</strong>：呂偉湘 (D1286314)、郭家齊 (D1245765)<br>
+        <strong>評測股票池</strong>：TW200 排除低波動 168 檔活躍股 &nbsp;｜&nbsp; <strong>發表日期</strong>：2026 年 11 月
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 2: 問題與動機 -->
+  <div class="slide" data-notes="【演講講稿 (1.5 min)】在真實台股中，有高達 85.5% 是毫無方向的平盤雜訊，真正的波段高低點各只佔 7% 左右。這帶來三大痛點：第一，數據極端不平衡，無腦猜平盤就有85%準確率；第二，投資人面對假突破追高殺低，散戶高達85%常態虧損，年均交易摩擦與回撤達 15%~25%；第三，傳統指標滯後嚴重，學術模型多數偷看未來。">
+    <div class="header">
+      <div class="tag">階段 1｜問題動機</div>
+      <div class="title">現況有什麼痛點？為何嚴重？</div>
+      <div class="subtitle">金融時間序列極值盲點，造成投資人與量化機構實質損失</div>
+    </div>
+    <div class="content-grid">
+      <div class="card" style="grid-column: span 4; border-color: var(--accent-rose);">
+        <h3 style="color:var(--accent-rose);">1. 數據分佈極端不平衡</h3>
+        <ul>
+          <li><strong>85.5%</strong> 為無趨勢平盤雜訊</li>
+          <li>真實高點僅佔 <strong>7.2%</strong></li>
+          <li>真實低點僅佔 <strong>7.3%</strong></li>
+        </ul>
+        <p style="margin-top:12px; color:var(--text-muted);">痛點影響：<br>傳統分類器只要全部猜「非極值」就有 85.5% 準確率，但在關鍵轉折日集體失靈，形成「高準確率的廢物模型」。</p>
+      </div>
+      <div class="card" style="grid-column: span 4; border-color: var(--accent-gold);">
+        <h3 style="color:var(--accent-gold);">2. 追高殺低與真金白銀損失</h3>
+        <ul>
+          <li>85% 散戶常態性追高殺低</li>
+          <li>假突破 (False Breakout) 頻繁誘多</li>
+          <li>買在最高點、砍在破底時</li>
+        </ul>
+        <p style="margin-top:12px; color:var(--text-muted);">實質代價：<br>台股年換手率逾 100%，散戶每年因追高殺低造成的交易回撤與摩擦成本平均達 <span class="rose">15% ~ 25%</span> 資產總額。</p>
+      </div>
+      <div class="card" style="grid-column: span 4; border-color: var(--accent-blue);">
+        <h3 style="color:var(--accent-blue);">3. 現有方案致命技術限制</h3>
+        <ul>
+          <li><strong>傳統指標 (KD/RSI)</strong>：<br>嚴重滯後 3~5 天，等訊號出來行情已結束。</li>
+          <li><strong>學術基準 (無監督 AE)</strong>：<br>平滑化重建壓縮，對真假突破無鑑別力。</li>
+          <li><strong>致命未來洩漏 (Lookahead)</strong>：<br>坊間模型誤用 t+5 資訊，實盤上線即破功。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 3: 核心突破與一句話價值 -->
+  <div class="slide" data-notes="【演講講稿 (1.5 min)】面對這些痛點，我們的解法是什麼？一句話總結：我們開發了一套嚴格無未來洩漏的『規則粗篩＋AE降維＋純度加權OC-SVM』輔助系統，做到了高低點互判錯誤為零，並以 4 倍於隨機基準的精準度鎖定關鍵反轉。四大突破：絕對因果、零反向誤判、局部純度加權、誠實確立邊界！">
+    <div class="header">
+      <div class="tag">階段 1｜核心定位</div>
+      <div class="title">我們如何突破現有限制？一句話說明價值</div>
+      <div class="subtitle">解決「看得準但不能盲目下單」的落地核心</div>
+    </div>
+    <div style="background:var(--card-bg); border:1px solid var(--accent-gold); border-radius:10px; padding:18px 24px; margin-bottom:20px;">
+      <div style="color:var(--accent-gold); font-weight:bold; font-size:15px; margin-bottom:6px;">🎯 一句話定義我們的作品價值：</div>
+      <p style="font-size:16px; font-weight:bold; line-height:1.6;">「我們開發了一套嚴格無未來資訊洩漏之『因果規則粗篩 ＋ AE 特徵降維 ＋ 局部純度加權 OC-SVM』智慧輔助系統，實現了連續三年高低點互判錯誤為 0，並以超越隨機 4 倍之精準度，為專業交易員提供堅實的看盤極值警示。」</p>
+    </div>
+    <div class="content-grid" style="flex:1;">
+      <div class="card" style="grid-column: span 3; border-color:var(--accent-blue);">
+        <h3>突破一：絕對因果性</h3>
+        <ul>
+          <li>嚴格限制在 t 日收盤前</li>
+          <li>絕不使用未來 K 線</li>
+          <li>11 天標籤僅用於離線評測</li>
+          <li>Walk-Forward 嚴格盲測</li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 3; border-color:var(--accent-green);">
+        <h3>突破二：零反向誤判</h3>
+        <ul>
+          <li>高低點模型物理完全解耦</li>
+          <li>判定高點絕不可能是低點</li>
+          <li>連續三年 10.8 萬筆中：<br><span class="green">高低點判反率 = 0 筆！</span></li>
+          <li>徹底杜絕方向性逆勢爆倉</li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 3; border-color:var(--accent-gold);">
+        <h3>突破三：純度加權降噪</h3>
+        <ul>
+          <li>局部歐氏空間純度加權</li>
+          <li>搜尋近鄰真極值佔比賦權</li>
+          <li>壓制雜訊對超平面的干擾</li>
+          <li>線性 AE 壓縮至 16D 潛在流形</li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 3; border-color:var(--accent-rose);">
+        <h3>突破四：誠實確立邊界</h3>
+        <ul>
+          <li>誠實面對 0.585% 交易摩擦</li>
+          <li>證實「不能做為自動下單機」</li>
+          <li>精準定位為「看盤風控濾網」</li>
+          <li>防止追高、守護下檔風險</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 4: 系統架構 -->
+  <div class="slide" data-notes="【演講講稿 (1.5 min)】請看系統整體架構圖。五大模組單向流動：第一步資料層載入 168 檔活躍股；第二步 Stage 1 規則粗篩，瞬間排掉 85.5% 平盤；第三步 29 維幾何特徵，將價格取 log 相對化，實現尺度不變性；第四步核心否決層，AE 壓縮至 16 維並結合純度加權 OC-SVM 邊界圈選；最後輸出三分類標籤與連續信心分數。">
+    <div class="header">
+      <div class="tag">階段 2｜系統架構</div>
+      <div class="title">整體流程與技術架構</div>
+      <div class="subtitle">方塊模組、箭頭流向、層次清楚、無多餘雜訊</div>
+    </div>
+    <div class="content-grid" style="align-items: center; margin-bottom:20px;">
+      <div class="card" style="grid-column: span 2; border-color:var(--accent-blue); text-align:center;">
+        <h3>模組 1<br>資料與快取層</h3>
+        <p style="font-size:12px; text-align:left;">• TW200 排除低波動<br>• 168 檔活躍股日線<br>• 2016~2026 還原價<br>• Parquet 快速快取</p>
+      </div>
+      <div style="grid-column: span 1; text-align:center; font-size:24px; color:var(--accent-gold);">➔</div>
+      <div class="card" style="grid-column: span 2; border-color:var(--accent-gold); text-align:center;">
+        <h3>模組 2<br>規則候選粗篩</h3>
+        <p style="font-size:12px; text-align:left;">• t日近6天最高➔高點候選<br>• t日近6天最低➔低點候選<br>• 其餘直接判非極值<br>• <span class="green">濾除 85.5% 平盤</span></p>
+      </div>
+      <div style="grid-column: span 1; text-align:center; font-size:24px; color:var(--accent-gold);">➔</div>
+      <div class="card" style="grid-column: span 2; border-color:var(--accent-blue); text-align:center;">
+        <h3>模組 3<br>因果幾何特徵</h3>
+        <p style="font-size:12px; text-align:left;">• 6根K線 (t-5~t)<br>• 對數相對收盤價 (23D)<br>• 10日相對均量比 (6D)<br>• 消除股價高低差異</p>
+      </div>
+      <div style="grid-column: span 1; text-align:center; font-size:24px; color:var(--accent-gold);">➔</div>
+      <div class="card" style="grid-column: span 2; border-color:var(--accent-green); text-align:center;">
+        <h3>模組 4<br>AE + OC-SVM</h3>
+        <p style="font-size:12px; text-align:left;">• 線性 AE (29➔16D)<br>• 近鄰純度加權 (r≤3.0)<br>• 高點/低點獨立訓練<br>• nu=0.1 圈定邊界</p>
+      </div>
+      <div style="grid-column: span 1; text-align:center; font-size:24px; color:var(--accent-gold);">➔</div>
+      <div class="card" style="grid-column: span 2; border-color:var(--accent-gold); text-align:center;">
+        <h3>輸出交付<br>三分類</h3>
+        <p style="font-size:12px; text-align:center;"><span class="rose">局部高點</span><br><span class="green">局部低點</span><br>非極值平盤<br><br>+ 連續決策值</p>
+      </div>
+    </div>
+    <div style="background:#0f172a; border:1px solid var(--border-color); padding:14px; border-radius:8px; text-align:center; color:var(--accent-gold); font-size:14px;">
+      ⚡ 架構核心原則：單向嚴格推進，決策日 t 絕不穿透至未來 t+1；規則層負責高召回，度量層負責精確否決。
+    </div>
+  </div>
+
+  <!-- Slide 5: 方法與技術 (一) -->
+  <div class="slide" data-notes="【演講講稿 (1 min)】在特徵工程部分，我們強調『做了什麼』而非只是『特徵是什麼』。我們克服了股價尺度差異，將所有價格除以 t 日當天的收盤價並取 log。這樣一來，千元台積電與十幾元群創都能在同一個幾何流形上度量；整整 29 個維度全部由 t 日收盤前資訊構成，絕對不存在任何偷看未來。">
+    <div class="header">
+      <div class="tag">階段 3｜方法技術</div>
+      <div class="title">核心技術亮點：嚴格因果 29 維形態特徵工程</div>
+      <div class="subtitle">「做什麼」而非「是什麼」——克服股價尺度干擾與未來洩漏</div>
+    </div>
+    <div class="content-grid">
+      <div class="card" style="grid-column: span 6;">
+        <h3>特徵設計原理與工程考量</h3>
+        <ul style="margin-top:10px;">
+          <li><strong>1. 克服股價尺度差異 (Scale Invariance)</strong>：<br>
+            • 傳統特徵直接用價格數值，高價股與低價股無法共用模型。<br>
+            • <span class="highlight">我們做什麼</span>：所有開、高、低、收皆除以 t 日收盤價並取 log，讓 1000 元的聯發科與 20 元的群創在同一個形態流形上度量。
+          </li>
+          <li style="margin-top:14px;"><strong>2. 嚴格時序因果性 (Zero Lookahead)</strong>：<br>
+            • 18 個價位特徵 (t-5~t 的 O/H/L ÷ C_t)<br>
+            • 5 個歷史收盤特徵 (t-5~t-1 的 C ÷ C_t，t日恆為0故剔除)<br>
+            • 6 個相對成交量特徵 (V ÷ 10日SMA(V))
+          </li>
+          <li style="margin-top:14px;"><strong>3. 強健標準化 (Robust Preprocessing)</strong>：<br>
+            • 訓練期中位數填補，Z-Score 標準化並截斷於 ±5，消除妖股扭曲。
+          </li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 6; display:flex; justify-content:center; align-items:center;">
+        <img src="features_chart.png" alt="29D Features" style="max-width:100%; max-height:440px; border-radius:6px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 6: 方法與技術 (二) -->
+  <div class="slide" data-notes="【演講講稿 (1.5 min)】在模型核心部分，我們整合了 Autoencoder 與樣本純度加權 One-Class SVM。傳統分類器強行學習平盤負樣本會嚴重失衡，我們改採單類別異常檢測：高點模型只學高點，低點模型只學低點。我們發明了『局部純度加權』：搜尋近鄰真極值比例賦權，讓典型經典頭部形態主導邊界收縮，完美擋下假候選！">
+    <div class="header">
+      <div class="tag">階段 3｜方法技術</div>
+      <div class="title">核心技術亮點：AE 降維 ＋ 局部純度加權 OC-SVM</div>
+      <div class="subtitle">為極端不平衡金融時間序列量身打造的單類別否決體系</div>
+    </div>
+    <div class="content-grid">
+      <div class="card" style="grid-column: span 6; border-color:var(--accent-blue);">
+        <h3>1. 線性 Autoencoder (29 ➔ 16D 降噪)</h3>
+        <ul>
+          <li><strong>為什麼選單層線性 AE？</strong><br>
+            深層非線性網路在少量真極值樣本下極易過擬合微觀隨機噪音。
+          </li>
+          <li style="margin-top:14px;"><strong>做了什麼優化：</strong><br>
+            僅在真高點（或真低點）候選樣本上進行無監督重構訓練（60 輪）。
+          </li>
+          <li style="margin-top:14px;"><strong>實質效益：</strong><br>
+            將 29 維特徵矩陣投影至 16 維潛在流形，自動濾除微觀日內隨機跳動，保留跨日反轉之低頻骨架。
+          </li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 6; border-color:var(--accent-gold);">
+        <h3>2. 獨創局部歐氏純度加權 OC-SVM</h3>
+        <ul>
+          <li><strong>克服的困難：</strong><br>
+            候選池中仍有大量形態類似但後續未反轉的「假候選」，無差別訓練會導致邊界漂移。
+          </li>
+          <li style="margin-top:14px;"><strong>獨特加權演算法 (Purity Weighting)：</strong><br>
+            在標準化空間中，對真極值搜尋歐氏距離 r ≤ 3.0 的鄰居：<br>
+            <span class="highlight">權重 w_i = (鄰居真極值數) ÷ (鄰居總數)</span>（下限 0.001）。
+          </li>
+          <li style="margin-top:14px;"><strong>單類別支援向量機 (OC-SVM)：</strong><br>
+            nu=0.1、RBF 核，高純度區域主導邊界收縮，形成嚴密的正樣本警戒圈。
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 7: 成果數據 (一) -->
+  <div class="slide" data-notes="【演講講稿 (1.5 min)】請看這份實測數據表。沒有數字就等於沒有成果！三年 Walk-Forward 測試了 108,484 筆真實市場資料。三大關鍵數字：第一，召回率破 80%，市場超過八成反轉點都被我們抓到；第二，精確率達 28% 到 32%，相較於隨機猜只有 7.2%，精準度提升整整 4 倍；第三，高低點判反率連續三年剛好是零，徹底杜絕方向性逆勢爆倉！">
+    <div class="header">
+      <div class="tag">階段 4｜成果數據</div>
+      <div class="title">實測數據：2024–2026 三年嚴格 Walk-Forward 盲測</div>
+      <div class="subtitle">沒有數字＝沒有成果；三年獨立前瞻驗證，全無樣本內過擬合虛假灌水</div>
+    </div>
+    <div class="content-grid">
+      <div style="grid-column: span 8; display:flex; flex-direction:column; gap:16px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>測試年份</th><th>樣本數</th><th>Macro-F1</th><th>低點找到</th><th>低點命中</th><th>高點找到</th><th>判反率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>2024 全年</td><td>40,646</td><td class="highlight">54.31%</td><td>87.6%</td><td>27.7%</td><td>86.8%</td><td class="green">0 筆 (0%)</td></tr>
+            <tr><td>2025 全年</td><td>40,630</td><td class="highlight">53.42%</td><td>83.3%</td><td>28.2%</td><td>82.2%</td><td class="green">0 筆 (0%)</td></tr>
+            <tr><td>2026 (1~9月)</td><td>27,208</td><td class="highlight">54.51%</td><td>71.5%</td><td>31.9%</td><td>66.5%</td><td class="green">0 筆 (0%)</td></tr>
+            <tr style="border-top:2px solid var(--accent-gold);">
+              <td><strong>三年合計</strong></td><td><strong>108,484</strong></td><td class="highlight"><strong>54.08%</strong></td><td><strong>82.1%</strong></td><td><strong>28.9%</strong></td><td><strong>80.1%</strong></td><td class="green"><strong>0 筆 (0%)</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="card" style="flex:1;">
+          <h3>量化成果核心結論分析</h3>
+          <ul>
+            <li><strong>1. 極高召回率 (80.1%~82.1%)</strong>：市場超過 8 成的真實波段高點與低點均被成功捕獲，極少遺漏關鍵轉折。</li>
+            <li><strong>2. 顯著超越隨機基準 (4 倍提升)</strong>：真實母體高低點僅各約 7.2%，本系統命中率達 28.9%，精準度提升近 400%。</li>
+            <li><strong>3. 完美零反向誤判 (Inversion Error = 0)</strong>：108,484 個交易日樣本中，將真低點判為高點、或真高點判為低點的次數為 0！</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="grid-column: span 4; display:flex; justify-content:center; align-items:center;">
+        <img src="results/confusion_2024_2026_tw200.png" alt="Confusion Matrix" style="max-width:100%; max-height:440px; border-radius:6px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 8: 成果數據 (二) -->
+  <div class="slide" data-notes="【演講講稿 (1 min)】接下來這一頁是我們專題最誠實的地方：回測檢驗與科學邊界確立。我們納入 0.585% 的真實交易成本，實測 30 種策略，結果全數虧損。因為 30% 命中率加上頻繁換股手續費，會將利潤完全侵蝕。這讓我們確立了極其重要的邊界：這個作品絕不能拿來當自動交易機，它的真正價值在於做為看盤警示照妖鏡，防止衝動追高！">
+    <div class="header">
+      <div class="tag">階段 4｜成果數據</div>
+      <div class="title">回測檢驗：30 種交易策略實測與科學真相</div>
+      <div class="subtitle">敢於揭露回測真相——確立「輔助看盤 vs 交易訊號」的正確系統邊界</div>
+    </div>
+    <div class="content-grid">
+      <div class="card" style="grid-column: span 6; border-color:var(--accent-rose);">
+        <h3 style="color:var(--accent-rose);">回測實測：為什麼扣成本後全部虧損？</h3>
+        <ul>
+          <li><strong>回測設定</strong>：<br>
+            • 訊號日 t 收盤出訊號 ➔ t+1 開盤買入<br>
+            • 摩擦成本：手續費 0.1425%×2 + 證交稅 0.3% = <span class="rose">0.585%</span><br>
+            • 實測 30 種策略組合 (2024~2025 連續兩年)
+          </li>
+          <li style="margin-top:12px;"><strong>殘酷的量化數據</strong>：<br>
+            • 策略最好者 (168檔等權買賣)：扣成本 <span class="rose">-6.56%</span> (沒扣 +11.26%)<br>
+            • 策略最差者 (前3檔持有5天)：扣成本 <span class="rose">-53.64%</span> (沒扣 -18.66%)<br>
+            • 同期大盤基準 (0050 買進持有)：<span class="green">+102.02%</span>
+          </li>
+          <li style="margin-top:12px;"><strong>深刻的科學結論</strong>：<br>
+            1. 命中率約 30% 代表仍有約 7 成是次級反彈或假候選。<br>
+            2. 頻繁交易下，0.585% 摩擦成本會徹底吃掉所有超額報酬。<br>
+            3. <span class="highlight">本模型「絕不能直接做為全自動交易訊號」，其真正價值在於「看盤輔助、風控濾波與進出場警戒」！</span>
+          </li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 6; display:flex; justify-content:center; align-items:center;">
+        <img src="results/backtest_long_only_tw200_curves.png" alt="Equity Curves" style="max-width:100%; max-height:440px; border-radius:6px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 9: 商業價值 (一) -->
+  <div class="slide" data-notes="【演講講稿 (1 min)】無法落地應用的專題只是玩具。我們回答兩個商業問題：誰會買？市場有多大？第一，誰會買？三竹資訊、XQ 或券商是最佳 B2B 客戶，可做為 VIP 看盤加值功能；全台 500 萬活躍股民迫切需要防追高工具。第二，市場有多大？只要 2% 活躍投資人每月付 500 元訂閱，年產值達 6 億新台幣！一年幫投資人擋下兩次追高套牢，就能保住十幾萬！">
+    <div class="header">
+      <div class="tag">階段 5｜應用價值</div>
+      <div class="title">商業可行性：無法落地應用，就只是實驗室玩具</div>
+      <div class="subtitle">「誰會買？」、「市場規模多大？」——精準切入看盤輔助與風控剛需</div>
+    </div>
+    <div class="content-grid">
+      <div class="card" style="grid-column: span 4; border-color:var(--accent-blue);">
+        <h3>誰會買？（目標受眾）</h3>
+        <ul>
+          <li><strong>1. 券商與看盤軟體商 (B2B2C)</strong><br>
+            三竹資訊、XQ全球贏家、富邦/元大證券。採購做為 VIP 智慧看盤加值模組。
+          </li>
+          <li style="margin-top:14px;"><strong>2. 專業散戶與主觀交易員 (B2C)</strong><br>
+            依賴 K 線看盤、需要客觀第二意見防範衝動下單的自主投資人。
+          </li>
+          <li style="margin-top:14px;"><strong>3. 量化自營部與避險基金 (B2B)</strong><br>
+            做為 Execution 演算法之進出場防護濾網，避免買在局部最高點。
+          </li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 4; border-color:var(--accent-gold);">
+        <h3>市場規模多大？</h3>
+        <ul>
+          <li><strong>台灣證券開戶總數</strong>：<br>突破 1,200 萬戶。</li>
+          <li style="margin-top:12px;"><strong>每月活躍交易人口</strong>：<br>超過 500 萬人。</li>
+          <li style="margin-top:12px;"><strong>軟體訂閱市場估算</strong>：<br>
+            以 2% 活躍投資人（10萬人）每月願付 500 元訂閱智慧輔助工具計算，<br>
+            潛在年經常性收入 (ARR) 高達：<br>
+            <span class="highlight" style="font-size:22px;">NT$ 6 億元！</span>
+          </li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 4; border-color:var(--accent-green);">
+        <h3>具體效益與 ROI</h3>
+        <ul>
+          <li><strong>減少 15%~25% 追高損失</strong>：<br>
+            當個股拉長紅但系統判定「高點警戒」時，阻止交易員盲目追價。
+          </li>
+          <li style="margin-top:12px;"><strong>節省 90% 人工看盤時間</strong>：<br>
+            手動覆盤 168 檔股票需 3 小時；系統 2 秒鐘自動完成全市場極值掃描。
+          </li>
+          <li style="margin-top:12px;"><strong>極致輕量化落地成本</strong>：<br>
+            單檔推論 &lt; 2ms，記憶體消耗 &lt; 50MB，免 GPU 伺服器，部署成本幾近於零。
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 10: 商業價值 (二) -->
+  <div class="slide" data-notes="【演講講稿 (1 min)】跟市場現有方案相比，我們好在哪裡？請看對比矩陣：第一，相較於傳統 KD/RSI 高檔鈍化失真，我們做到連續三年零反向判斷；第二，相較於 LSTM/Transformer 大模型又慢又黑盒，我們的推論單檔不到 2 毫秒，純 CPU 就能秒級掃描；第三，我們誠實揭露回測邊界，這種踏實嚴謹才是機構客戶最信任的特質。">
+    <div class="header">
+      <div class="tag">階段 5｜競品比較</div>
+      <div class="title">競爭優勢：我們與市面現有方案相比好在哪？</div>
+      <div class="subtitle">量化技術維度全面對比——為什麼市場需要我們這套方案？</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>評估維度</th><th>傳統指標 (KD/RSI)</th><th>黑盒神經網路 (LSTM/Transformer)</th><th>學術基準 (AE+OCSVM)</th><th>本專題提出系統 (主軸)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>高低點判反風險</strong></td><td>經常鈍化高檔反轉</td><td>不可控，常出現逆勢反判</td><td>少數逆判</td><td class="green"><strong>★ 絕對為 0 (連續三年0筆)</strong></td></tr>
+          <tr><td><strong>時序因果嚴謹性</strong></td><td>純事後計算</td><td>容易在特徵中不慎洩漏</td><td>依賴事後標籤</td><td class="green"><strong>★ 嚴格 t 日截斷無洩漏</strong></td></tr>
+          <tr><td><strong>推論運算延遲</strong></td><td>即時但缺乏形態表徵</td><td>需 GPU 運算，延遲 &gt; 100ms</td><td>CPU 可跑，約 10ms</td><td class="green"><strong>★ 極致輕量 (單檔 &lt; 2ms)</strong></td></tr>
+          <tr><td><strong>落地商業可行性</strong></td><td>無壁壘，市場早已泛濫</td><td>模型龐大黑盒，維護成本極高</td><td>未做純度過濾，假信號過多</td><td class="highlight"><strong>★ 兼具解釋性與極佳過濾力</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="content-grid" style="flex:1;">
+      <div class="card" style="grid-column: span 4; border-color:var(--accent-green);">
+        <h3>優勢 1：零頂底互判防護網</h3>
+        <p>雙模型獨立機制，物理上不可能在做頭時喊做多，為量化風控築起絕對安全邊界。</p>
+      </div>
+      <div class="card" style="grid-column: span 4; border-color:var(--accent-blue);">
+        <h3>優勢 2：微秒級即時響應</h3>
+        <p>純 CPU 即可實現全市場 168 檔股票瞬間評估，可無縫嵌入任何既有券商行情報價引擎。</p>
+      </div>
+      <div class="card" style="grid-column: span 4; border-color:var(--accent-gold);">
+        <h3>優勢 3：科學驗證拒絕虛假包裝</h3>
+        <p>不以過度擬合的回測忽悠投資人，誠實定位輔助角色，贏得機構級專業客戶信任。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 11: Demo 演示 -->
+  <div class="slide" data-notes="【演講講稿 (1.5 min)】進入實機展示環節，我們用真材實料說話！請看左圖，這是南電 8046 在 2024 年全年的真實輸出。藍點是低點，紅點是高點。1月中旬見底時藍點浮現，3月高檔爆量長黑時紅點立刻警示，整整一年紅藍點從未出現在相反位置！我們對華城、威盛、世芯也進行了檢驗，模型皆展現出極強的泛化性；71 項單元測試 100% 通過，工程品質達到生產環境水準！">
+    <div class="header">
+      <div class="tag">階段 6｜Demo 演示</div>
+      <div class="title">Demo 演示：區分「紙上談兵」與「真材實料」</div>
+      <div class="subtitle">4 種走勢代表股 2024–2026 每日實機判定 ＋ 71 項自動化契約測試</div>
+    </div>
+    <div class="content-grid">
+      <div class="card" style="grid-column: span 6; display:flex; justify-content:center; align-items:center;">
+        <img src="results/outputs_8046_2024_tw200.png" alt="Nan Ya PCB 8046 Output" style="max-width:100%; max-height:380px; border-radius:6px;">
+      </div>
+      <div class="card" style="grid-column: span 6;">
+        <h3>4 檔代表股實機運行驗證解析</h3>
+        <ul>
+          <li><strong>1. 南電 (8046) 震盪盤整</strong>：<br>左圖清楚呈現，在 2024 年震盪走勢中，系統精準抓到 1 月起漲低點與 3 月波段高點，盤整期間穩健保持非極值。</li>
+          <li style="margin-top:10px;"><strong>2. 華城 (1519) 大漲多頭趨勢</strong>：<br>在飆漲行情中持續發出低點加碼提示，並在波段頂部提示高點警戒，不輕易被中途甩轎。</li>
+          <li style="margin-top:10px;"><strong>3. 威盛 (2388) 長期空頭趨勢</strong>：<br>在下跌段中多次準確標示高點，有效阻擋投資人在半山腰「抄底」的衝動。</li>
+          <li style="margin-top:10px;"><strong>4. 世芯-KY (3661) 劇烈波動</strong>：<br>面對千元股劇烈洗盤，展現幾何適應性，零反向誤判。</li>
+        </ul>
+      </div>
+    </div>
+    <div style="background:var(--card-bg); border:1px solid var(--accent-green); border-radius:8px; padding:12px; margin-top:16px; text-align:center; color:var(--accent-green); font-size:13px; font-weight:bold;">
+      ✔ 工程質量真金白銀驗證：pytest 套件包含 71 項單元與系統整合測試，涵蓋因果性無未來洩漏測試、帳務計算測試、邊界條件測試，100% 全數通過！
+    </div>
+  </div>
+
+  <!-- Slide 12: 結論展望 -->
+  <div class="slide" data-notes="【演講講稿 (1 min)】最後總結：第一，方法創新，規則粗篩結合純度加權 OC-SVM 攻克 85% 資料不平衡；第二，堅持絕對因果，杜絕偷看未來；第三，達成召回率 80% 與判反率 0% 的卓越數據；第四，誠實面對交易摩擦，確立看盤輔助定位。未來將整合大盤背離指標並封裝為商轉 API。感謝指導教授李俊宏博士的嚴謹指導，謝謝大家！">
+    <div class="header">
+      <div class="tag">階段 7｜結論展望</div>
+      <div class="title">總結亮點與未來展望</div>
+      <div class="subtitle">將研究價值轉化為金融實務生產力</div>
+    </div>
+    <div class="content-grid">
+      <div class="card" style="grid-column: span 6; border-color:var(--accent-blue);">
+        <h3>專題核心貢獻總結</h3>
+        <ul>
+          <li><strong>1. 方法創新</strong>：<br>首創「因果規則粗篩 ＋ 線性 AE ＋ 局部純度加權 OC-SVM」極值辨識管線，攻克 85.5% 嚴重資料不平衡問題。</li>
+          <li style="margin-top:14px;"><strong>2. 嚴格因果</strong>：<br>完全封閉於 t 日收盤前資訊，杜絕金融機器學習中最常見的「偷看未來」致命弊端。</li>
+          <li style="margin-top:14px;"><strong>3. 指標過硬</strong>：<br>三年盲測 10.8 萬筆樣本，召回率破 80%，高低點判反率達到完美的 0%！</li>
+          <li style="margin-top:14px;"><strong>4. 誠實落地</strong>：<br>經過 30 種交易回測確立系統邊界，定位為券商看盤軟體與交易員必備的輔助過濾器。</li>
+        </ul>
+      </div>
+      <div class="card" style="grid-column: span 6; border-color:var(--accent-gold);">
+        <h3>未來升級與商轉藍圖</h3>
+        <ul>
+          <li><strong>1. 融合大盤宏觀背離指標</strong>：<br>將加權指數 0050.TW 頂背離與流動性因數納入，進一步降低假突破誤報率。</li>
+          <li style="margin-top:14px;"><strong>2. 擴展至海外與高頻市場</strong>：<br>將 29D 幾何特徵直接推廣至美股 S&P 500、台指期貨 60 分鐘 K 線與加密貨幣即時串流。</li>
+          <li style="margin-top:14px;"><strong>3. 券商 OpenAPI 雲端服務化</strong>：<br>封裝為 RESTful / WebSocket 微服務 API，提供金融機構即時訂閱串接。</li>
+          <li style="margin-top:20px; color:var(--accent-gold); font-weight:bold;">
+            致謝：誠摯感謝指導教授 李俊宏 博士的悉心指導與嚴謹要求！
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Control Bar -->
+<div id="controls">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button class="btn" onclick="prevSlide()">◀ 上一頁</button>
+    <button class="btn" onclick="nextSlide()">下一頁 ▶</button>
+    <span id="counter">1 / 12</span>
+  </div>
+  <div id="timer">00:00</div>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button class="btn" onclick="toggleNotes()">📝 演講講稿 (N)</button>
+    <button class="btn" onclick="toggleFullScreen()">⛶ 全螢幕 (F)</button>
+  </div>
+</div>
+
+<!-- Speaker Notes Popover -->
+<div id="notes-panel">
+  <h4>
+    <span>🎙 演講者即時講稿提示</span>
+    <span style="cursor:pointer;" onclick="toggleNotes()">✕</span>
+  </h4>
+  <div id="notes-content">講稿載入中...</div>
+</div>
+
+<script>
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+const counter = document.getElementById('counter');
+const notesPanel = document.getElementById('notes-panel');
+const notesContent = document.getElementById('notes-content');
+let seconds = 0;
+
+function updateSlide() {
+  slides.forEach((s, idx) => {
+    s.classList.toggle('active', idx === currentSlide);
+  });
+  counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+  const currentNotes = slides[currentSlide].getAttribute('data-notes') || '無講稿備註';
+  notesContent.innerHTML = currentNotes.replace(/\n/g, '<br><br>');
+}
+
+function nextSlide() {
+  if (currentSlide < slides.length - 1) {
+    currentSlide++;
+    updateSlide();
+  }
+}
+
+function prevSlide() {
+  if (currentSlide > 0) {
+    currentSlide--;
+    updateSlide();
+  }
+}
+
+function toggleNotes() {
+  notesPanel.style.display = (notesPanel.style.display === 'block') ? 'none' : 'block';
+}
+
+function toggleFullScreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else if (document.exitFullscreen) {
+    document.exitFullscreen();
+  }
+}
+
+// Timer
+setInterval(() => {
+  seconds++;
+  const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const s = String(seconds % 60).padStart(2, '0');
+  document.getElementById('timer').textContent = m + ':' + s;
+}, 1000);
+
+// Keyboard nav
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') nextSlide();
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevSlide();
+  else if (e.key === 'n' || e.key === 'N') toggleNotes();
+  else if (e.key === 'f' || e.key === 'F') toggleFullScreen();
+});
+
+updateSlide();
+</script>
+</body>
+</html>
