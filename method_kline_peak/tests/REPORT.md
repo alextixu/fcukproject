@@ -1,6 +1,6 @@
 # 主軸測試報告(自動產生)
 
-結果:92 / 93 通過,1 項刻意跳過(條件不適用)
+結果:99 / 100 通過,1 項刻意跳過(條件不適用)
 
 | # | 層級 | 測試 | 情境(Given / When / Then) | 結果 |
 |---|---|---|---|---|
@@ -97,3 +97,10 @@
 | 91 | System | `test_system_refactor_matches_before` | [score|svm] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
 | 92 | System | `test_system_refactor_matches_before` | [score|tree] Given 重構後的基底層與元學習器(種子 42) / When 重跑舊的輸入 × 元學習器組合 / Then 測試 2024 的 macro-F1 和重構前完全相同 | 通過 |
 | 93 | System | `test_system_source_equals_experiment` | Given StackingSource(邏輯迴歸、只用分數) / When 走 SignalSource 介面訓練 2020–2023、預測 2024 / Then 每一天的判斷和實驗流程(基底層 + 元學習器)完全相同,所以逐年回測可以直接用它 | 通過 |
+| 94 | Component | `test_component_matches_existing_simulate` | [5-False] Given 合成價格與隨機訊號(含判高點出場) When  用新引擎 run 與既有的 backtest_years.simulate 跑同一組設定(K = 2,沒有停損) Then  每日資產與每筆交易完全相同(新引擎沿用同一套慣例) | 通過 |
+| 95 | Component | `test_component_matches_existing_simulate` | [3-False] Given 合成價格與隨機訊號(含判高點出場) When  用新引擎 run 與既有的 backtest_years.simulate 跑同一組設定(K = 2,沒有停損) Then  每日資產與每筆交易完全相同(新引擎沿用同一套慣例) | 通過 |
+| 96 | Component | `test_component_matches_existing_simulate` | [20-True] Given 合成價格與隨機訊號(含判高點出場) When  用新引擎 run 與既有的 backtest_years.simulate 跑同一組設定(K = 2,沒有停損) Then  每日資產與每筆交易完全相同(新引擎沿用同一套慣例) | 通過 |
+| 97 | Component | `test_component_no_future_data` | Given 訊號日 t When  把 t+1 之後(不含 t+1 開盤)的價格全部改掉 Then  t+1 開盤買進的價格不變,且 t 以前的資產不受影響;進場日 = t 的下一個交易日 | 通過 |
+| 98 | Component | `test_component_cost_round_trip` | Given 一筆交易(開盤 100 買、收盤賣) When  扣成本 / 沒扣成本 Then  扣成本報酬 = 賣價 × (1 − 0.1425% − 0.3%) ÷ (買價 × (1 + 0.1425%)) − 1;一趟來回成本 0.585%;沒扣成本 = 賣價 ÷ 買價 − 1 | 通過 |
+| 99 | Component | `test_component_full_slots_skip` | Given K = 1,同一天兩個訊號(分數不同),隔天再一個訊號 When  回測 Then  只買分數高的那檔;持有期間的新訊號因滿倉跳過;已持有的同一檔不加碼 | 通過 |
+| 100 | Component | `test_component_stop_loss` | Given 進場後某天收盤比進場價低超過 8% When  開啟停損(8%) Then  隔天開盤賣出(標記停損);只跌 7.9% 不觸發;不開停損時照原本持有到期 | 通過 |
