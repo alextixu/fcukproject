@@ -97,76 +97,25 @@ rect({ x: M, y: y + 1.0, w: CW, h: 3.9, fill: { color: CARD } });
   });
 }
 
-// ── 欄位 ──
-const top = 13.5, LW = 7.55, RX = M + LW + 0.5, RW = W - M - RX;
-// 左:研究流程
-pill(M, top, "研究流程", 4.2);
-let ly;
+// ── 欄位(格線:左欄 LW、右欄 RW,區塊間距 GAP;所有座標由下面的常數推出) ──
+const top = 13.5, BOT = H - M, COLG = 0.45, LW = 6.4, RX = M + LW + COLG, RW = W - M - RX;
+const PILLH = 0.78, PILLG = 0.22, GAP = 0.35, PAD = 0.3, IW = RW - 2 * PAD;
+const LAYOUT = {};
+const pillAt = (x, y, text, w) => { pill(x, y, text, w); return y + PILLH + PILLG; };
+const frame = (f, x, y, w, h, alt) => {
+  s.addShape(pres.shapes.RECTANGLE, { x: x - 0.03, y: y - 0.03, w: w + 0.06, h: h + 0.06, fill: { color: "FFFFFF" }, line: { color: LINE, width: 1.5 } });
+  img(f, x, y, w, h, alt);
+};
+const RPW = 8.2;                                   // 三個成果標題膠囊同寬
+
+// ── 右欄 ──
+// 成果一:模型成績(表 + 長條圖 | 混淆矩陣,上下緣對齊)
+let ry = pillAt(RX, top, "成果一  模型成績", RPW);
 {
-  const steps = [["資料蒐集", "168 檔股票,2016–2026 日K線"], ["標籤定義", "前後 5 天共 11 天的最高 / 最低收盤"],
-    ["型態特徵", "t−5~t 六根K線 ÷ t 收盤取 log,29 維"], ["規則篩候選", "最近 6 天最高 / 最低才是候選"],
-    ["AE + OC-SVM 訓練", "29→16 維,只學真的高(低)點"], ["逐年驗證", "前 4 年訓練、測下一年,2024–2026"], ["網頁系統", "每日判斷、5 天後對答案"]];
-  const y0 = top + 1.2, step = 1.38;
-  rect({ x: M, y: y0 - 0.2, w: LW, h: step * steps.length + 0.1, fill: { color: CARD } });
-  s.addShape(pres.shapes.LINE, { x: M + 0.62, y: y0 + 0.3, w: 0, h: step * (steps.length - 1), line: { color: LINE, width: 4 } });
-  steps.forEach(([h, d], i) => {
-    const yy = y0 + i * step;
-    s.addShape(pres.shapes.OVAL, { x: M + 0.35, y: yy + 0.03, w: 0.54, h: 0.54, fill: { color: ACC }, line: { color: "FFFFFF", width: 3 } });
-    T(String(i + 1), { x: M + 0.35, y: yy + 0.03, w: 0.54, h: 0.54, fontSize: 22, bold: true, color: "FFFFFF", align: "center", valign: "middle" });
-    T(h, { x: M + 1.15, y: yy - 0.02, w: LW - 1.35, h: 0.58, fontSize: 30, bold: true });
-    T(d, { x: M + 1.15, y: yy + 0.55, w: LW - 1.35, h: 0.75, fontSize: 24, color: INK2 });
-  });
-  // 使用技術與資料(緊湊兩列)
-  const ty = y0 + step * steps.length + 0.3;
-  pill(M, ty, "使用技術與資料", 6.4);
-  const tech = ["PyTorch", "scikit-learn", "pandas", "yfinance", "Matplotlib", "GitHub"];
-  const tw = (LW - 0.3) / 3;
-  tech.forEach((t, i) => {
-    const xx = M + (i % 3) * (tw + 0.15), yy = ty + 1.0 + Math.floor(i / 3) * 0.72;
-    rect({ x: xx, y: yy, w: tw, h: 0.6, rectRadius: 0.3, fill: { color: CARD }, line: { color: ACC, width: 1.5 } });
-    T(t, { x: xx, y: yy, w: tw, h: 0.6, fontSize: 24, bold: true, color: ACC, align: "center", valign: "middle" });
-  });
-  ly = ty + 1.0 + 2 * 0.72 + 0.3;
-}
-// 左下:成果 3 實驗結果(聯發科 2025)
-pill(M, ly, "成果 3  實驗結果", 6.9);
-{
-  const y0 = ly + 1.2, avail = H - M - y0 - 0.65;
-  rect({ x: M, y: y0 - 0.2, w: LW, h: avail + 0.85, fill: { color: CARD } });
-  let w1 = LW - 0.3, h1 = hOf("f_2454.png", w1);
-  if (h1 > avail) { h1 = avail; w1 = wOf("f_2454.png", h1); }
-  img("f_2454.png", M + (LW - w1) / 2, y0, w1, h1, "聯發科 2025 真實高低點與系統判斷");
-  T("聯發科 2025(表現較佳的個股)", { x: M + 0.2, y: y0 + h1 + 0.02, w: LW - 0.4, h: 0.55, fontSize: 24, color: INK2, align: "center" });
-}
-// 右:成果 1 系統 Demo、成果 2 模型成績
-let ry = top;
-pill(RX, ry, "成果 1  系統 Demo", 7.4);
-{
-  const y0 = ry + 1.2, bw = 8.3, bh = hOf("web_demo_2454.png", bw), sw = RW - 0.6 - 0.45 - bw;
-  const h1 = hOf("web_today.png", sw), h2 = hOf("web_track.png", sw);
-  const blockH = Math.max(bh, h1 + h2 + 1.1) + 0.75;
-  rect({ x: RX, y: y0 - 0.2, w: RW, h: blockH, fill: { color: CARD } });
-  const frame = (f, x, y, w, h, alt) => {
-    s.addShape(pres.shapes.RECTANGLE, { x: x - 0.03, y: y - 0.03, w: w + 0.06, h: h + 0.06, fill: { color: "FFFFFF" }, line: { color: LINE, width: 1.5 } });
-    img(f, x, y, w, h, alt);
-  };
-  frame("web_demo_2454.png", RX + 0.3, y0, bw, bh, "網頁:個股查詢(聯發科 2454)");
-  T("個股查詢:規則候選 → 分數 → 判斷,與整年的判斷標記", { x: RX + 0.3, y: y0 + bh + 0.08, w: bw, h: 0.5, fontSize: 24, color: INK2, align: "center" });
-  const sx = RX + 0.3 + bw + 0.45;
-  frame("web_today.png", sx, y0, sw, h1, "網頁:今日判斷");
-  T("今日判斷:每天收盤後更新", { x: sx, y: y0 + h1 + 0.05, w: sw, h: 0.5, fontSize: 24, color: INK2, align: "center" });
-  const ty2 = y0 + h1 + 0.65;
-  frame("web_track.png", sx, ty2, sw, h2, "網頁:成績追蹤");
-  T("成績追蹤:5 天後對答案", { x: sx, y: ty2 + h2 + 0.05, w: sw, h: 0.5, fontSize: 24, color: INK2, align: "center" });
-  ry = y0 + blockH + 0.15;
-}
-pill(RX, ry, "成果 2  模型成績", 6.9);
-{
-  const y0 = ry + 1.2, th = 2.3, tw = 7.3, cpw = 7.3;
-  const cfh = (RW - tw - 1.0) * 1217 / 1463, cfw = wOf("f_conf_total.png", cfh);
-  const cph = hOf("f_compare.png", cpw), need = Math.max(th + 0.15 + cph, cfh + 0.55) + 1.1, blockH = Math.max(need, H - M - y0 + 0.2);
-  const yo = y0 + (blockH - need) / 2;
-  rect({ x: RX, y: y0 - 0.2, w: RW, h: blockH, fill: { color: CARD } });
+  const mw = 5.6, mh = mw * 1217 / 1463, lw = IW - mw - 0.4, th = 2.0, cph = mh - th - 0.15, cpw = cph * 2.381;
+  const capH = 0.95, h = PAD + mh + 0.12 + capH + 0.15;
+  rect({ x: RX, y: ry, w: RW, h, fill: { color: CARD } });
+  const y0 = ry + PAD, x0 = RX + PAD;
   const hd = (t) => ({ text: t, options: { bold: true, fill: { color: INK }, color: "FFFFFF", align: "center", valign: "middle" } });
   const v = (t, o = {}) => ({ text: t, options: { align: "center", valign: "middle", ...o } });
   const RU = NUM.rule, MB = NUM.mine_from_baseline;
@@ -174,17 +123,79 @@ pill(RX, ry, "成果 2  模型成績", 6.9);
     [v("隨機猜", { bold: true }), v("33.33%"), v(pc(NUM.random)), v(pc(NUM.random))],
     [v("只用規則", { bold: true }), v(pc(RU.macro_f1, 2)), v(pc(RU.both_rec)), v(pc(RU.both_prec))],
     [v("本系統", { bold: true }), v(pc(MB.macro_f1, 2)), v(pc(NUM.both_rec)), v(pc(NUM.both_prec))]];
-  s.addTable(rows, { x: RX + 0.3, y: yo, w: tw, colW: [1.75, 1.85, 1.85, 1.85], rowH: th / 4, fontSize: 22, fontFace: FONT, color: INK,
+  s.addTable(rows, { x: x0, y: y0, w: lw, colW: [lw * 0.25, lw * 0.25, lw * 0.25, lw * 0.25], rowH: th / 4, fontSize: 22, fontFace: FONT, color: INK,
     border: { type: "solid", pt: 1, color: LINE } });
-  img("f_compare.png", RX + 0.3 + (tw - cpw) / 2, yo + th + 0.15, cpw, cph, "找到率與命中率比較:隨機猜、只用規則、本系統");
-  const cx = RX + 0.3 + tw + 0.4 + (RW - tw - 1.0 - cfw) / 2;
-  img("f_conf_total.png", cx, yo, cfw, cfh, "三年合計混淆矩陣");
-  T("三年合計;橘框(判反)= 0", { x: RX + tw + 0.6, y: yo + cfh + 0.05, w: RW - tw - 0.8, h: 0.5, fontSize: 24, color: INK2, align: "center" });
-  T([{ text: "成績主要來自規則;", options: { bold: true, color: INK } }, { text: `AE + OC-SVM 讓訊號少約兩成(${pc(NUM.signal_days_fewer)}),命中率持平。` }],
-    { x: RX + 0.3, y: yo + need - 0.95, w: RW - 0.6, h: 0.65, fontSize: 26, color: INK2, align: "center", valign: "middle" });
-  ry = y0 + blockH;
-  console.log("right column ends at", ry.toFixed(2), "page", H.toFixed(2));
+  img("f_compare.png", x0 + (lw - cpw) / 2, y0 + th + 0.15, cpw, cph, "找到率與命中率比較:隨機猜、只用規則、本系統");
+  img("f_conf_total.png", x0 + lw + 0.4, y0, mw, mh, "三年合計混淆矩陣(橘框為判反,皆為 0)");
+  T([{ text: "成績主要來自規則", options: { bold: true, color: INK, breakLine: true } }, { text: `AE + OC-SVM 讓訊號少約兩成(${pc(NUM.signal_days_fewer)}),命中率持平` }],
+    { x: x0, y: y0 + mh + 0.12, w: lw, h: capH, fontSize: 24, color: INK2, align: "center", valign: "middle" });
+  T("三年合計;橘框(判反)= 0", { x: x0 + lw + 0.4, y: y0 + mh + 0.12, w: mw, h: capH, fontSize: 24, color: INK2, align: "center", valign: "middle" });
+  LAYOUT["成果一"] = [RX, ry, RW, h]; ry += h + GAP;
 }
+// 成果二:系統 Demo(三張同尺寸 4:3 截圖並排)
+ry = pillAt(RX, ry, "成果二  系統 Demo", RPW);
+{
+  const g = 0.3, sw = (IW - 2 * g) / 3, sh = sw * 0.75, capH = 0.55, h = PAD + sh + 0.1 + capH + 0.15;
+  rect({ x: RX, y: ry, w: RW, h, fill: { color: CARD } });
+  [["web_p_today.png", "今日判斷"], ["web_p_2454.png", "個股查詢(2454)"], ["web_p_track.png", "成績追蹤"]].forEach(([f, cap], i) => {
+    const x = RX + PAD + i * (sw + g);
+    frame(f, x, ry + PAD, sw, sh, `網頁:${cap}`);
+    T(cap, { x, y: ry + PAD + sh + 0.1, w: sw, h: capH, fontSize: 24, color: INK2, align: "center", valign: "middle" });
+  });
+  LAYOUT["成果二"] = [RX, ry, RW, h]; ry += h + GAP;
+}
+// 成果三:以聯發科為例(高度 = 剩下的空間,右欄剛好到底)
+ry = pillAt(RX, ry, "成果三  以聯發科為例的高低點判斷", RPW);
+{
+  const h = BOT - ry, ih = h - PAD - 0.65 - 0.15, iw = wOf("f_2454.png", ih);
+  rect({ x: RX, y: ry, w: RW, h, fill: { color: CARD } });
+  img("f_2454.png", RX + PAD, ry + PAD, iw, ih, "聯發科 2025 真實高低點與系統判斷");
+  T("聯發科 2025 的高低點判斷", { x: RX + PAD, y: ry + PAD + ih + 0.05, w: iw, h: 0.6, fontSize: 24, color: INK2, align: "center", valign: "middle" });
+  const m = NUM.mtk, sx = RX + PAD + iw + 0.4, sw2 = (RX + RW - PAD - sx - 0.3) / 2, sh2 = (ih + 0.65 - 0.3) / 2;
+  [[`${m["高點"]["找到率_當天"].toFixed(1)}%`, "高點找到率", "E8622C"], [`${m["低點"]["找到率_當天"].toFixed(1)}%`, "低點找到率", "2A6FD6"],
+   [`${m["高點"]["命中率"].toFixed(1)}%`, "高點命中率", "E8622C"], [`${m["低點"]["命中率"].toFixed(1)}%`, "低點命中率", "2A6FD6"]].forEach(([val, lab, col], k) => {
+    const x = sx + (k % 2) * (sw2 + 0.3), y = ry + PAD + Math.floor(k / 2) * (sh2 + 0.3);
+    rect({ x, y, w: sw2, h: sh2, fill: { color: "EEF2F5" } });
+    T(val, { x, y: y + 0.1, w: sw2, h: sh2 * 0.6, fontSize: 48, bold: true, color: col, align: "center", valign: "middle" });
+    T(lab, { x, y: y + sh2 * 0.62, w: sw2, h: sh2 * 0.32, fontSize: 24, color: INK2, align: "center", valign: "middle" });
+  });
+  LAYOUT["成果三"] = [RX, ry, RW, h];
+}
+
+// ── 左欄:研究流程 + 使用技術與資料,底部和右欄對齊 ──
+{
+  const techH = 3 * 0.62 + 2 * 0.14 + 2 * PAD;
+  const techPillY = BOT - techH - PILLG - PILLH;
+  let ly = pillAt(M, top, "研究流程", 4.2);
+  const flowH = techPillY - GAP - ly;
+  rect({ x: M, y: ly, w: LW, h: flowH, fill: { color: CARD } });
+  LAYOUT["研究流程"] = [M, ly, LW, flowH];
+  const steps = [["資料蒐集", "168 檔股票\n2016–2026 日K線"], ["標籤定義", "前後 5 天共 11 天\n最高 / 最低收盤"],
+    ["型態特徵", "t−5~t 六根K線\n÷ t 收盤取 log,29 維"], ["規則篩候選", "最近 6 天最高 / 最低\n才是候選"],
+    ["AE + OC-SVM 訓練", "29→16 維\n只學真的高(低)點"], ["逐年驗證", "前 4 年訓練、測下一年\n2024–2026"], ["網頁系統", "每日判斷\n5 天後對答案"]];
+  const step = (flowH - 2 * PAD) / steps.length, y0 = ly + PAD;
+  s.addShape(pres.shapes.LINE, { x: M + 0.6, y: y0 + 0.32, w: 0, h: step * (steps.length - 1), line: { color: LINE, width: 4 } });
+  steps.forEach(([hh, d], i) => {
+    const yy = y0 + i * step;
+    s.addShape(pres.shapes.OVAL, { x: M + 0.3, y: yy + 0.02, w: 0.6, h: 0.6, fill: { color: ACC }, line: { color: "FFFFFF", width: 3 } });
+    T(String(i + 1), { x: M + 0.3, y: yy + 0.02, w: 0.6, h: 0.6, fontSize: 24, bold: true, color: "FFFFFF", align: "center", valign: "middle" });
+    T(hh, { x: M + 1.15, y: yy - 0.02, w: LW - 1.35, h: 0.65, fontSize: 32, bold: true });
+    T(d, { x: M + 1.15, y: yy + 0.68, w: LW - 1.35, h: step - 0.8, fontSize: 26, color: INK2 });
+  });
+  const ty = pillAt(M, techPillY, "使用技術與資料", 6.0);
+  rect({ x: M, y: ty, w: LW, h: techH, fill: { color: CARD } });
+  LAYOUT["使用技術"] = [M, ty, LW, techH];
+  const tech = ["PyTorch", "scikit-learn", "pandas", "yfinance", "Matplotlib", "GitHub"];
+  const tw = (LW - 2 * PAD - 0.2) / 2;
+  tech.forEach((t, i) => {
+    const xx = M + PAD + (i % 2) * (tw + 0.2), yy = ty + PAD + Math.floor(i / 2) * 0.76;
+    rect({ x: xx, y: yy, w: tw, h: 0.62, rectRadius: 0.31, fill: { color: "FFFFFF" }, line: { color: ACC, width: 1.5 } });
+    T(t, { x: xx, y: yy, w: tw, h: 0.62, fontSize: 24, bold: true, color: ACC, align: "center", valign: "middle" });
+  });
+}
+const fmt = (a) => a.map((v) => v.toFixed(2)).join(", ");
+Object.entries(LAYOUT).forEach(([k, a]) => console.log(`${k}: x, y, w, h = ${fmt(a)}  (底 ${(a[1] + a[3]).toFixed(2)}, 右 ${(a[0] + a[2]).toFixed(2)})`));
+console.log("頁面:", W.toFixed(2), "x", H.toFixed(2), " 下緣界線", BOT.toFixed(2));
 
 // 拿掉 zip 裡的資料夾項目
 (async () => {
