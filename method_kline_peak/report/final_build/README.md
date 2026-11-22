@@ -20,4 +20,4 @@ soffice --headless --convert-to pdf ../專題海報_v2.pptx            # 再用 
 - `baseline_rule_vs_mainline_2024_2026.json`:只用規則 vs 本系統(三年合計由逐年數字加總)。
 - `timing_mainline.json`:實測時間與記憶體(第 3、10 頁;寫死在 make_presentation_v2.js 的 TM)。
 
-待補:網頁截圖、市場規模;第 6、8 頁與海報成果 2 的結論說法待定。
+網頁截圖:claude/kline-peak-web-app c6d95c8 的 today_desktop、stock_pool_2454_desktop、track_desktop(資料到 2026-11-20)。

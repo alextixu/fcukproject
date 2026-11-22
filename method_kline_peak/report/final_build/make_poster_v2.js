@@ -180,13 +180,14 @@ pill(RX, ry, "成果 3  實驗結果", 6.9);
 {
   const y0 = ry + 1.2, avail = H - M - y0 - 0.85;
   rect({ x: RX, y: y0 - 0.2, w: RW, h: avail + 1.05, fill: { color: CARD } });
-  const pw = 3.6, cw = RW - pw - 0.9;
-  const ch = Math.min(hOf("f_2454.png", cw), avail);
-  img("f_2454.png", RX + 0.3, y0, wOf("f_2454.png", ch), ch, "聯發科 2025 真實高低點與系統判斷");
-  pending(RX + RW - pw - 0.3, y0, pw, ch, "網頁截圖\n待補");
-  const m = NUM.mtk;
-  T(`聯發科 2025(表現較佳的個股):找到率 高 ${m["高點"]["找到率_當天"]}% / 低 ${m["低點"]["找到率_當天"]}%`,
-    { x: RX + 0.3, y: y0 + ch + 0.15, w: RW - 0.6, h: 0.6, fontSize: 24, color: INK2, align: "center" });
+  const half = (RW - 0.9) / 2;
+  let h1 = Math.min(hOf("f_2454.png", half), avail), w1 = wOf("f_2454.png", h1);
+  let h2 = Math.min(hOf("web_2454_year.png", half), avail), w2 = wOf("web_2454_year.png", h2);
+  img("f_2454.png", RX + 0.3 + (half - w1) / 2, y0 + (avail - h1) / 2, w1, h1, "聯發科 2025 真實高低點與系統判斷");
+  s.addShape(pres.shapes.RECTANGLE, { x: RX + 0.6 + half - 0.02 + (half - w2) / 2, y: y0 + (avail - h2) / 2 - 0.02, w: w2 + 0.04, h: h2 + 0.04, fill: { color: "FFFFFF" }, line: { color: LINE, width: 1.5 } });
+  img("web_2454_year.png", RX + 0.6 + half + (half - w2) / 2, y0 + (avail - h2) / 2, w2, h2, "網頁:聯發科 2026 整年的判斷");
+  T("聯發科 2025(表現較佳的個股)", { x: RX + 0.3, y: y0 + avail + 0.1, w: half, h: 0.55, fontSize: 24, color: INK2, align: "center" });
+  T("網頁:聯發科 2026 即時判斷", { x: RX + 0.6 + half, y: y0 + avail + 0.1, w: half, h: 0.55, fontSize: 24, color: INK2, align: "center" });
 }
 
 // 拿掉 zip 裡的資料夾項目
