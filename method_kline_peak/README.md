@@ -67,6 +67,34 @@ t−5 ~ t 六根 K 線,全部取 log、相對 t 收盤(與股價高低無關):
   - 高低點最多:3653 健策
 - 每張圖對應一個 `.csv`,每天一列:真實標籤、主軸判斷、分數、前 3 檔回測的買進日。
 
+### 和「只用規則」比(`report/baseline_rule.py`,`results/baseline_rule_vs_mainline_2024_2026.json`)
+- 只用規則 = 規則候選直接當判斷(t 收盤是最近 6 天最高 → 判高點、最低 → 判低點)。
+- 隨機基準 = 依真實類別占比隨機猜的期望值(找到率 = 命中率 = 占比)。
+
+| 年 | 方法 | macro-F1 | 找到率 低 / 高 | 命中率 低 / 高 | 判低 / 判高天數 | 判反 |
+|---|---|---|---|---|---|---|
+| 2024 | 只用規則 | 54.38% | 100 / 100% | 28.1 / 29.6% | 10,463 / 9,959 | 0 |
+| 2024 | 主軸 | 54.31% | 87.6 / 86.8% | 27.7 / 29.8% | 9,307 / 8,591 | 0 |
+| 2025 | 只用規則 | 53.88% | 100 / 100% | 28.7 / 28.2% | 10,221 / 10,430 | 0 |
+| 2025 | 主軸 | 53.42% | 83.3 / 82.2% | 28.2 / 27.8% | 8,692 / 8,696 | 0 |
+| 2026(1–9 月) | 只用規則 | 54.37% | 100 / 100% | 31.9 / 25.8% | 6,203 / 7,405 | 0 |
+| 2026(1–9 月) | 主軸 | 54.51% | 71.5 / 66.5% | 31.9 / 26.7% | 4,432 / 4,769 | 0 |
+| 三年合計 | 只用規則 | 54.15% | 100 / 100% | 29.2 / 28.1% | 26,887 / 27,794 | 0 |
+| 三年合計 | 主軸 | 54.07% | 81.9 / 80.1% | 28.7 / 28.3% | 22,431 / 22,056 | 0 |
+| 每年 | 隨機 | 33.33% | 約 7.2 / 7.2% | 約 7.2 / 7.2% | | |
+
+主軸相對只用規則(三年合計):
+
+| 項目 | 低點 | 高點 |
+|---|---|---|
+| 判的天數少了 | 16.6% | 20.6% |
+| 命中率變化 | −0.5 個百分點 | +0.2 個百分點 |
+| 找到率少了 | 18.1 個百分點 | 19.9 個百分點 |
+
+- 判高低的天數合計少了 18.6%;macro-F1 −0.08 個百分點。
+- AE + OC-SVM 把判斷減少約 2 成,但刪掉的真點和假點比例差不多,**命中率幾乎沒有提升**。
+- 主軸的分數主要來自規則候選;兩者都遠高於隨機(33.3%)。
+
 ### 每檔股票的成績與範例股(`report/per_stock_rank.py`,`results/per_stock_mainline_2024_2026.json`)
 - 把上面 168 檔的每日判斷按股票拆開統計,不改模型;逐檔混淆矩陣加總 = 168 檔的混淆矩陣。
 - 每檔 × 每年與三年合計,都有以下欄位:
@@ -118,6 +146,22 @@ t−5 ~ t 六根 K 線,全部取 log、相對 t 收盤(與股價高低無關):
 - 但判出的高低點多數不是真的;扣掉成本後,所有試過的交易方式都虧損,也都輸給買進持有。
 - 所以主軸適合當**看盤時的輔助判斷**(這裡可能是局部高 / 低點),**不是可以直接下單的交易訊號**。
 
+## 實測時間與記憶體(`report/timing_mainline.py`,`results/timing_mainline.json`)
+
+環境:Intel Xeon @ 2.10GHz,4 個邏輯核心,只用 CPU。
+
+| 項目 | 結果 |
+|---|---|
+| 訓練一個年份(2026 的模型,2022–2025 共 161,831 個股票日;高、低各一組 AE + OC-SVM) | 19.0 秒 |
+| 168 檔判斷一天(2026-09-03,已訓練好的模型,5 次中位數) | 2.48 秒,平均每檔 14.8 毫秒 |
+| ↳ 其中算 29 維特徵與規則候選 | 2.45 秒 |
+| ↳ 其中標準化 + AE + OC-SVM | 0.023 秒 |
+| RSS 峰值:訓練行程(讀 168 檔 + 建特徵表 + 訓練) | 1,331 MB |
+| RSS 峰值:只做判斷的行程(讀價格 + 載入模型 + 判斷一天) | 720 MB |
+
+- 一天的判斷和 walk-forward 的判斷逐檔相同。
+- 時間大多花在逐檔用 pandas 整理最後 30 根 K;模型本身只要 0.02 秒。
+
 ## 重現
 
 在 repo 根目錄執行:
@@ -131,6 +175,8 @@ python method_kline_peak/report/equity_curves.py method_kline_peak/results/backt
 python method_kline_peak/backtest_strategies.py                               # 30 種策略(2024–2025)+ 對照
 python method_kline_peak/report/stock_outputs.py 8046.TW --years 2024         # 個股每天的判斷
 python method_kline_peak/report/stock_outputs.py 1519.TW 3661.TW 2388.TW 3653.TW --years 2024 2025 2026
+python method_kline_peak/report/baseline_rule.py                              # 只用規則 vs 主軸
+python method_kline_peak/report/timing_mainline.py                            # 實測時間與記憶體
 python method_kline_peak/report/per_stock_rank.py                             # 每檔成績與排名
 python method_kline_peak/report/stock_outputs.py 2707.TW 3413.TW --years 2024   # 範例股
 python method_kline_peak/report/stock_outputs.py 2454.TW --years 2025
@@ -155,6 +201,8 @@ python method_kline_peak/report/stock_outputs.py 2454.TW --years 2025
 | `report/confusion_2024_2026.py`、`report/confusion_compare.py` | 混淆矩陣圖 |
 | `report/stock_outputs.py` | 個股每天的判斷圖與 csv |
 | `report/per_stock_rank.py` | 每檔股票的成績與排名 |
+| `report/baseline_rule.py` | 只用規則 vs 主軸 |
+| `report/timing_mainline.py` | 實測時間與記憶體 |
 | `report/equity_curves.py` | 回測資產曲線 |
 | `report/feat_fig.py`、`report/features_chart.png` | 29 維特徵示意圖 |
 | `tests/` | 行為契約測試;`tests/REPORT.md` 為最近一次的測試報告 |
