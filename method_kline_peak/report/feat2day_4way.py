@@ -5,8 +5,8 @@ walk-forward 結果,再取出指定的股票(預設南電 8046)。每日判斷�
   168 檔 2024 的混淆矩陣 = feat2day_compare_tw200.json(兩組特徵 × 兩方法);
   南電另核對 29 維兩組 = results/outputs_8046_2024_tw200_amp0.csv、Stacking 數字 = feat2day_compare_tw200.json 的南電。
 圖:收盤 + 真實標籤、29 維 · 主軸、29 維 · Stacking、2 日 K · 主軸、2 日 K · Stacking(標在判斷日 t,不畫持有期間)。
-用法: python method_kline_peak/report/feat2day_4way.py [3661.TW](預設 8046.TW)
-輸出: results/feat2day_<代號>_2024_tw200_4way.png、results/feat2day_<代號>_2024_tw200_4way.json
+用法: python method_kline_peak/report/feat2day_4way.py [3661.TW 1519.TW ...](預設 8046.TW;可一次多檔,模型只跑一次)
+輸出: results/feat2day_<代號>_2024_tw200_4way.png / .json,以及每日判斷 _4way_daily.csv
 """
 import json
 import os
@@ -39,12 +39,9 @@ GROUPS = [("29 維 · 主軸", "shape29", "主軸"), ("29 維 · Stacking", "sha
           ("2 日 K · 主軸", "2day10", "主軸"), ("2 日 K · Stacking", "2day10", "Stacking 邏輯迴歸")]
 
 
-def main():
-    TK = sys.argv[1] if len(sys.argv) > 1 else "8046.TW"
-    data = ML.load_data(pool=POOL)
-    assert TK in data, f"{TK} 不在 {POOL} 剔除低波動後的股票池"
-    full = json.load(open(os.path.join(ML.OUT, "feat2day_compare_tw200.json"), encoding="utf-8"))
-    preds, pool_ok, dates, y = {}, {}, None, None
+def predict_all(data, full):
+    """四組(兩組特徵 × 兩方法)168 檔 2024 的每日判斷,並核對 168 檔的混淆矩陣 = feat2day_compare_tw200.json。"""
+    sigs, pool_ok = {}, {}
     for f in ("shape29", "2day10"):
         ML.FEATURES = f
         panel, fc = ML.build_panel(data, 6, [], features=f)
@@ -52,13 +49,33 @@ def main():
             sig, _ = WF.run_year(panel, fc, YEAR, BY.SOURCE_FACTORIES[m]())
             cm = summarize(sig["y"].to_numpy(), sig["pred"].to_numpy(), NAMES)[KEY]
             pool_ok[(f, m)] = cm == full["results"][f][str(YEAR)][m][KEY]           # 168 檔 2024 = 上次的結果
-            s = sig[sig.ticker == TK].sort_values("date")
-            if dates is None:
-                dates, y = s["date"].to_numpy(), s["y"].to_numpy()
-            assert (s["date"].to_numpy() == dates).all() and (s["y"].to_numpy() == y).all()
-            preds[(f, m)] = s["pred"].to_numpy()
+            sigs[(f, m)] = sig
     ML.FEATURES = "shape29"
     assert all(pool_ok.values()), pool_ok
+    return sigs, pool_ok
+
+
+def main():
+    tickers = sys.argv[1:] or ["8046.TW"]
+    data = ML.load_data(pool=POOL)
+    for TK in tickers:
+        assert TK in data, f"{TK} 不在 {POOL} 剔除低波動後的股票池"
+    full = json.load(open(os.path.join(ML.OUT, "feat2day_compare_tw200.json"), encoding="utf-8"))
+    sigs, pool_ok = predict_all(data, full)
+    for TK in tickers:
+        one(TK, data, sigs, pool_ok, full)
+
+
+def one(TK, data, sigs, pool_ok, full):
+    preds, dates, y = {}, None, None
+    for (f, m), sig in sigs.items():
+        s = sig[sig.ticker == TK].sort_values("date")
+        if dates is None:
+            dates, y = s["date"].to_numpy(), s["y"].to_numpy()
+        assert (s["date"].to_numpy() == dates).all() and (s["y"].to_numpy() == y).all()
+        preds[(f, m)] = s["pred"].to_numpy()
+    daily = pd.DataFrame({"date": dates, "y": y, **{f"{f}|{m}": preds[(f, m)] for f, m in preds}})
+    daily.to_csv(os.path.join(ML.OUT, f"feat2day_{TK[:4]}_{YEAR}_{POOL}_4way_daily.csv"), index=False)   # 每日判斷(1 低、0 非、2 高)
     close = clean(data[TK])["close"].loc[pd.DatetimeIndex(dates)].to_numpy()
     csv_path = os.path.join(ML.OUT, f"outputs_{TK[:4]}_{YEAR}_{POOL}_amp0.csv")
     if os.path.exists(csv_path):                                                   # 南電:29 維 = 既有的每日輸出
