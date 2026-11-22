@@ -1,5 +1,5 @@
 // 專題發表簡報(12 頁):問題 → 解法 → 成果 → 價值。方法與數字只用 final 分支的結果檔(fig/numbers.json 由 figs_final.py 產生)。
-// 執行:PPTX_SKILL=<pptx skill 目錄> node build_presentation.js [輸出路徑]
+// 執行:PPTX_SKILL=<pptx skill 目錄> node make_presentation_v2.js [輸出路徑]
 const fs = require("fs");
 const path = require("path");
 const pptxgen = require("pptxgenjs");
@@ -7,7 +7,7 @@ const { applyTheme } = require(process.env.PPTX_SKILL + "/scripts/apply_theme.js
 
 const HERE = __dirname;
 const FIG = path.join(HERE, "fig");
-const OUT = process.argv[2] || path.join(HERE, "..", "final_presentation.pptx");
+const OUT = process.argv[2] || path.join(HERE, "..", "專題簡報_v2.pptx");
 const NUM = JSON.parse(fs.readFileSync(path.join(FIG, "numbers.json"), "utf8"));
 
 const THEME = {
@@ -58,7 +58,10 @@ const fitW = (file, w) => { const [pw, ph] = imgSize(file); return w * ph / pw; 
 const fitH = (file, h) => { const [pw, ph] = imgSize(file); return h * pw / ph; };
 const pc = (v, n = 1) => `${(v * 100).toFixed(n)}%`;
 const Y3 = ["2024", "2025", "2026"];
-const yr = NUM.yearly, mtk = NUM.mtk, bt = NUM.backtest;
+const yr = NUM.yearly, mtk = NUM.mtk, bt = NUM.backtest, RU = NUM.rule;
+// 實測(final 的 results/timing_mainline.json)
+const TM = { day_s: "2.48", per_ms: "14.8", model_s: "0.023", train_s: "19.0", mem_pred: "720", mem_train: "1,331",
+  env: "Intel Xeon 2.10GHz、4 核、只用 CPU" };
 
 // ═════ 1. 封面 ═════
 let s = pres.addSlide({ masterName: "DARK" });
@@ -92,9 +95,10 @@ s.addText("傳統指標要等幾天,我們收盤當天就判斷", { placeholder:
   const y = 4.3, w = (12.15 - 0.6) / 3;
   stat(s, 0.6, y, w, 2.2, pc(NUM.both_rec), "轉折點找到率(三年合計)", C.accent3, 48);
   stat(s, 0.6 + w + 0.3, y, w, 2.2, `${pc(NUM.both_prec)} / ${pc(NUM.random)}`, "命中率 / 隨機猜", C.accent3, 32);
-  pending(s, 0.6 + 2 * (w + 0.3), y, w, 2.2, "待補:全市場掃描時間\n(timing_mainline.json)");
+  stat(s, 0.6 + 2 * (w + 0.3), y, w, 2.2, `${TM.day_s} 秒`, "168 檔判斷一天", C.accent3, 48);
+  T(s, `實測環境:${TM.env}`, { x: 0.6, y: 6.6, w: 12.15, h: 0.35, fontSize: 12, color: C.text2, align: "right" });
 }
-s.addNotes(`現在投資人最常用的是 KD、RSI 這類技術指標,但它們是用過去一段時間的價格平滑計算出來的,通常要等轉折發生後好幾天才會反應。我們的系統是在每天收盤後、只用當天以前的資料,就直接指出「今天可能是局部高點或低點」。用一句話說:收盤當天就指出可能的高低點,找到約 8 成的轉折點,命中率是隨機的 4 倍。這兩個數字來自 168 檔、2024 到 2026 三年的合計:真正的高點和低點,有 ${pc(NUM.both_rec)} 被系統判出來;系統判為高點或低點的日子裡,有 ${pc(NUM.both_prec)} 真的是轉折,而隨便挑一天剛好是轉折的比例只有 ${pc(NUM.random)}。右邊的全市場掃描時間,我們會用實測的數字補上。`);
+s.addNotes(`現在投資人最常用的是 KD、RSI 這類技術指標,但它們是用過去一段時間的價格平滑計算出來的,通常要等轉折發生後好幾天才會反應。我們的系統是在每天收盤後、只用當天以前的資料,就直接指出「今天可能是局部高點或低點」。用一句話說:收盤當天就指出可能的高低點,找到約 8 成的轉折點,命中率是隨機的 4 倍。這兩個數字來自 168 檔、2024 到 2026 三年的合計:真正的高點和低點,有 ${pc(NUM.both_rec)} 被系統判出來;系統判為高點或低點的日子裡,有 ${pc(NUM.both_prec)} 真的是轉折,而隨便挑一天剛好是轉折的比例只有 ${pc(NUM.random)}。右邊是實測的速度:在 ${TM.env} 的環境下,判斷 168 檔股票一天只要 ${TM.day_s} 秒,平均每檔 ${TM.per_ms} 毫秒。`);
 
 // ═════ 4. 系統架構 ═════
 s = pres.addSlide({ masterName: "CONTENT" });
@@ -155,10 +159,11 @@ s.addText("為什麼先用規則,再用 OC-SVM", { placeholder: "title" });
   box(5.0, 3.6, "規則候選", "最近 6 天最高 / 最低");
   arrow(s, 8.7, y + h / 2, 0.6);
   box(9.4, 3.35, "OC-SVM", "只學真的高(低)點", true);
-  pending(s, 5.0, 4.6, 3.6, 0.85, "待補:規則濾掉的比例");
-  T(s, "高低點太少,一般分類器會被非極值淹沒", { x: 0.6, y: 5.85, w: 12.15, h: 0.6, fontSize: 20, bold: true, color: C.text2, align: "center" });
+  T(s, [{ text: pc(NUM.rule_filtered_share), options: { bold: true, fontSize: 28, color: C.accent3 } }, { text: "  的日子直接判非極值", options: { fontSize: 16, color: C.text2 } }],
+    { x: 4.4, y: 4.6, w: 4.8, h: 0.85, align: "center", valign: "middle" });
+  pending(s, 0.6, 5.75, 12.15, 0.75, "結論說法待定", 16);
 }
-s.addNotes("為什麼要先用規則、再用 OC-SVM?因為高點和低點加起來只占約 14%。如果直接拿一般的分類器來學三類,模型會被占八成以上的非極值淹沒,最省事的做法就是什麼都判非極值。所以我們分兩步。第一步用規則:真正的高點,收盤一定是最近六天最高;真正的低點,一定是最近六天最低。用這個條件先篩一次,不是候選的日子直接判非極值,大部分日子在這一步就被濾掉了,而且真正的高低點幾乎都會留在候選裡。第二步,在候選裡分辨真假。我們用 OC-SVM,也就是單類支持向量機,它只用「真的高點」(或真的低點)來學一個範圍,新的候選落在範圍內才保留。因為它只學一類,不需要在三類之間權衡,就不會被非極值淹沒。規則實際濾掉的比例,我們會用實際計算的數字補上。");
+s.addNotes(`為什麼分兩步?因為高點和低點加起來只占約 14%,如果直接拿一般的分類器來學三類,模型很容易傾向把所有日子都判成占多數的非極值。所以第一步先用規則:真正的高點,收盤一定是最近六天最高;真正的低點,一定是最近六天最低。不是候選的日子直接判非極值,三年下來有 ${pc(NUM.rule_filtered_share)} 的日子在這一步被判為非極值,而真正的高低點全部都留在候選裡。第二步,在候選裡用 OC-SVM 分辨,它只用「真的高點」(或真的低點)學一個範圍,新的候選落在範圍內才保留。(這一頁的結論說法待定。)`);
 
 // ═════ 7. 成果:量化 ═════
 s = pres.addSlide({ masterName: "CONTENT" });
@@ -186,10 +191,18 @@ s.addNotes(`這是 168 檔股票、2024 到 2026 年的成績。驗證方式是�
 s = pres.addSlide({ masterName: "CONTENT" });
 s.addText("和隨機猜、只用規則比較", { placeholder: "title" });
 {
-  const hc = 4.6, wc = Math.min(fitH("f_compare.png", hc), 4.5);
-  img(s, "f_compare.png", 0.6, 1.8, wc, fitW("f_compare.png", wc), "命中率比較:隨機猜、只用規則、本系統");
-  T(s, "命中率", { x: 0.6, y: 1.35, w: wc, h: 0.4, fontSize: 16, bold: true, color: C.text2 });
-  const rx = 5.4, rw = 12.75 - rx;
+  const wc = 4.85, hc = fitW("f_compare.png", wc);
+  img(s, "f_compare.png", 0.6, 1.4, wc, hc, "找到率與命中率比較:隨機猜、只用規則、本系統");
+  const hd = (t) => ({ text: t, options: { bold: true, fill: { color: HEX.dk1 }, color: "FFFFFF", align: "center", valign: "middle" } });
+  const v = (t, o = {}) => ({ text: t, options: { align: "center", valign: "middle", ...o } });
+  const rows = [[hd("三年合計"), hd("macro-F1"), hd("判高低天數")],
+    [v("隨機猜", { align: "left" }), v("33.33%"), v("—")],
+    [v("只用規則", { align: "left" }), v(pc(RU.macro_f1, 2)), v(RU.signal_days.toLocaleString())],
+    [v("本系統", { align: "left", bold: true }), v(pc(NUM.mine_from_baseline.macro_f1, 2), { bold: true }), v(NUM.mine_from_baseline.signal_days.toLocaleString(), { bold: true })]];
+  s.addTable(rows, { x: 0.6, y: 1.55 + hc, w: wc, colW: [1.45, 1.6, 1.8], rowH: 0.45, fontSize: 14, fontFace: THEME.bodyFontFace,
+    color: HEX.dk1, border: { type: "solid", pt: 0.75, color: HEX.accent6 } });
+  pending(s, 0.6, 1.75 + hc + 1.8, wc, 6.75 - (1.75 + hc + 1.8), "結論說法待定", 14);
+  const rx = 5.85, rw = 12.75 - rx;
   T(s, "聯發科 2025(表現較佳的個股)", { x: rx, y: 1.35, w: rw, h: 0.4, fontSize: 16, bold: true, color: C.text2 });
   const ih = 3.25, iw = fitH("f_2454.png", ih);
   img(s, "f_2454.png", rx + (rw - iw) / 2, 1.85, iw, ih, "聯發科 2025 真實高低點與系統判斷");
@@ -198,7 +211,7 @@ s.addText("和隨機猜、只用規則比較", { placeholder: "title" });
    [`${mtk["高點"]["命中率"].toFixed(1)}%`, "高點命中率", C.accent1], [`${mtk["低點"]["命中率"].toFixed(1)}%`, "低點命中率", C.accent2]]
     .forEach(([v, l, col], i) => stat(s, rx + i * (w + 0.25), y, w, h, v, l, col, 24));
 }
-s.addNotes(`左邊比較三種做法的命中率,也就是判出來的高低點裡有多少是真的。隨便挑一天剛好是轉折的比例是 ${pc(NUM.random)};本系統是 ${pc(NUM.both_prec)},大約 4 倍。中間「只用規則」,也就是把所有候選都直接當成高低點,我們會補上實際的數字,用來說明 AE 加 OC-SVM 這一步額外帶來多少。右邊是一個實際例子:聯發科 2025 年,這是 168 檔裡表現較佳的個股。上面是真實的高低點,下面是系統每天的判斷,實心代表判對、空心代表判錯。這一年真高點 ${mtk["高點"]["真"]} 個、真低點 ${mtk["低點"]["真"]} 個;系統判高點 ${mtk["高點"]["判"]} 天,對 ${mtk["高點"]["對"]} 天,判低點 ${mtk["低點"]["判"]} 天,對 ${mtk["低點"]["對"]} 天。所以高點找到 ${mtk["高點"]["找到率_當天"]}%、低點找到 ${mtk["低點"]["找到率_當天"]}%,命中率分別是 ${mtk["高點"]["命中率"]}% 和 ${mtk["低點"]["命中率"]}%,也沒有任何判反。可以看到空心的錯誤多半集中在真正轉折的前後幾天。`);
+s.addNotes(`左邊比較三種做法,數字都是 168 檔、三年合計。隨機猜:找到率和命中率都等於轉折點的比例,約 ${pc(NUM.random)},macro-F1 是 33.33%。只用規則,也就是把所有候選都直接當成高低點:真正的高低點全部找到,找到率 100%,命中率 ${pc(RU.both_prec)},macro-F1 ${pc(RU.macro_f1, 2)},判為高低點的天數是 ${RU.signal_days.toLocaleString()} 天。本系統:找到率 ${pc(NUM.both_rec)},命中率 ${pc(NUM.both_prec)},macro-F1 ${pc(NUM.mine_from_baseline.macro_f1, 2)},判為高低點的天數少了約 ${pc(NUM.signal_days_fewer)}。(和只用規則相比的結論說法待定。)右邊是聯發科 2025 年,這是 168 檔裡表現較佳的個股。上面是真實的高低點,下面是系統每天的判斷,實心代表判對、空心代表判錯。這一年真高點 ${mtk["高點"]["真"]} 個、真低點 ${mtk["低點"]["真"]} 個;系統判高點 ${mtk["高點"]["判"]} 天,對 ${mtk["高點"]["對"]} 天,判低點 ${mtk["低點"]["判"]} 天,對 ${mtk["低點"]["對"]} 天,高點找到 ${mtk["高點"]["找到率_當天"]}%、低點找到 ${mtk["低點"]["找到率_當天"]}%,命中率分別是 ${mtk["高點"]["命中率"].toFixed(1)}% 和 ${mtk["低點"]["命中率"].toFixed(1)}%,沒有任何判反。`);
 
 // ═════ 9. 能不能拿來交易 ═════
 s = pres.addSlide({ masterName: "CONTENT" });
@@ -228,13 +241,17 @@ s.addText("應用價值", { placeholder: "title" });
       items.forEach((t, k) => T(s, t, { x: x + 0.3, y: y + 1.1 + k * 1.05, w: w - 0.5, h: 0.9, fontSize: k === 0 ? 26 : 20,
         bold: k === 0, color: k === 0 ? C.text1 : C.text2 }));
     } else {
-      pending(s, x + 0.3, y + 1.05, w - 0.6, 1.15, "待補:全市場掃描時間\n(timing_mainline.json)", 14);
-      pending(s, x + 0.3, y + 2.4, w - 0.6, 1.15, "待補:運算環境\n(timing_mainline.json)", 14);
+      [[`${TM.day_s} 秒`, "168 檔判斷一天"], [`${TM.train_s} 秒`, "訓練一個年份"]].forEach(([a, b], k) => {
+        T(s, a, { x: x + 0.3, y: y + 1.05 + k * 1.2, w: w - 0.5, h: 0.65, fontSize: 30, bold: true });
+        T(s, b, { x: x + 0.3, y: y + 1.68 + k * 1.2, w: w - 0.5, h: 0.4, fontSize: 16, color: C.text2 });
+      });
+      T(s, "只用 CPU", { x: x + 0.3, y: y + 3.35, w: w - 0.5, h: 0.45, fontSize: 16, bold: true, color: C.accent3 });
     }
   });
-  pending(s, 0.6, 5.7, 12.15, 0.95, "待補:市場規模(有出處的公開數字,標註出處)", 16);
+  pending(s, 0.6, 5.7, 12.15, 0.75, "待補:市場規模(有出處的公開數字,標註出處)", 16);
+  T(s, `實測環境:${TM.env};記憶體峰值 判斷 ${TM.mem_pred} MB、訓練 ${TM.mem_train} MB`, { x: 0.6, y: 6.55, w: 12.15, h: 0.35, fontSize: 12, color: C.text2, align: "right" });
 }
-s.addNotes("這個系統可以給誰用?第一類是自主投資人:每天收盤後,不用一檔一檔看K線,系統先把可能是高點或低點的股票挑出來,再由自己判斷要不要進一步研究。第二類是看盤軟體:可以把這個判斷當成一個提醒功能,放在既有的看盤畫面裡。效益的部分,我們會用實測的全市場掃描時間和運算環境補上。競爭對手是傳統技術指標,例如 KD、RSI,它們通常要等轉折發生幾天後才反應;我們的系統則是在收盤當天就給出判斷,而且每一次判斷都會存檔、五天後對答案,命中率是公開可驗證的。市場規模的部分,我們會用有出處的公開統計數字補上並標註出處。");
+s.addNotes(`這個系統可以給誰用?第一類是自主投資人:每天收盤後,不用一檔一檔看K線,系統先把可能是高點或低點的股票挑出來,再由自己判斷要不要進一步研究。第二類是看盤軟體:可以把這個判斷當成一個提醒功能,放在既有的看盤畫面裡。效益的部分是實測的數字:在 ${TM.env} 的環境下,判斷 168 檔股票一天只要 ${TM.day_s} 秒,其中模型本身只占 ${TM.model_s} 秒,其餘是整理資料;訓練一個年份的模型 ${TM.train_s} 秒;記憶體峰值判斷時 ${TM.mem_pred} MB、訓練時 ${TM.mem_train} MB,全程只用 CPU,不需要 GPU。競爭對手是傳統技術指標,例如 KD、RSI,它們通常要等轉折發生幾天後才反應;我們的系統則是在收盤當天就給出判斷,而且每一次判斷都會存檔、五天後對答案,命中率是公開可驗證的。市場規模的部分,我們會用有出處的公開統計數字補上並標註出處。`);
 
 // ═════ 11. Demo ═════
 s = pres.addSlide({ masterName: "CONTENT" });

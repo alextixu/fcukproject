@@ -105,31 +105,49 @@ for ax, y in zip(axs, YEARS):
 fig.tight_layout(w_pad=2.5)
 save(fig, "f_conf.png")
 
-# ───────── 3. 比較:命中率(隨機猜 / 只用規則 / 本系統) ─────────
-def compare(name, rule_prec):
-    fig, ax = plt.subplots(figsize=(7.2, 4.2))
-    labs = ["隨機猜", "只用規則", "本系統"]
-    vals = [rand * 100, rule_prec, both_prec * 100]
-    cols = [NEU, "#7C9CC8", INK]
+# ───────── 3. 比較:隨機猜 / 只用規則 / 本系統(三年合計,由 baseline 檔逐年數字加總) ─────────
+def pooled(years, src):
+    t = {"days": 0, "lo_t": 0, "lo_p": 0, "lo_c": 0, "hi_t": 0, "hi_p": 0, "hi_c": 0}
+    for y in YEARS:
+        r = years[y][src]
+        t["days"] += r["天數"]
+        for k, cls in (("lo", "低點"), ("hi", "高點")):
+            t[k + "_t"] += r[cls]["真"]; t[k + "_p"] += r[cls]["判"]; t[k + "_c"] += r[cls]["對"]
+    f1 = lambda p, r_: 2 * p * r_ / (p + r_) if p + r_ else 0
+    non_t = t["days"] - t["lo_t"] - t["hi_t"]; non_p = t["days"] - t["lo_p"] - t["hi_p"]
+    non_c = non_t - ((t["lo_p"] - t["lo_c"]) + (t["hi_p"] - t["hi_c"]))          # 判反 = 0,錯誤都來自非極值
+    out = {"low_rec": t["lo_c"] / t["lo_t"], "high_rec": t["hi_c"] / t["hi_t"], "low_prec": t["lo_c"] / t["lo_p"],
+           "high_prec": t["hi_c"] / t["hi_p"], "both_rec": (t["lo_c"] + t["hi_c"]) / (t["lo_t"] + t["hi_t"]),
+           "both_prec": (t["lo_c"] + t["hi_c"]) / (t["lo_p"] + t["hi_p"]), "signal_days": t["lo_p"] + t["hi_p"], "days": t["days"]}
+    out["macro_f1"] = (f1(out["low_prec"], out["low_rec"]) + f1(out["high_prec"], out["high_rec"]) + f1(non_c / non_p, non_c / non_t)) / 3
+    return out
+
+
+if RULE:
+    bl = json.load(open(RULE, encoding="utf-8"))["years"]
+    rule, mine = pooled(bl, "規則"), pooled(bl, "主軸")
+    num["rule"] = rule; num["mine_from_baseline"] = mine
+    num["rule_filtered_share"] = 1 - rule["signal_days"] / rule["days"]          # 規則判為非極值(不是候選)的比例
+    num["signal_days_fewer"] = 1 - mine["signal_days"] / rule["signal_days"]
+    json.dump(num, open(os.path.join(OUT, "numbers.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=float)
+
+fig, axs = plt.subplots(1, 2, figsize=(10, 4.2))
+labs = ["隨機猜", "只用規則", "本系統"]; cols = [NEU, "#7C9CC8", INK]
+for ax, (title, vals) in zip(axs, (("找到率", [rand * 100, num["rule"]["both_rec"] * 100 if RULE else None, both_rec * 100]),
+                                    ("命中率", [rand * 100, num["rule"]["both_prec"] * 100 if RULE else None, both_prec * 100]))):
+    top_ = 118 if title == "找到率" else 38
     for k, (l, v, c) in enumerate(zip(labs, vals, cols)):
         if v is None:
-            ax.add_patch(Rectangle((k - 0.32, 0), 0.64, 18, fill=False, ls="--", ec=MUTED, lw=1.6))
-            ax.text(k, 9, "待補", ha="center", va="center", fontsize=15, color=MUTED)
+            ax.add_patch(Rectangle((k - 0.32, 0), 0.64, top_ * 0.5, fill=False, ls="--", ec=MUTED, lw=1.6))
+            ax.text(k, top_ * 0.25, "待補", ha="center", va="center", fontsize=15, color=MUTED)
         else:
             ax.bar(k, v, width=0.64, color=c)
-            ax.text(k, v + 0.8, f"{v:.1f}%", ha="center", va="bottom", fontsize=17, fontweight="bold", color=INK)
+            ax.text(k, v + top_ * 0.02, f"{v:.1f}%", ha="center", va="bottom", fontsize=16, fontweight="bold", color=INK)
     ax.set_xticks(range(3)); ax.set_xticklabels(labs, fontsize=14, color=INK)
-    ax.set_ylim(0, 36); ax.set_yticks([])
-    
+    ax.set_ylim(0, top_); ax.set_yticks([]); ax.set_title(title, fontsize=16, color=INK, fontweight="bold")
     clean_ax(ax); ax.spines["bottom"].set_visible(True); ax.spines["bottom"].set_color(GRID)
-    save(fig, name)
-
-
-rule_prec = None
-if RULE:
-    r = num["rule"]
-    rule_prec = r.get("both_prec_pct")                      # 研究 session 的結果檔欄位確定後再對應
-compare("f_compare.png", rule_prec)
+fig.tight_layout(w_pad=3)
+save(fig, "f_compare.png")
 
 # ───────── 4. 聯發科 2025(乾淨版) ─────────
 rows = list(csv.DictReader(open(os.path.join(RES, "outputs_2454_2025_tw200.csv"), encoding="utf-8-sig")))

@@ -1,11 +1,11 @@
 // 專題海報(A1 直式 59.4 × 84.1 cm)。數字只用 final 分支的結果檔(fig/numbers.json)。
-// 執行:node build_poster.js [輸出路徑]
+// 執行:node make_poster_v2.js [輸出路徑]
 const fs = require("fs");
 const path = require("path");
 const pptxgen = require("pptxgenjs");
 
 const HERE = __dirname, FIG = path.join(HERE, "fig");
-const OUT = process.argv[2] || path.join(HERE, "..", "final_poster.pptx");
+const OUT = process.argv[2] || path.join(HERE, "..", "專題海報_v2.pptx");
 const NUM = JSON.parse(fs.readFileSync(path.join(FIG, "numbers.json"), "utf8"));
 const FONT = "Microsoft JhengHei";
 const BG = "F5F7FA", INK = "2B3640", INK2 = "5B6670", ACC = "2A6FD6", CARD = "FFFFFF", LINE = "D5DCE3";
@@ -163,12 +163,11 @@ pill(RX, ry, "成果 2  模型成績", 6.9);
   ["2024", "2025", "2026"].forEach((yy) => { const r = NUM.yearly[yy];
     rows.push([v(yy, { bold: true }), v(pc(r.macro_f1, 2)), v(`${pc(r.low_rec)}/${pc(r.high_rec)}`), v(`${pc(r.low_prec)}/${pc(r.high_prec)}`)]); });
   rows.push([v("三年合計", { bold: true }), v("—"), v(`${pc(NUM.low_rec)}/${pc(NUM.high_rec)}`), v(`${pc(NUM.low_prec)}/${pc(NUM.high_prec)}`)]);
-  const tw = 8.4;
-  s.addTable(rows, { x: RX + 0.3, y: y0, w: tw, colW: [1.7, 1.7, 2.5, 2.5], rowH: th / 5, fontSize: 22, fontFace: FONT, color: INK,
+  const tw = 7.3;
+  s.addTable(rows, { x: RX + 0.3, y: y0, w: tw, colW: [1.45, 1.45, 2.2, 2.2], rowH: th / 5, fontSize: 19, fontFace: FONT, color: INK,
     border: { type: "solid", pt: 1, color: LINE } });
-  const cw = RW - tw - 0.9, chh = Math.min(hOf("f_compare.png", cw), th + 0.1);
-  T("命中率比較", { x: RX + tw + 0.6, y: y0 - 0.1, w: cw, h: 0.5, fontSize: 24, bold: true, color: INK2, align: "center" });
-  img("f_compare.png", RX + tw + 0.6 + (cw - wOf("f_compare.png", chh - 0.5)) / 2, y0 + 0.45, wOf("f_compare.png", chh - 0.5), chh - 0.5, "命中率比較");
+  const cw = RW - tw - 0.8, chh = Math.min(hOf("f_compare.png", cw), th + 0.1);
+    img("f_compare.png", RX + tw + 0.55, y0 + (th - hOf("f_compare.png", cw)) / 2, cw, hOf("f_compare.png", cw), "找到率與命中率比較:隨機猜、只用規則、本系統");
   const cfw = wOf("f_conf.png", ch);
   img("f_conf.png", RX + (RW - cfw) / 2, y0 + th + 0.25, cfw, ch, "2024–2026 混淆矩陣");
   T("混淆矩陣:橘框(高低點判反)三年都是 0", { x: RX + 0.3, y: y0 + th + ch + 0.3, w: RW - 0.6, h: 0.6, fontSize: 24, color: INK2, align: "center" });
