@@ -1,0 +1,121 @@
+{
+ "date": "2026-11-20",
+ "created": "2026-11-22 14:46:13",
+ "source": "replay",
+ "model": {
+  "year": 2026,
+  "train": [
+   "2022-01-03",
+   "2025-12-23"
+  ],
+  "n_train": 161831,
+  "n_pool": 168,
+  "created": "2026-11-22 14:19",
+  "seed": 42,
+  "pool_name": "tw200",
+  "train_min_amp": 0.0
+ },
+ "check": {
+  "asof": "2026-11-20",
+  "replay": true
+ },
+ "rows_total": 2168,
+ "rows(節錄)": [
+  {
+   "code": "2330",
+   "status": "pool",
+   "move": 1.051,
+   "close": 2000.0,
+   "chg_pct": -4.762,
+   "judge": {
+    "pred": "low",
+    "cand": "low",
+    "score": 7.397391
+   }
+  },
+  {
+   "code": "2454",
+   "status": "pool",
+   "move": 1.429,
+   "close": 3350.0,
+   "chg_pct": -9.946,
+   "judge": {
+    "pred": "none",
+    "cand": "low",
+    "score": -49.551091
+   }
+  },
+  {
+   "code": "2317",
+   "status": "pool",
+   "move": 0.943,
+   "close": 210.0,
+   "chg_pct": -4.762,
+   "judge": {
+    "pred": "low",
+    "cand": "low",
+    "score": 10.958269
+   }
+  },
+  {
+   "code": "8046",
+   "status": "pool",
+   "move": 2.041,
+   "close": 629.0,
+   "chg_pct": -9.885,
+   "judge": {
+    "pred": "none",
+    "cand": "low",
+    "score": -76.773995
+   }
+  },
+  {
+   "code": "2412",
+   "status": "pool",
+   "move": 0.426,
+   "close": 162.5,
+   "chg_pct": -2.108,
+   "judge": {
+    "pred": "low",
+    "cand": "low",
+    "score": 18.83557
+   }
+  },
+  {
+   "code": "2618",
+   "status": "out",
+   "move": 1.153,
+   "close": 44.65,
+   "chg_pct": -3.772,
+   "judge": {
+    "pred": "low",
+    "cand": "low",
+    "score": 56.010732
+   }
+  },
+  {
+   "code": "3374",
+   "status": "out",
+   "move": 1.724,
+   "close": 319.5,
+   "chg_pct": -10.0,
+   "judge": {
+    "pred": "none",
+    "cand": "low",
+    "score": -77.400932
+   }
+  },
+  {
+   "code": "0050",
+   "status": "out",
+   "move": 0.744,
+   "close": 84.45,
+   "chg_pct": -6.375,
+   "judge": {
+    "pred": "none",
+    "cand": "low",
+    "score": -25.05346
+   }
+  }
+ ]
+}

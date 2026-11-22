@@ -71,5 +71,4 @@ HISTORY_START = "2016-01-01"
 RAW_START = "2025-01-01"              # 畫面用的實際成交價(Yahoo 未還原價)從這天起下載;只用來顯示
 # 2026-11-22 使用者決定:判斷方法改成和 final 分支相同(規則候選 → AE + OC-SVM),網頁只有這一種方法
 METHOD_NAME = "規則候選 + AE + OC-SVM"
-SHOW_LEVELS = False                   # 信心等級:回放資料驗證後決定(見 README)
 KIND = {"low": "低點", "high": "高點", "none": "非極值"}

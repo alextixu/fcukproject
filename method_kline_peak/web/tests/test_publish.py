@@ -28,7 +28,7 @@ def test_track_hit_rates():
     assert low["all"] == {"hits": 2, "n": 3, "pct": 66.7}
     assert low["out_pool"] == {"hits": 1, "n": 1, "pct": 100.0}
     assert tr["kinds"]["high"]["all"] == {"hits": 1, "n": 1, "pct": 100.0}
-    assert C.SHOW_LEVELS is False and low["levels"] is None
+    assert "levels" not in low and not hasattr(C, "SHOW_LEVELS")
 
 
 def test_top_picks_sorted_by_score():

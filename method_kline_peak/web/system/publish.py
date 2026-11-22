@@ -4,7 +4,7 @@
 
   meta.json        基準日、資料檢查、模型資訊
   today.json       今日判斷:推薦範圍(台灣 50)內判低點 / 判高點,依「沒破底 / 沒創高」天數分組、組內依分數排序
-  track.json       成績追蹤:每日前 3 檔(分數最高)對答案、命中率、各信心等級命中率、池外命中率
+  track.json       成績追蹤:每日前 3 檔(分數最高)對答案、命中率、池外命中率
   index.json       自動完成用的股票清單(代號、名稱、分類、市場別)
   research.json    研究結果:TW200 168 檔 2024–2026 的分類成績(直接讀 results/confusion_2024_2026_tw200.json,不重算)
   stocks/<代號前兩碼>.json  個股(每檔一筆):今天的判斷、還沒破底 / 沒創高的訊號、今年整年的 K 線、今年的判斷與答案、今年的對答案統計
@@ -62,11 +62,8 @@ def _rate(hits, n):
 
 
 def _public_row(r):
-    """網頁用的單檔判斷(代號、分類、判斷、規則候選、分數;信心等級只在 config.SHOW_LEVELS 時輸出)。"""
-    out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in r.items()}
-    if not C.SHOW_LEVELS and out.get("judge"):
-        out["judge"].pop("level", None)
-    return out
+    """網頁用的單檔判斷(代號、分類、判斷、規則候選、分數)。回傳複本,存檔本身不被改動。"""
+    return {k: (dict(v) if isinstance(v, dict) else v) for k, v in r.items()}
 
 
 def _rj(name):
@@ -80,12 +77,6 @@ def top_picks(tab, kind, n=C.TOP_N):
     t = tab[(tab.status == U.POOL) & (tab.pred == kind)]
     t = t.sort_values(["date", "score"], ascending=[True, False])
     return t.groupby("date", sort=True).head(n)
-
-
-def level_hits(tab, kind):
-    """各信心等級的命中率(推薦範圍內)。"""
-    t = tab[(tab.status == U.POOL) & (tab.pred == kind) & tab.truth.notna()]
-    return {lv: _rate((g.truth == kind).sum(), len(g)) for lv, g in t.groupby("level")}
 
 
 def track(tab):
@@ -130,7 +121,6 @@ def track(tab):
             "all_ytd": _rate((ytd.truth == kind).sum(), len(ytd)) | {"year": year},
             "all": _rate((allsig.truth == kind).sum(), len(allsig)),
             "base_rate": _rate((pool_g.truth == kind).sum(), len(pool_g)),
-            "levels": level_hits(tab, kind) if C.SHOW_LEVELS else None,
             "out_pool": _rate((outs.truth == kind).sum(), len(outs)),
             "series": series, "daily": daily}
     return out
@@ -203,8 +193,6 @@ def stock_active(g, df, asof):
             continue
         t = pd.Timestamp(a["date"])
         a.update(score=g.loc[t, "score"], group=SG.group_of(a["days"]))
-        if C.SHOW_LEVELS:
-            a["level"] = g.loc[t, "level"]
         out[kind] = a
     return cl, out
 
@@ -309,12 +297,9 @@ def publish(data, cal, check, log=print):
                 continue
             r = rows[code]
             dp = disp.get(code) or {}
-            it = {"code": code, "name": U.name_of(code), "close": dp.get("close", r.get("close")), "chg_pct": dp.get("chg_pct", r.get("chg_pct")),
-                  "score": x["score"], "date": x["date"], "days": x["days"], "run": x["run"], "group": x["group"]}
-            if C.SHOW_LEVELS:
-                it["level"] = x["level"]
-                it["level_hit"] = (tr["kinds"].get(kind, {}).get("levels") or {}).get(x["level"])
-            items.append(it)
+            items.append({"code": code, "name": U.name_of(code), "close": dp.get("close", r.get("close")),
+                          "chg_pct": dp.get("chg_pct", r.get("chg_pct")), "score": x["score"],
+                          "date": x["date"], "days": x["days"], "run": x["run"], "group": x["group"]})
         items.sort(key=lambda x: (x["days"], -(x["score"] if x["score"] is not None else -1e9)))
         for it in items:
             bars = (disp.get(it["code"]) or {}).get("bars") or []
@@ -338,10 +323,7 @@ def publish(data, cal, check, log=print):
         if g is not None:
             first = dp["bars"][0][0] if dp["bars"] else latest["date"]
             for _, s in g[g.date >= first].iterrows():
-                x = {"date": s.date, "pred": s.pred, "score": s.score, "truth": s.truth, "source": s.source}
-                if C.SHOW_LEVELS:
-                    x["level"] = s.level
-                sig.append(x)
+                sig.append({"date": s.date, "pred": s.pred, "score": s.score, "truth": s.truth, "source": s.source})
         shards.setdefault(shard_of(code), {})[code] = _clean_nan({
             "code": code, "name": U.name_of(code), "market": U.market_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
             "today": _public_row(r), "active": active.get(code, {}), "price": dp["price"], "close": dp["close"],
@@ -368,5 +350,5 @@ def publish(data, cal, check, log=print):
         "profile": C.profile_info(),
         "counts": {s: sum(1 for r in latest["rows"] if r["status"] == s) for s in (U.POOL, U.OUT, U.LOWVOL, U.NODATA, "halted")},
         "rules": {"hold": C.HOLD, "top_n": C.TOP_N, "min_move": C.MIN_MOVE},
-        "method": C.METHOD_NAME, "levels": C.SHOW_LEVELS}))
+        "method": C.METHOD_NAME}))
     log(f"網頁資料完成:{len(rows)} 檔  ({time.time() - t0:.0f}s)")

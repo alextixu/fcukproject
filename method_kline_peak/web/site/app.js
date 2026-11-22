@@ -27,13 +27,10 @@ async function j(path) { const r = await fetch(path, {cache: 'no-store'}); if (!
 function disc() { return `<div class="disc">研究模型輸出,非投資建議。<a href="#about">免責聲明</a></div>`; }
 function more(body, label = '展開看更多') { return `<details class="explain"><summary>${label}</summary><div>${body}</div></details>`; }
 function trk(kind) { return D.track?.kinds?.[kind] || {}; }
-const LV = () => !!D.meta?.levels;                       /* 信心等級:回放驗證有差才顯示(meta.levels) */
 const sc = x => fmt(x, 1);
-function lvTip(h) { return h && h.n ? `同等級歷史命中 ${pct(h.pct)}(${h.n} 筆${h.n < 20 ? ',筆數少,僅供參考' : ''})` : '同等級尚無對答案紀錄'; }
 function stat(label, value, t, color) {
   return `<div class="card stat"${tip(t)}><div class="lbl">${label}</div><div class="kpi"${color ? ` style="color:${color}"` : ''}>${value}</div></div>`;
 }
-function lv(level) { return level ? `<span class="lv lv-${{高: 'h', 中: 'm', 低: 'l'}[level] || 'l'}">${level}</span>` : ''; }
 function spark(vals, w = 86, h = 28) {
   if (!vals || vals.length < 2) return '';
   const mn = Math.min(...vals), mx = Math.max(...vals);
@@ -56,12 +53,12 @@ function marks(a, kind) {
 }
 const GROUPS = [['new', '剛出現'], ['d12', '1–2 天'], ['d3', '3 天以上']];
 function pickRow(s, i, kind) {
-  const t = [s.days > 0 ? `訊號日 ${md(s.date)}・已 ${s.days} 天${HOLDWORD[kind]}` : '今天判', `連續第 ${s.run} 天`, `分數 ${sc(s.score)}`].concat(LV() ? [`信心 ${s.level || '—'}`, lvTip(s.level_hit)] : []).join('\n');
+  const t = [s.days > 0 ? `訊號日 ${md(s.date)}・已 ${s.days} 天${HOLDWORD[kind]}` : '今天判', `連續第 ${s.run} 天`, `分數 ${sc(s.score)}`].join('\n');
   const m = (s.days > 0 ? `<span class="mark hold">${s.days} 天</span>` : '') + (s.run > 1 ? `<span class="mark">連續 ${s.run} 天</span>` : '');
   return `<div class="pick" onclick="go('stock-${s.code}')"${ttl(t)}><div class="rank">${i + 1}</div>
   <div class="nm">${s.code}<span>${esc(s.name)}</span>${m ? `<div class="marks">${m}</div>` : ''}</div>
   <div class="spk">${spark(s.spark, MOBILE() ? 60 : 86)}</div>
-  <div class="score">${sc(s.score)}${LV() ? lv(s.level) : ''}</div></div>`;
+  <div class="score">${sc(s.score)}</div></div>`;
 }
 function groupBlock(L, kind, g, label) {
   const items = L.filter(s => s.group === g), top = items.slice(0, 3), rest = items.slice(3);
@@ -69,8 +66,8 @@ function groupBlock(L, kind, g, label) {
   return `<div class="grp"><b>${name}</b><span class="cnt">${items.length}</span></div>
   ${items.length ? top.map((s, i) => pickRow(s, i, kind)).join('') : `<div class="empty">—</div>`}
   ${rest.length ? `<details class="more"><summary>還有 ${rest.length} 檔</summary>
-  <table class="minitable"><tr><th>代號</th><th>名稱</th><th>分數</th>${LV() ? '<th>信心</th>' : ''}<th>連續</th></tr>
-  ${rest.map(s => `<tr onclick="go('stock-${s.code}')" style="cursor:pointer"><td>${s.code}</td><td>${esc(s.name)}</td><td>${sc(s.score)}</td>${LV() ? `<td>${s.level || '—'}</td>` : ''}<td>${s.run} 天</td></tr>`).join('')}</table></details>` : ''}`;
+  <table class="minitable"><tr><th>代號</th><th>名稱</th><th>分數</th><th>連續</th></tr>
+  ${rest.map(s => `<tr onclick="go('stock-${s.code}')" style="cursor:pointer"><td>${s.code}</td><td>${esc(s.name)}</td><td>${sc(s.score)}</td><td>${s.run} 天</td></tr>`).join('')}</table></details>` : ''}`;
 }
 function listCard(kind) {
   const L = D.today.lists[kind] || [], isLow = kind === 'low';
@@ -203,7 +200,6 @@ async function pageStock(code) {
   if (S.status === 'nodata') pre = `<div class="mutebox"><b>資料不足</b>・${(S.bars || []).length ? '至少要 16 個交易日的 K 線' : '還沒有這檔的 K 線'}</div>`;
   const dim = S.status === 'lowvol' ? 'opacity:.45;filter:grayscale(1)' : '';
   const last = S.bars[S.bars.length - 1] || [];
-  const hit = !LV() || S.status !== 'pool' || p === 'none' ? null : trk(p).levels?.[P.level];
   const icon = p === 'low' ? '↓' : p === 'high' ? '↑' : '–';
   const CW = {low: '收盤是最近 6 天最低', high: '收盤是最近 6 天最高'};
   const sug = !t.judge ? '今天沒有判斷。' : p === 'low' ? `今天(${md(S.date)})收盤是最近 6 天最低,而且和過去真的低點很像(分數 ${sc(P.score)} &gt; 0),所以判 <b>可能是前後 11 天的最低點</b>。<br><br>
@@ -216,14 +212,14 @@ async function pageStock(code) {
   const RS = '研究結果 TW200 2026 1–9 月';
   const past = (S.signals || []).filter(x => x.pred !== 'none').slice().reverse();
   const Y = S.year || {}, yr = Y.year || S.date.slice(0, 4);
-  const pastRow = x => `<tr><td>${md(x.date)}</td><td><span class="tag ${tagCls(x.pred)}">${LBL[x.pred]}</span></td><td>${sc(x.score)}</td>${LV() ? `<td>${x.level || '—'}</td>` : ''}
+  const pastRow = x => `<tr><td>${md(x.date)}</td><td><span class="tag ${tagCls(x.pred)}">${LBL[x.pred]}</span></td><td>${sc(x.score)}</td>
      <td>${x.truth == null ? '<span class="tag t-wait">待驗證</span>' : x.truth === x.pred ? '<span class="tag t-ok">對</span>' : `<span class="tag t-bad">錯・實為${LBL[x.truth]}</span>`}</td></tr>`;
-  const pastTable = rows => `<div class="tblwrap"><table class="tbl"><tr><th>日期</th><th>判斷</th><th>分數</th>${LV() ? '<th>信心</th>' : ''}<th>結果</th></tr>${rows.map(pastRow).join('')}</table></div>`;
+  const pastTable = rows => `<div class="tblwrap"><table class="tbl"><tr><th>日期</th><th>判斷</th><th>分數</th><th>結果</th></tr>${rows.map(pastRow).join('')}</table></div>`;
   const yrow = k => { const r = Y[k] || {}, wait = (r.n || 0) - (r.graded || 0);
     return `<tr><td><span class="tag ${tagCls(k)}">判${LBL[k]}</span></td><td>${r.n || 0} 天${wait ? ` <span class="wait"${ttl('還沒滿 5 個交易日,還沒有答案')}>+${wait} 待驗證</span>` : ''}</td><td>${r.graded ? `${r.hits} 天` : '—'}</td><td class="pctc">${pct(r.pct)}</td></tr>`; };
   const pxTip = S.price === 'actual' ? '實際成交價(未還原);漲跌幅對參考價' : '還原價(把除權息補回去);這檔抓不到未還原價';
   const tile = (label, v, t) => `<div class="tile"${tip(t)}><div class="lbl">${label}</div><div class="kpi">${v}</div></div>`;
-  const vtip = p === 'none' ? '' : [`分數 ${sc(P.score)}(和過去真的${LBL[p]}有多像)`].concat(LV() ? [`信心 ${P.level}`, S.status !== 'pool' ? `${(STATUS[S.status] || ['池外'])[0]}股票:命中率見上方` : lvTip(hit)] : []).join('\n');
+  const vtip = p === 'none' ? '' : [`分數 ${sc(P.score)}(和過去真的${LBL[p]}有多像)`].join('\n');
   const steps = [
     ['規則候選', cand ? `<span class="tag ${tagCls(cand)}">${LBL[cand]}候選</span>` : '<span class="tag t-none">不是候選</span>', cand ? CW[cand] : '收盤不是最近 6 天最高或最低'],
     ['分數', cand ? `<b>${sc(P.score)}</b>` : '—', cand ? (P.score > 0 ? '> 0:像過去真的' + LBL[cand] : '≤ 0:不夠像,改判非極值') : '不是候選,不打分數'],
@@ -237,7 +233,7 @@ async function pageStock(code) {
   ${t.judge ? `<div class="grid2" style="${dim}">
    <div class="card"><div class="verdict"><div class="vicon" style="background:${p === 'low' ? 'var(--low-bg)' : p === 'high' ? 'var(--high-bg)' : 'var(--mute-bg)'};color:${p === 'low' ? 'var(--low)' : p === 'high' ? 'var(--high)' : 'var(--ink3)'}">${icon}</div>
      <div><div class="vtitle">${p === 'none' ? '非極值・一般日子' : '可能是' + LBL[p]}</div>
-     ${p !== 'none' ? `<div class="vscore"${tip(vtip)}>分數 ${sc(P.score)}${LV() ? lv(P.level) : ''}</div>` : ''}
+     ${p !== 'none' ? `<div class="vscore"${tip(vtip)}>分數 ${sc(P.score)}</div>` : ''}
      ${p !== 'none' ? marks(S.active?.[p], p) : ''}</div></div>
      <h3 style="margin-top:16px"${ttl('收盤後先用規則挑候選,再看今天的 6 根 K 線像不像過去真的高點 / 低點。分數是 OC-SVM 的分數,越大越像,只用來排序。')}>${md(S.date)} 的判斷</h3>
      <table class="tbl jtable">${steps.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td class="jn">${c}</td></tr>`).join('')}</table>
@@ -273,7 +269,7 @@ function pageTrack() {
   }
   const R = (D.research?.classification || []).find(r => r.year === '2026') || {};
   const n = r => r?.n ? `${r.hits} / ${r.n} 檔次` : '尚無資料';
-  const lvt = T.levels || {}, daily = T.daily || [];
+  const daily = T.daily || [];
   const dailyTable = rows => `<div class="tblwrap"><table class="tbl"><tr><th>判斷日</th><th>前 3 檔</th><th>結果</th><th>來源</th></tr>
    ${rows.map(r => `<tr><td>${md(r.date)}</td><td>${r.picks.map(p => `<a href="#stock-${p.code}" style="color:inherit">${p.code} ${esc(p.name)}</a>${p.truth == null ? '' : p.truth === TK ? ' <span class="tag t-ok">對</span>' : ' <span class="tag t-bad">錯</span>'}`).join('、')}</td>
     <td>${r.hits == null ? '<span class="tag t-wait">待驗證</span>' : `<span class="tag ${r.hits >= 2 ? 't-ok' : r.hits === 1 ? 't-warn' : 't-bad'}">${r.hits} / ${r.picks.length} 對</span>`}</td>
@@ -287,11 +283,8 @@ function pageTrack() {
   </div>
   <div class="card" style="margin-bottom:16px"><h3${ttl(`${REC()}全部判斷的命中率,60 天移動`)}>命中率・60 天移動</h3>
    ${series.length > 1 ? `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}</svg></div>` : '<div class="mutebox">對答案的天數還不夠畫圖(至少 20 天)。</div>'}</div>
-  <div class="${LV() ? 'grid2' : ''}" style="margin-bottom:16px">
-   ${LV() ? `<div class="card"><h3${ttl('信心等級 = 分數在訓練期同類判斷裡的三分位')}>信心等級</h3><table class="tbl lvtable"><tr><th>信心</th><th>命中率</th><th>對 / 判斷</th></tr>
-    ${['高', '中', '低'].map(l => `<tr><td>${l}</td><td>${pct(lvt[l]?.pct)}</td><td>${lvt[l] ? `${lvt[l].hits} / ${lvt[l].n}` : '—'}</td></tr>`).join('')}
-    <tr><td>全部</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr></table></div>` : ''}
-   <div class="card"><h3${ttl('個股查詢可以查其他上市股,判斷照算,這是它們過去的命中率')}>推薦範圍以外</h3><table class="tbl lvtable"><tr><th>股票</th><th>命中率</th><th>對 / 判斷</th></tr>
+  <div style="margin-bottom:16px">
+   <div class="card"><h3${ttl('個股查詢可以查其他上市、上櫃股票與 ETF,判斷照算,這是它們過去的命中率')}>推薦範圍以外</h3><table class="tbl rtable"><tr><th>股票</th><th>命中率</th><th>對 / 判斷</th></tr>
     <tr><td>${REC()}</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr>
     <tr><td>池外</td><td>${pct(T.out_pool?.pct)}</td><td>${T.out_pool ? `${T.out_pool.hits} / ${T.out_pool.n}` : '—'}</td></tr></table></div></div>
   <div class="card"><h3${ttl('每天判' + LBL[TK] + '裡分數最高的 3 檔')}>每日明細・前 3 檔</h3>${dailyTable(daily.slice(0, 10))}

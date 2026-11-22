@@ -9,8 +9,7 @@
   在那之前沿用 Y−1 年的模型。
 - 輸出:判斷(高點 / 低點 / 非極值)、規則候選(t 收盤是最近 6 天最高 → 高點候選、最低 → 低點候選)、
   分數 = OC-SVM 的 decision 值(只有候選才有;> 0 = 落在學過的高點 / 低點範圍內 → 判高點 / 低點)。分數不是機率。
-- 信心等級(高 / 中 / 低):分數在訓練期同類判斷裡的三分位。要不要顯示由 config.SHOW_LEVELS 決定
-  (2026-11-22 用回放資料檢查各等級的命中率,見 README)。
+- 沒有信心等級:分數在訓練期同類判斷裡切三分位,回放資料的命中率各等級沒有差別(check_levels.py、README),所以拿掉。
 """
 import json
 import os
@@ -26,29 +25,12 @@ from .universe import pool_for_year
 import mainline as ML  # noqa: E402
 import walkforward as WF  # noqa: E402
 
-LEVELS = ("高", "中", "低")
-
-
 def model_path(year):
     return C.profile_dir("models", f"model_{year}.joblib")
 
 
 class NotEnoughData(Exception):
     pass
-
-
-def _cuts(scores):
-    s = np.asarray(scores, dtype=float)
-    s = s[np.isfinite(s)]
-    if len(s) < 3:
-        return [float("inf"), float("inf")]
-    return [float(np.quantile(s, 2 / 3)), float(np.quantile(s, 1 / 3))]
-
-
-def level(score, cuts):
-    if score is None or not np.isfinite(score):
-        return None
-    return "高" if score >= cuts[0] else "中" if score >= cuts[1] else "低"
 
 
 def training_store(year, store):
@@ -85,8 +67,6 @@ def train(year, store, log=print):
          "pool_name": C.POOL, "train_min_amp": C.TRAIN_MIN_AMP,
          "train": [str(tr.date.min().date()), str(tr.date.max().date())], "n_train": len(tr),
          "created": time.strftime("%Y-%m-%d %H:%M")}
-    ins = predict(m, tr)                                                      # 訓練期內的判斷 → 信心等級切點
-    m["cuts"] = {k: _cuts(ins.loc[ins.pred == k, "score"]) for k in ("low", "high")}
     os.makedirs(os.path.dirname(model_path(year)), exist_ok=True)
     joblib.dump(m, model_path(year))
     log(f"  完成,存於 {model_path(year)}  ({time.time() - t0:.0f}s)")

@@ -140,7 +140,7 @@ def test_no_backtest_or_return_in_site_data(ran_daily):
     """Given 每日批次產生的網頁資料 / When 檢查所有 JSON / Then 沒有回測、報酬、機率、Stacking 相關的欄位或文字
     (研究發現只引用結果檔的檔名當資料來源)"""
     banned = ("backtest", "ret_pct", "avg_ret", "win_pct", "扣成本", "total_return", "\"stack", "Stacking", "stacking",
-              "邏輯迴歸", "機率", "p_low", "p_none", "p_high")
+              "邏輯迴歸", "機率", "p_low", "p_none", "p_high", "\"level", "信心")
     for name in ("today.json", "track.json", "research.json", "findings.json", "meta.json"):
         obj = json.load(open(os.path.join(C.SITE_DATA, name), encoding="utf-8"))
         obj.pop("sources", None) if isinstance(obj, dict) else None
@@ -152,9 +152,9 @@ def test_no_backtest_or_return_in_site_data(ran_daily):
 
 
 def test_site_text_has_no_banned_words():
-    """Given 前端檔案與網頁系統程式 / When 檢查文字 / Then 畫面沒有「機率」「Stacking」「邏輯迴歸」;程式與說明也沒有 Stacking"""
+    """Given 前端檔案與網頁系統程式 / When 檢查文字 / Then 畫面沒有「機率」「Stacking」「邏輯迴歸」、沒有信心等級;程式與說明也沒有 Stacking"""
     site = "".join(open(os.path.join(C.SITE, f), encoding="utf-8").read() for f in ("app.js", "index.html", "style.css"))
-    assert not [b for b in ("機率", "Stacking", "stacking", "邏輯迴歸", "主軸", "回測", "73 檔") if b in site]
+    assert not [b for b in ("機率", "Stacking", "stacking", "邏輯迴歸", "主軸", "回測", "73 檔", "信心") if b in site]
     import glob
     files = glob.glob(os.path.join(C.WEB, "system", "*.py")) + [os.path.join(C.WEB, f) for f in ("run.py", "build_artifact.py",
                                                                                                    "check_research_match.py", "README.md")]
