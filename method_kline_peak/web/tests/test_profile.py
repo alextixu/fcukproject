@@ -26,11 +26,20 @@ def test_profile_separates_storage(tmp_data, monkeypatch):
     assert PriceStore(seed_dir="").root == os.path.join(C.DATA, "prices")
 
 
-@pytest.mark.parametrize("pool,n", [("tw100", 73), ("tw200", 168), ("tw50", 34)])
-def test_pool_setting_uses_research_lists(pool, n):
-    """Given 股票池設定為 tw100 / tw200 / tw50 / When 取 2026 年的股票池 / Then 和研究結果檔記錄的清單相同(73 / 168 / 34 檔)"""
-    p = U.pool_for_year(2026, pool=pool)
-    assert len(p) == n and "2412.TW" not in p
+def test_pool_setting_uses_research_list():
+    """Given 股票池設定為 tw200 / When 取 2026 年的股票池 / Then 和 final 的結果檔記錄的清單相同(168 檔、同順序),剔除低波動股"""
+    import json
+    with open(os.path.join(C.RESULTS, "backtest_long_only_tw200.json"), encoding="utf-8") as f:
+        ref = json.load(f)["pool"]
+    p = U.pool_for_year(2026, pool="tw200")
+    assert len(p) == 168 and set(p) == set(ref) and "2412.TW" not in p
+
+
+def test_other_pool_uses_low_vol_rule(real_store):
+    """Given 股票池設定為 tw100(final 沒有這份結果檔)/ When 取 2026 年的股票池 / Then 照 mainline 的規則,
+    用前一年底的資料剔除低波動股(2412 中華電不在裡面)"""
+    p = U.pool_for_year(2026, store=real_store, pool="tw100")
+    assert 50 < len(p) < 100 and "2412.TW" not in p and "2330.TW" in p
 
 
 def test_train_min_amp_setting(real_store, monkeypatch):

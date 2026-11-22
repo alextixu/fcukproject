@@ -1,17 +1,18 @@
 """產生前端讀的 JSON(site/data/,每次批次整批重寫;真正的紀錄在 data/<設定>/days、grades)。
-2026-11-09 起只有 Stacking(主軸拿掉),網頁定位為「參考方向的決策輔助」,不放回測與報酬。
+判斷方法和 final 分支相同(規則候選 → AE + OC-SVM);網頁定位為「看盤輔助」,不放回測與報酬。
+輸出沒有機率:每檔只有判斷(高點 / 低點 / 非極值)、是否為規則候選、OC-SVM 分數(不是機率;排序用)。
 
   meta.json        基準日、資料檢查、模型資訊
-  today.json       今日判斷:推薦範圍(台灣 50)內判低點 / 判高點,依「沒破底 / 沒創高」天數分組、組內依機率排序
-  track.json       成績追蹤:每日前 3 檔對答案、命中率、各信心等級命中率、池外命中率
+  today.json       今日判斷:推薦範圍(台灣 50)內判低點 / 判高點,依「沒破底 / 沒創高」天數分組、組內依分數排序
+  track.json       成績追蹤:每日前 3 檔(分數最高)對答案、命中率、各信心等級命中率、池外命中率
   index.json       自動完成用的股票清單(代號、名稱、分類、市場別)
-  research.json    研究結果:TW200 Stacking 2024–2026 的分類成績(直接讀 results/,不重算)
+  research.json    研究結果:TW200 168 檔 2024–2026 的分類成績(直接讀 results/confusion_2024_2026_tw200.json,不重算)
   stocks/<代號前兩碼>.json  個股(每檔一筆):今天的判斷、還沒破底 / 沒創高的訊號、今年整年的 K 線、今年的判斷與答案、今年的對答案統計
 
 畫面上的收盤、K 線、量用 Yahoo 未還原的實際成交價(data/prices_raw);抓不到的股票才用還原價並標示。
 漲跌幅用還原價算(除權息當天和看盤軟體一樣是對參考價的漲跌)。
 模型、判斷、對答案一律用 yfinance 還原價(和研究相同),顯示用的價格不影響任何判斷。
-  findings.json    研究發現頁:方向性結論(找得到轉折區、高低點不判反、命中率約三成)
+  findings.json    研究發現頁:找到率、高低點不判反、命中率約三成、多判的訊號很多、扣成本後不能直接當交易訊號
 """
 import json
 import os
@@ -25,8 +26,8 @@ from . import config as C, signals as SG, store as ST, universe as U
 from feasibility import clean  # noqa: E402
 
 KINDS = ("low", "high")
-M = "stack"                                   # 唯一的方法
-MK = "Stacking 邏輯迴歸"                      # 研究結果檔裡 Stacking 的名稱
+MK = "主軸"                                   # 研究結果檔(final)裡的方法名稱
+CM = "confusion_rows_true_cols_pred(漲,不漲不跌,跌)"
 K_ZH = {"low": "低點", "high": "高點"}
 
 
@@ -61,8 +62,11 @@ def _rate(hits, n):
 
 
 def _public_row(r):
-    """網頁用的單檔判斷:只留 Stacking(舊存檔裡的主軸欄位不輸出)。"""
-    return {k: (dict(v) if isinstance(v, dict) else v) for k, v in r.items() if k != "main"}
+    """網頁用的單檔判斷(代號、分類、判斷、規則候選、分數;信心等級只在 config.SHOW_LEVELS 時輸出)。"""
+    out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in r.items()}
+    if not C.SHOW_LEVELS and out.get("judge"):
+        out["judge"].pop("level", None)
+    return out
 
 
 def _rj(name):
@@ -72,16 +76,16 @@ def _rj(name):
 
 # ───────────────────────── 成績 ─────────────────────────
 def top_picks(tab, kind, n=C.TOP_N):
-    """每天推薦範圍內判 kind 的股票依機率取前 n 檔。"""
-    t = tab[(tab.status == U.POOL) & (tab.stack_pred == kind)]
-    t = t.sort_values(["date", "stack_score"], ascending=[True, False])
+    """每天推薦範圍內判 kind 的股票依分數取前 n 檔。"""
+    t = tab[(tab.status == U.POOL) & (tab.pred == kind)]
+    t = t.sort_values(["date", "score"], ascending=[True, False])
     return t.groupby("date", sort=True).head(n)
 
 
 def level_hits(tab, kind):
     """各信心等級的命中率(推薦範圍內)。"""
-    t = tab[(tab.status == U.POOL) & (tab.stack_pred == kind) & tab.truth.notna()]
-    return {lv: _rate((g.truth == kind).sum(), len(g)) for lv, g in t.groupby("stack_level")}
+    t = tab[(tab.status == U.POOL) & (tab.pred == kind) & tab.truth.notna()]
+    return {lv: _rate((g.truth == kind).sum(), len(g)) for lv, g in t.groupby("level")}
 
 
 def track(tab):
@@ -104,7 +108,7 @@ def track(tab):
         def window(k):
             w = gp[gp.date.isin(gdates[-k:])]
             return _rate((w.truth == kind).sum(), len(w)) | {"days": len(gdates[-k:])}
-        allsig = pool_g[pool_g.stack_pred == kind]
+        allsig = pool_g[pool_g.pred == kind]
         ytd = allsig[allsig.date.str.startswith(year)]
         series = []
         by_day = allsig.groupby("date").agg(h=("truth", lambda s: int((s == kind).sum())), n=("truth", "size"))
@@ -118,80 +122,89 @@ def track(tab):
             p = picks[picks.date == d]
             graded = p.truth.notna().all()
             daily.append({"date": d, "source": src.get(d), "picks": [
-                {"code": r.code, "name": U.name_of(r.code), "score": r.stack_score, "truth": r.truth} for _, r in p.iterrows()],
+                {"code": r.code, "name": U.name_of(r.code), "score": r.score, "truth": r.truth} for _, r in p.iterrows()],
                 "hits": int((p.truth == kind).sum()) if graded else None})
-        outs = tab[(tab.status == U.OUT) & (tab.stack_pred == kind) & tab.truth.notna()]
+        outs = tab[(tab.status == U.OUT) & (tab.pred == kind) & tab.truth.notna()]
         out["kinds"][kind] = {
             "top_20": window(20), "top_60": window(60), "top_all": window(10 ** 6),
             "all_ytd": _rate((ytd.truth == kind).sum(), len(ytd)) | {"year": year},
             "all": _rate((allsig.truth == kind).sum(), len(allsig)),
             "base_rate": _rate((pool_g.truth == kind).sum(), len(pool_g)),
-            "levels": level_hits(tab, kind),
+            "levels": level_hits(tab, kind) if C.SHOW_LEVELS else None,
             "out_pool": _rate((outs.truth == kind).sum(), len(outs)),
             "series": series, "daily": daily}
     return out
 
 
 # ───────────────────────── 研究結果(只讀既有結果檔,數字不手抄) ─────────────────────────
+def _conf():
+    """results/confusion_2024_2026_tw200.json:{年: 混淆矩陣 dict}(列 = 真實、欄 = 判斷,順序 低點、非極值、高點)。"""
+    return {y: v[MK] for y, v in _rj("confusion_2024_2026_tw200.json").items()}
+
+
 def research():
-    """TW200 Stacking 2024–2026 的分類成績(results/confusion_2024_2026_tw200_amp0.json)。"""
-    conf = _rj("confusion_2024_2026_tw200_amp0.json")
+    """TW200 168 檔 2024–2026 的分類成績(final 的 results/confusion_2024_2026_tw200.json)。"""
     cls = []
-    for y, v in conf.items():
-        for m, x in v.items():
-            if not isinstance(x, dict) or "precision" not in x or "Stacking" not in m:
-                continue
-            cm = np.array(x["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"])
-            cls.append({"year": y, "macro_f1": round(x["macro_f1"] * 100, 2),
-                        "prec_low": round(x["precision"]["低點"] * 100, 1), "prec_high": round(x["precision"]["高點"] * 100, 1),
-                        "rec_low": round(x["recall"]["低點"] * 100, 1), "rec_high": round(x["recall"]["高點"] * 100, 1),
-                        "base_low": round(cm[0].sum() / cm.sum() * 100, 1), "n_days": int(cm.sum()),
-                        "cross": int(cm[0, 2] + cm[2, 0])})
-    return {"classification": cls, "sources": ["method_kline_peak/results/confusion_2024_2026_tw200_amp0.json"]}
-
-
-def confirm_hits():
-    """推薦頁分組用的研究命中率:剛出現 = 原始,已 k 天沒破底 = 等 k 天確認(Stacking、TW200 168 檔、2024–2026 三年平均)。"""
-    c = _rj("confirm_signals_tw200.json")["classification_三年平均"][MK]
-    out = {"source": "研究結果:Stacking、TW200 168 檔、訓練門檻 0%、2024–2026 三年平均(results/confirm_signals_tw200.json)"}
-    for kind in KINDS:
-        z = K_ZH[kind]
-        out[kind] = {"k0": c["A0 原始"][z]["命中率"], "k1": c["k=1"][z]["命中率"],
-                     "k2": c["k=2"][z]["命中率"], "k3": c["k=3"][z]["命中率"], "base": c["A0 原始"][z]["隨機基準"]}
-    return out
+    for y, x in _conf().items():
+        cm = np.array(x[CM])
+        cls.append({"year": y, "macro_f1": round(x["macro_f1"] * 100, 2),
+                    "prec_low": round(x["precision"]["低點"] * 100, 1), "prec_high": round(x["precision"]["高點"] * 100, 1),
+                    "rec_low": round(x["recall"]["低點"] * 100, 1), "rec_high": round(x["recall"]["高點"] * 100, 1),
+                    "base_low": round(cm[0].sum() / cm.sum() * 100, 1), "base_high": round(cm[2].sum() / cm.sum() * 100, 1),
+                    "n_days": int(cm.sum()), "cross": int(cm[0, 2] + cm[2, 0])})
+    return {"classification": cls, "sources": ["method_kline_peak/results/confusion_2024_2026_tw200.json"]}
 
 
 def findings():
-    """研究發現頁:只放方向性結論(找得到轉折區、高低點不判反、命中率約三成 → 定位為決策輔助)。"""
-    a0 = _rj("postproc_signals_tw200.json")["三年平均"][MK]["A0 原始"]
-    conf = _rj("confusion_2024_2026_tw200_amp0.json")
-    cross = 0
-    for v in conf.values():
-        for m, x in v.items():
-            if "Stacking" in m and isinstance(x, dict) and "confusion_rows_true_cols_pred(漲,不漲不跌,跌)" in x:
-                cm = x["confusion_rows_true_cols_pred(漲,不漲不跌,跌)"]
-                cross += cm[0][2] + cm[2][0]
-    return {"recall": {"low": a0["低點"]["找到率_精確"], "high": a0["高點"]["找到率_精確"],
-                       "low2": a0["低點"]["找到率_±2天"], "high2": a0["高點"]["找到率_±2天"]},
-            "precision": {"low": a0["低點"]["命中率"], "high": a0["高點"]["命中率"],
-                          "base_low": a0["低點"]["隨機基準"], "base_high": a0["高點"]["隨機基準"]},
-            "cross": int(cross), "years": sorted(conf), "confirm": confirm_hits(),
-            "sources": ["postproc_signals_tw200.json", "confusion_2024_2026_tw200_amp0.json", "confirm_signals_tw200.json"]}
+    """研究發現頁(final 的結果檔):三年合計的找到率、±2 天找到率、命中率、判反次數、判的天數是真高低點的幾倍,
+    以及只做多的交易組合扣成本後是否全部虧損(只取結論,不放報酬表)。"""
+    conf = _conf()
+    cm = sum(np.array(x[CM]) for x in conf.values())
+    tot = {"low": (0, 0), "high": (0, 0)}
+    for r in _rj("per_stock_mainline_2024_2026.json")["每檔"]["合計"].values():   # ±2 天找到率:逐檔加總(和 168 檔混淆矩陣一致)
+        for kind in KINDS:
+            x = r[K_ZH[kind]]
+            n, f = tot[kind]
+            tot[kind] = (n + x["真"], f + round(x["真"] * x["找到率_±2天"] / 100))
+    ps = _rj("per_stock_mainline_2024_2026.json")
+    st = _rj("backtest_strategies_2024_2025.json")
+    nets = [v["扣成本"]["合計"]["total_return_pct"] for v in st["results"].values()]
+    holds = [v["扣成本"]["合計"]["total_return_pct"] for v in st["baselines"].values()]
+    i = {"low": 0, "high": 2}
+
+    def pct(a, b):
+        return round(a / b * 100, 1) if b else None
+    return {"years": sorted(conf),
+            "recall": {k: pct(cm[i[k], i[k]], cm[i[k]].sum()) for k in KINDS}
+            | {f"{k}2": pct(tot[k][1], tot[k][0]) for k in KINDS},
+            "precision": {k: pct(cm[i[k], i[k]], cm[:, i[k]].sum()) for k in KINDS}
+            | {f"base_{k}": pct(cm[i[k]].sum(), cm.sum()) for k in KINDS},
+            "by_year": {y: {"rec_low": round(x["recall"]["低點"] * 100, 1), "rec_high": round(x["recall"]["高點"] * 100, 1),
+                            "prec_low": round(x["precision"]["低點"] * 100, 1), "prec_high": round(x["precision"]["高點"] * 100, 1)}
+                        for y, x in conf.items()},
+            "over": {k: round(cm[:, i[k]].sum() / cm[i[k]].sum(), 1) for k in KINDS},      # 判的天數 ÷ 真的天數
+            "cross": int(cm[0, 2] + cm[2, 0]), "n_days": int(cm.sum()),
+            "n_stocks": ps["n_stocks"],
+            "trade": {"n": len(nets), "all_loss": all(x < 0 for x in nets), "below_hold": max(nets) < min(holds),
+                      "period": st["period"], "cost_pct": st["cost_round_trip_pct"]},
+            "sources": ["confusion_2024_2026_tw200.json", "per_stock_mainline_2024_2026.json", "backtest_strategies_2024_2025.json"]}
 
 
 # ───────────────────────── 個股的訊號狀態 ─────────────────────────
 def stock_active(g, df, asof):
-    """一檔股票在 asof 那天「還沒破底 / 沒創高」的 Stacking 訊號。g = 這檔的存檔判斷(依日期索引),df = K 線。
+    """一檔股票在 asof 那天「還沒破底 / 沒創高」的訊號。g = 這檔的存檔判斷(依日期索引),df = K 線。
     兩者都只用到 asof(含)為止,之後的資料不影響結果。回傳 (最近 60 天收盤, {low/high: 訊號})。"""
     cl = clean(df.loc[:asof])["close"].tail(60)
     g = g.loc[:asof]
     out = {}
     for kind in KINDS:
-        a = SG.active_signal(g["stack_pred"], cl, kind)
+        a = SG.active_signal(g["pred"], cl, kind)
         if a is None:
             continue
         t = pd.Timestamp(a["date"])
-        a.update(score=g.loc[t, "stack_score"], level=g.loc[t, "stack_level"], group=SG.group_of(a["days"]))
+        a.update(score=g.loc[t, "score"], group=SG.group_of(a["days"]))
+        if C.SHOW_LEVELS:
+            a["level"] = g.loc[t, "level"]
         out[kind] = a
     return cl, out
 
@@ -203,18 +216,6 @@ def shard_of(code):
 
 
 # ───────────────────────── 顯示用的價格 ─────────────────────────
-def official_bars(code):
-    """證交所官方日資料(實際成交價,未還原;量 = 成交股數)。沒有這檔就回傳 None。只拿來抽查 Yahoo 未還原價。"""
-    p = os.path.join(C.OFFICIAL, f"{code}.parquet")
-    if not os.path.exists(p):
-        return None
-    o = pd.read_parquet(p)
-    o["date"] = pd.to_datetime(o["date"])
-    o = o.set_index("date").sort_index()
-    o = o[~o.index.duplicated(keep="last")]
-    return o[(o["close"] > 0) & (o["open"] > 0)]
-
-
 def chart_start(index, asof):
     """K 線圖的起點:判斷基準日那年的第一個交易日;那年還不到 CHART_BARS 根時,往前補到 CHART_BARS 根。"""
     idx = index[index <= asof]
@@ -254,7 +255,7 @@ def year_stats(g, year):
     out = {"year": year}
     y = g[g.date.str.startswith(year)] if g is not None else None
     for kind in KINDS:
-        s = y[y.stack_pred == kind] if y is not None else []
+        s = y[y.pred == kind] if y is not None else []
         gr = s[s.truth.notna()] if len(s) else []
         hits = int((gr.truth == kind).sum()) if len(gr) else 0
         out[kind] = {"n": int(len(s)), "graded": int(len(gr)), "hits": hits,
@@ -299,7 +300,7 @@ def publish(data, cal, check, log=print):
             active[code] = act
 
     today = {"date": latest["date"], "source": latest.get("source"), "lists": {},
-             "hit": {k: tr["kinds"].get(k, {}).get("all") for k in KINDS}, "confirm_hit": confirm_hits()}
+             "hit": {k: tr["kinds"].get(k, {}).get("all") for k in KINDS}}
     for kind in KINDS:
         items = []
         for code, a in active.items():
@@ -308,10 +309,12 @@ def publish(data, cal, check, log=print):
                 continue
             r = rows[code]
             dp = disp.get(code) or {}
-            items.append({"code": code, "name": U.name_of(code), "close": dp.get("close", r.get("close")), "chg_pct": dp.get("chg_pct", r.get("chg_pct")),
-                          "score": x["score"], "level": x["level"],
-                          "level_hit": tr["kinds"].get(kind, {}).get("levels", {}).get(x["level"]),
-                          "date": x["date"], "days": x["days"], "run": x["run"], "group": x["group"]})
+            it = {"code": code, "name": U.name_of(code), "close": dp.get("close", r.get("close")), "chg_pct": dp.get("chg_pct", r.get("chg_pct")),
+                  "score": x["score"], "date": x["date"], "days": x["days"], "run": x["run"], "group": x["group"]}
+            if C.SHOW_LEVELS:
+                it["level"] = x["level"]
+                it["level_hit"] = (tr["kinds"].get(kind, {}).get("levels") or {}).get(x["level"])
+            items.append(it)
         items.sort(key=lambda x: (x["days"], -(x["score"] if x["score"] is not None else -1e9)))
         for it in items:
             bars = (disp.get(it["code"]) or {}).get("bars") or []
@@ -322,7 +325,7 @@ def publish(data, cal, check, log=print):
     _w(os.path.join(out, "today.json"), _clean_nan(today))
 
     # 個股:依代號前兩碼分成幾十個檔(Artifact 一次最多發布 255 個檔案)
-    hist = tab[tab.stack_pred.isin(KINDS)]
+    hist = tab[tab.pred.isin(KINDS)]
     hist_by = {c: g for c, g in hist.groupby("code")}
     year = str(asof.year)
     shards = {}
@@ -335,8 +338,10 @@ def publish(data, cal, check, log=print):
         if g is not None:
             first = dp["bars"][0][0] if dp["bars"] else latest["date"]
             for _, s in g[g.date >= first].iterrows():
-                sig.append({"date": s.date, "pred": s.stack_pred, "score": s.stack_score, "level": s.stack_level,
-                            "truth": s.truth, "source": s.source})
+                x = {"date": s.date, "pred": s.pred, "score": s.score, "truth": s.truth, "source": s.source}
+                if C.SHOW_LEVELS:
+                    x["level"] = s.level
+                sig.append(x)
         shards.setdefault(shard_of(code), {})[code] = _clean_nan({
             "code": code, "name": U.name_of(code), "market": U.market_of(code), "status": r["status"], "move": r.get("move"), "date": latest["date"],
             "today": _public_row(r), "active": active.get(code, {}), "price": dp["price"], "close": dp["close"],
@@ -363,5 +368,5 @@ def publish(data, cal, check, log=print):
         "profile": C.profile_info(),
         "counts": {s: sum(1 for r in latest["rows"] if r["status"] == s) for s in (U.POOL, U.OUT, U.LOWVOL, U.NODATA, "halted")},
         "rules": {"hold": C.HOLD, "top_n": C.TOP_N, "min_move": C.MIN_MOVE},
-        "method": C.METHOD_NAMES[M]}))
+        "method": C.METHOD_NAME, "levels": C.SHOW_LEVELS}))
     log(f"網頁資料完成:{len(rows)} 檔  ({time.time() - t0:.0f}s)")

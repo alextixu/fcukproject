@@ -1,12 +1,12 @@
-"""確認網頁系統的 Stacking 和研究版 TW200 模型輸出一致(2026-11-09 監督要求;不跑新實驗,只重現既有設定)。
+"""確認網頁系統的模型和 final 分支的研究結果一致(不跑新實驗,只重現既有設定)。
 
 比對三件事:
-  1. 2026 年模型:研究程式(mainline.load_data(pool="tw200") → walkforward.year_split → stacking.StackingSource)訓練一份,
-     和網頁系統的正式模型(data/tw200/models/model_2026.joblib)對台灣 50 這 50 檔、2026 每一天算三類機率,比最大差距。
-  2. 2024 年:研究存下的南電每日輸出 results/outputs_8046_2024_tw200_amp0.csv(Stacking 判斷、最大機率,4 位小數),
-     和網頁系統訓練的 2024 年模型比。
-  3. 2025 年:研究存下的南電例子 results/lr_example_tw200_2025.json(三類機率,4 位小數),和網頁系統訓練的 2025 年模型比。
-2、3 的模型訓練在暫存資料夾,不碰 data/ 的正式存檔。
+  1. 2026 年(1–9 月):網頁系統的正式模型(data/tw200/models/model_2026.joblib)對研究股票池 168 檔、2026 每一天判斷,
+     混淆矩陣與 macro-F1 要等於 results/confusion_2024_2026_tw200.json 的 2026 年。
+     另外用研究程式(walkforward.run_year + MainlineSource)重跑一次 2026,逐列比判斷與分數。
+  2. 2024、2025 年:網頁系統用同一套程式訓練那兩年的模型(存在暫存資料夾,不碰正式存檔),混淆矩陣要等於結果檔。
+  3. 網頁的回放存檔(data/tw200/days):168 檔 2026 年 1–9 月存下的判斷,和研究逐列比;不同的列附上原因(K 線不同)。
+資料:1、2 用研究快取(common/cache/yf_2026,和 final 同一份);3 是網頁系統自己的 K 線快取算出來的存檔。
 用法: python method_kline_peak/web/check_research_match.py
 """
 import json
@@ -21,87 +21,89 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from system import config as C, model as MD, universe as U  # noqa: E402
-from system.datasource import PriceStore  # noqa: E402
-from system.features import live_frame, KIND2CODE  # noqa: E402
+from system import config as C, model as MD, store as ST  # noqa: E402
+from system.datasource import PriceStore, research_store  # noqa: E402
+from system.features import KIND2CODE  # noqa: E402
 import mainline as ML  # noqa: E402
 import walkforward as WF  # noqa: E402
-import stacking as S  # noqa: E402
+from confusion import summarize  # noqa: E402
+from paper_aeocsvm import NAMES  # noqa: E402
 
-ZH = {"低點": "low", "非極值": "none", "高點": "high"}
+CM = "confusion_rows_true_cols_pred(漲,不漲不跌,跌)"
 
 
-def probs(src, frame):
-    F = src.base.transform(frame)
-    X = src.meta.fsc.transform(F[S.INPUTS[src.meta.inputs]].to_numpy())
-    p = src.meta.model.predict_proba(X)
-    idx = {c: i for i, c in enumerate(src.meta.model.classes_)}
-    return np.column_stack([p[:, idx[KIND2CODE[k]]] for k in ("low", "none", "high")])
+def ref_year(year):
+    with open(os.path.join(C.RESULTS, "confusion_2024_2026_tw200.json"), encoding="utf-8") as f:
+        return json.load(f)[str(year)]["主軸"]
+
+
+def compare(year, te, pred_codes):
+    s = summarize(te.y.to_numpy(), np.asarray(pred_codes), NAMES)
+    ref = ref_year(year)
+    return {"年": year, "測試股票日": len(te), "macro-F1": round(s["macro_f1"] * 100, 4),
+            "結果檔 macro-F1": round(ref["macro_f1"] * 100, 4), "混淆矩陣": s[CM], "結果檔混淆矩陣": ref[CM],
+            "完全相同": s[CM] == ref[CM] and abs(s["macro_f1"] - ref["macro_f1"]) < 1e-12,
+            "高低點判反": int(s[CM][0][2] + s[CM][2][0])}
 
 
 def main():
     C.set_profile("tw200", 0.0)
-    store = PriceStore()
     out = {}
-
-    # 1. 2026:研究程式訓練 vs 正式模型,台灣 50 全部 50 檔、2026 每一天
     prod = MD.load(2026)
-    assert prod is not None, "沒有正式模型,先跑 run.py daily 或 replay"
-    data = ML.load_data(pool="tw200")
+    assert prod is not None and "src" in prod, "沒有正式模型,先跑 run.py train --year 2026 或 replay"
+    data = ML.load_data(pool="tw200")                                     # 研究快取、168 檔、同順序
+    assert list(data) == prod["pool"]
     panel, fc = ML.build_panel(data, 6, [])
-    research = S.StackingSource("lr", "score")
-    research.fit(WF.year_split(panel, 2026)["train"], fc)
-    frames = []
-    for tk in U.recommend_list():
-        df = store.load(tk)
-        fr = live_frame(tk, df.loc[:ML.END])
-        frames.append(fr[fr.date >= "2026-01-01"])
-    fr = pd.concat(frames, ignore_index=True)
-    pa, pb = probs(research, fr), probs(prod["stack"], fr)
-    diff = np.abs(pa - pb)
-    same_pred = (pa.argmax(1) == pb.argmax(1)).mean()
-    sample = fr.assign(r_low=pa[:, 0], r_none=pa[:, 1], r_high=pa[:, 2], w_low=pb[:, 0], w_none=pb[:, 1], w_high=pb[:, 2])
-    pick = sample[sample.ticker.isin(["2330.TW", "8046.TW", "2412.TW", "2603.TW"]) &
-                  sample.date.isin(pd.to_datetime(["2026-03-02", "2026-06-15", "2026-09-10"]))]
-    out["2026_research_vs_web"] = {
-        "股票數": int(fr.ticker.nunique()), "股票日數": len(fr), "日期": [str(fr.date.min().date()), str(fr.date.max().date())],
-        "三類機率最大差距": float(diff.max()), "判斷相同比例": float(same_pred),
-        "抽樣": [{"代號": r.ticker, "日期": str(r.date.date()),
-                "研究 低/非極值/高": [round(r.r_low, 6), round(r.r_none, 6), round(r.r_high, 6)],
-                "網頁 低/非極值/高": [round(r.w_low, 6), round(r.w_none, 6), round(r.w_high, 6)]} for r in pick.itertuples()]}
-    print(json.dumps(out["2026_research_vs_web"], ensure_ascii=False, indent=1), flush=True)
 
-    tmp = tempfile.mkdtemp()
+    # 1. 2026:正式模型 vs 結果檔;研究程式重跑一次逐列比
+    te = WF.year_split(panel, 2026)["test"]
+    web = MD.predict(prod, te)
+    out["2026_正式模型"] = compare(2026, te, web.pred.map(KIND2CODE))
+    sig, _ = WF.run_year(panel, fc, 2026, WF.MainlineSource())
+    cand = te.cand_hi.to_numpy() | te.cand_lo.to_numpy()
+    out["2026_研究程式重跑_逐列"] = {
+        "股票日": len(sig), "判斷相同": int((sig.pred.to_numpy() == web.pred.map(KIND2CODE).to_numpy()).sum()),
+        "分數最大差距(候選)": float(np.abs(sig.score.to_numpy()[cand] - web.score.to_numpy()[cand]).max())}
+    print(json.dumps(out, ensure_ascii=False), flush=True)
+
+    # 2. 2024、2025:網頁系統的訓練程式(暫存資料夾)
     real = C.DATA
-    C.DATA = tmp
+    C.DATA = tempfile.mkdtemp()
     try:
-        df8 = store.load("8046.TW")
-        # 2. 2024:研究存的南電每日輸出(Stacking 判斷 + 最大機率,4 位小數)
-        m24 = MD.train(2024, store, log=lambda *_: None)
-        ref = pd.read_csv(os.path.join(C.RESULTS, "outputs_8046_2024_tw200_amp0.csv"), parse_dates=["date"])
-        f8 = live_frame("8046.TW", df8.loc[:"2024-12-31"])
-        f8 = f8[f8.date.isin(ref.date)].reset_index(drop=True)
-        pr = MD.predict(m24, f8)
-        got = pd.DataFrame({"date": f8.date, "pred": pr.stack_pred, "p": pr[["stack_p_low", "stack_p_none", "stack_p_high"]].max(axis=1)})
-        mg = ref.merge(got, on="date")
-        out["2024_outputs_csv"] = {"天數": len(mg), "判斷相同": int((mg["Stacking 邏輯迴歸 判斷"].map(ZH) == mg.pred).sum()),
-                                   "最大機率差距(csv 4 位小數)": float((mg["Stacking 邏輯迴歸 分數"] - mg.p.round(4)).abs().max())}
-        print(json.dumps(out["2024_outputs_csv"], ensure_ascii=False), flush=True)
-        # 3. 2025:研究存的南電例子(三類機率,4 位小數)
-        m25 = MD.train(2025, store, log=lambda *_: None)
-        ex = json.load(open(os.path.join(C.RESULTS, "lr_example_tw200_2025.json"), encoding="utf-8"))
-        f25 = live_frame("8046.TW", df8.loc[:"2025-12-31"]).set_index("date")
-        rows = []
-        for key, c in ex["cases"].items():
-            d = pd.Timestamp(c["日期"])
-            p = MD.predict(m25, f25.loc[[d]].reset_index()).iloc[0]
-            mine = {"低點": round(p.stack_p_low, 4), "非極值": round(p.stack_p_none, 4), "高點": round(p.stack_p_high, 4)}
-            rows.append({"例子": key, "日期": c["日期"], "研究": c["機率"], "網頁": mine,
-                         "最大差距": max(abs(mine[k] - c["機率"][k]) for k in mine)})
-        out["2025_lr_example"] = rows
-        print(json.dumps(rows, ensure_ascii=False), flush=True)
+        for y in (2024, 2025):
+            m = MD.train(y, PriceStore(), log=lambda *_: None)
+            t = WF.year_split(panel, y)["test"]
+            out[f"{y}_網頁訓練"] = compare(y, t, MD.predict(m, t).pred.map(KIND2CODE))
+            print(json.dumps(out[f"{y}_網頁訓練"], ensure_ascii=False), flush=True)
     finally:
         C.DATA = real
+
+    # 3. 網頁回放存檔(網頁自己的 K 線快取)vs 研究,168 檔 2026 年 1–9 月
+    if ST.list_days():
+        tab = ST.table()
+        tab = tab[tab.pred.notna()]
+        r = te[["date", "ticker", "y"]].assign(code=te.ticker.str.split(".").str[0], date=te.date.dt.strftime("%Y-%m-%d"),
+                                              research=sig.pred.map({v: k for k, v in KIND2CODE.items()}).to_numpy())
+        mg = r.merge(tab[["date", "code", "pred"]], on=["date", "code"], how="left")
+        miss = mg.pred.isna()
+        diff = mg[~miss & (mg.pred != mg.research)]
+        st = PriceStore()
+        why = {}
+        for tk in sorted(set(diff.ticker) | set(mg.loc[miss, "ticker"])):
+            a, b = st.load(tk), data[tk]
+            a = a.loc[:b.index[-1]]
+            only_r = [str(d.date()) for d in b.index.difference(a.index)]
+            only_w = [str(d.date()) for d in a.index.difference(b.index)]
+            com = a.index.intersection(b.index)
+            rel = float((a.loc[com, "close"] / b.loc[com, "close"]).pipe(lambda x: x.max() / x.min() - 1))
+            why[tk] = {"不同的列": int((diff.ticker == tk).sum()), "沒有存檔的列": int((mg.loc[miss, "ticker"] == tk).sum()),
+                       "只有研究有的日子": only_r[:5], "只有網頁有的日子": only_w[:5], "還原比例變動": round(rel, 6)}
+        ok = mg[~miss]
+        s = summarize(ok.y.to_numpy(), ok.pred.map(KIND2CODE).to_numpy(), NAMES)
+        out["網頁回放存檔_vs_研究"] = {"股票日": len(mg), "有存檔": int((~miss).sum()), "判斷相同": int((~miss).sum() - len(diff)),
+                                "判斷不同": len(diff), "原因(K 線和研究快取不同)": why,
+                                "混淆矩陣(研究標籤)": s[CM], "macro-F1": round(s["macro_f1"] * 100, 4)}
+        print(json.dumps(out["網頁回放存檔_vs_研究"], ensure_ascii=False), flush=True)
     path = os.path.join(C.WEB, "samples", "research_match.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)

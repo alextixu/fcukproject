@@ -1,5 +1,5 @@
 /* K 線高低點判斷:靜態前端。資料全部來自 data/*.json(每日批次產生)。
-   只有 Stacking,推薦範圍是台灣 50;定位為參考方向的決策輔助。
+   判斷方法同 final 分支:規則挑候選 → AE + OC-SVM;每檔只有判斷、規則候選、分數(OC-SVM 分數,只用來排序)。推薦範圍是台灣 50;定位為看盤輔助。
    版面原則:畫面只放數字、圖和 2–6 字的標籤;說明文字放在提示框(data-tip / title)或「展開看更多」裡。 */
 const D = {shards: {}};
 const LBL = {low: '低點', high: '高點', none: '非極值'};
@@ -27,6 +27,8 @@ async function j(path) { const r = await fetch(path, {cache: 'no-store'}); if (!
 function disc() { return `<div class="disc">研究模型輸出,非投資建議。<a href="#about">免責聲明</a></div>`; }
 function more(body, label = '展開看更多') { return `<details class="explain"><summary>${label}</summary><div>${body}</div></details>`; }
 function trk(kind) { return D.track?.kinds?.[kind] || {}; }
+const LV = () => !!D.meta?.levels;                       /* 信心等級:回放驗證有差才顯示(meta.levels) */
+const sc = x => fmt(x, 1);
 function lvTip(h) { return h && h.n ? `同等級歷史命中 ${pct(h.pct)}(${h.n} 筆${h.n < 20 ? ',筆數少,僅供參考' : ''})` : '同等級尚無對答案紀錄'; }
 function stat(label, value, t, color) {
   return `<div class="card stat"${tip(t)}><div class="lbl">${label}</div><div class="kpi"${color ? ` style="color:${color}"` : ''}>${value}</div></div>`;
@@ -53,34 +55,26 @@ function marks(a, kind) {
   return m ? `<div class="marks">${m}</div>` : '';
 }
 const GROUPS = [['new', '剛出現'], ['d12', '1–2 天'], ['d3', '3 天以上']];
-function groupHit(kind, g) {
-  const c = D.today.confirm_hit?.[kind];
-  if (!c) return '';
-  const v = g === 'new' ? pct(c.k0) : g === 'd12' ? `${pct(c.k1)}–${pct(c.k2)}` : pct(c.k3);
-  const t = g === 'new' ? `研究命中率:剛出現 ${pct(c.k0)}` : g === 'd12' ? `研究命中率:已 1 天 ${pct(c.k1)}、已 2 天 ${pct(c.k2)}`
-    : `研究命中率:已 3 天 ${pct(c.k3)}(4–5 天沒有研究數字)`;
-  return `<span class="hit"${ttl(`${t}\n${c.source}`)}>命中 ${v}</span>`;
-}
 function pickRow(s, i, kind) {
-  const t = [s.days > 0 ? `訊號日 ${md(s.date)}・已 ${s.days} 天${HOLDWORD[kind]}` : '今天判', `連續第 ${s.run} 天`, `機率 ${fmt(s.score)}・信心 ${s.level || '—'}`, lvTip(s.level_hit)].join('\n');
+  const t = [s.days > 0 ? `訊號日 ${md(s.date)}・已 ${s.days} 天${HOLDWORD[kind]}` : '今天判', `連續第 ${s.run} 天`, `分數 ${sc(s.score)}`].concat(LV() ? [`信心 ${s.level || '—'}`, lvTip(s.level_hit)] : []).join('\n');
   const m = (s.days > 0 ? `<span class="mark hold">${s.days} 天</span>` : '') + (s.run > 1 ? `<span class="mark">連續 ${s.run} 天</span>` : '');
   return `<div class="pick" onclick="go('stock-${s.code}')"${ttl(t)}><div class="rank">${i + 1}</div>
   <div class="nm">${s.code}<span>${esc(s.name)}</span>${m ? `<div class="marks">${m}</div>` : ''}</div>
   <div class="spk">${spark(s.spark, MOBILE() ? 60 : 86)}</div>
-  <div class="prob">${fmt(s.score)}${lv(s.level)}</div></div>`;
+  <div class="score">${sc(s.score)}${LV() ? lv(s.level) : ''}</div></div>`;
 }
 function groupBlock(L, kind, g, label) {
   const items = L.filter(s => s.group === g), top = items.slice(0, 3), rest = items.slice(3);
   const name = g === 'new' ? label : `${label}${HOLDWORD[kind]}`;
-  return `<div class="grp"><b>${name}</b><span class="cnt">${items.length}</span><span class="sp"></span>${groupHit(kind, g)}</div>
+  return `<div class="grp"><b>${name}</b><span class="cnt">${items.length}</span></div>
   ${items.length ? top.map((s, i) => pickRow(s, i, kind)).join('') : `<div class="empty">—</div>`}
   ${rest.length ? `<details class="more"><summary>還有 ${rest.length} 檔</summary>
-  <table class="minitable"><tr><th>代號</th><th>名稱</th><th>機率</th><th>信心</th><th>連續</th></tr>
-  ${rest.map(s => `<tr onclick="go('stock-${s.code}')" style="cursor:pointer"><td>${s.code}</td><td>${esc(s.name)}</td><td>${fmt(s.score)}</td><td>${s.level || '—'}</td><td>${s.run} 天</td></tr>`).join('')}</table></details>` : ''}`;
+  <table class="minitable"><tr><th>代號</th><th>名稱</th><th>分數</th>${LV() ? '<th>信心</th>' : ''}<th>連續</th></tr>
+  ${rest.map(s => `<tr onclick="go('stock-${s.code}')" style="cursor:pointer"><td>${s.code}</td><td>${esc(s.name)}</td><td>${sc(s.score)}</td>${LV() ? `<td>${s.level || '—'}</td>` : ''}<td>${s.run} 天</td></tr>`).join('')}</table></details>` : ''}`;
 }
 function listCard(kind) {
   const L = D.today.lists[kind] || [], isLow = kind === 'low';
-  const t = isLow ? '收盤可能是前後 11 天最低。前幾天判的,只列到今天都還沒跌破那天收盤的;組內依機率排序' : '收盤可能是前後 11 天最高。前幾天判的,只列到今天都還沒漲過那天收盤的;組內依機率排序';
+  const t = isLow ? '收盤可能是前後 11 天最低。前幾天判的,只列到今天都還沒跌破那天收盤的;組內依分數排序' : '收盤可能是前後 11 天最高。前幾天判的,只列到今天都還沒漲過那天收盤的;組內依分數排序';
   return `<div class="card"><div class="listhead"${ttl(t)}><span class="dot" style="background:${isLow ? 'var(--low)' : 'var(--high)'}"></span>
   <h2>${isLow ? '判低點' : '判高點'}</h2><span class="cnt">${L.length}</span></div>
   ${GROUPS.map(([g, label]) => groupBlock(L, kind, g, label)).join('')}</div>`;
@@ -97,9 +91,9 @@ function pageToday() {
    ${stat('近 60 天前 3 檔', pct(t60.pct), `判低點前 3 檔,${t60.hits ?? 0} / ${t60.n ?? 0} 檔次`)}
   </div>
   <div class="grid2">${listCard('low')}${listCard('high')}</div>
-  ${more(`「判低點」10 次大約只有 3 次真的是 11 天內的低點,錯的大多是普通日子。判斷之後幾天都沒破底,真的是低點的比例會變高
-  (${esc(T.confirm_hit?.source || '')}),但那幾天的價格本來就是答案的一部分,等越久也越晚。
-  這份清單是提醒你「這裡可能是近期的高點 / 低點,值得看一下」,買不買由你自己決定。<a href="#findings">看研究發現</a>`, '怎麼看這份清單')}
+  ${more(`「判低點」10 次大約只有 3 次真的是 11 天內的低點,錯的大多是普通日子。判斷之後幾天都沒破底的,越可能是真的低點
+  (真的低點後面 5 天一定不會破底),但等越久也越晚。分數是「和過去真的低點 / 高點有多像」,只用來排序。
+  這份清單是看盤時的提醒:「這裡可能是近期的高點 / 低點,值得看一下」,買不買由你自己決定。<a href="#findings">看研究發現</a>`, '怎麼看這份清單')}
   ${disc()}`;
 }
 
@@ -108,7 +102,7 @@ function typeTag(st) { const [n, c] = STATUS[st] || ['?', 't-none']; return `<sp
 function chips() {
   const byCode = Object.fromEntries((D.index || []).map(r => [r[0], r]));
   const pick = (pref, st) => byCode[pref]?.[2] === st ? byCode[pref] : (D.index || []).find(r => r[2] === st);
-  const list = [['2330', '台積電'], ['8046', '南電'], ['3374', '精材']];
+  const list = [['2454', '聯發科'], ['2330', '台積電'], ['8046', '南電'], ['3374', '精材']];
   for (const [pref, st] of [['2618', 'out'], ['2801', 'lowvol']]) { const r = pick(pref, st); if (r) list.push([r[0], r[1]]); }
   list.push(['0050', '元大台灣50']);
   return `<div class="chips">${list.map(([c, n]) => `<button type="button" class="chip" onclick="go('stock-${c}')">${c} ${esc(n)}</button>`).join('')}</div>`;
@@ -166,9 +160,6 @@ function kchart(S) {
   <div class="legend"><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--low)"/></svg>判低點</span><span><svg width="12" height="10"><path d="M1,1 L11,1 L6,9Z" fill="var(--high)"/></svg>判高點</span>
   <span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--low)"/></svg>對</span><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4"/></svg>錯</span><span><svg width="12" height="10"><path d="M1,9 L11,9 L6,1Z" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg>待驗證</span></div>`;
 }
-function bar(label, v, color, txt) {
-  return `<div class="cls"><span>${label}</span><div class="bar" style="margin:0;height:8px"><i style="width:${Math.max(0, Math.min(1, v)) * 100}%;background:${color}"></i></div><span class="right">${txt}</span></div>`;
-}
 function pageSearch() {
   const legend = [[REC(), 't-ok', `${REC()}成分股,每天的推薦清單只看這些`], ['池外', 't-warn', '其他上市、上櫃股票與 ETF,可查,僅供參考'], ['低波動', 't-none', '推薦範圍以外、每日漲跌太小,判斷不適用'], ['資料不足', 't-none', '興櫃股票、Yahoo 沒有資料或剛上市的股票'], ['不支援', 't-bad', '特別股、存託憑證']];
   return `<h1 class="pt">個股查詢</h1>${searchBox()}
@@ -185,14 +176,12 @@ function activeCard(S) {
   for (const k of ['low', 'high']) {
     const a = S.active?.[k];
     if (!a) continue;
-    const c = D.today.confirm_hit?.[k], key = a.days >= 3 ? 'k3' : 'k' + a.days;
-    const hitTxt = c ? (a.days <= 3 ? pct(c[key]) : `≥3 天 ${pct(c.k3)}`) : '—';
-    rows.push(`<tr><td><span class="tag ${tagCls(k)}">判${LBL[k]}</span></td><td>${md(a.date)}</td><td>${fmt(a.score)}</td>
-      <td>${a.days === 0 ? '剛出現' : `${a.days} 天${HOLDWORD[k]}`}</td><td>第 ${a.run} 天</td><td>${hitTxt}</td></tr>`);
+    rows.push(`<tr><td><span class="tag ${tagCls(k)}">判${LBL[k]}</span></td><td>${md(a.date)}</td><td>${sc(a.score)}</td>
+      <td>${a.days === 0 ? '剛出現' : `${a.days} 天${HOLDWORD[k]}`}</td><td>第 ${a.run} 天</td></tr>`);
   }
   if (!rows.length) return '';
-  const t = `只列最近 5 個交易日內、到今天都還沒破底(低點)/ 沒創高(高點)的訊號。等越多天,真的是低點的比例越高,但也越晚。\n${D.today.confirm_hit?.source || ''}`;
-  return `<div class="card"><h3${ttl(t)}>近 5 天訊號</h3><div class="tblwrap"><table class="tbl"><tr><th>判斷</th><th>訊號日</th><th>機率</th><th>到今天</th><th>連續</th><th>研究命中</th></tr>${rows.join('')}</table></div></div>`;
+  const t = '只列最近 5 個交易日內、到今天都還沒破底(低點)/ 沒創高(高點)的訊號。真的低點後面 5 天一定不會破底,所以等越多天越可能是真的,但也越晚。';
+  return `<div class="card"><h3${ttl(t)}>近 5 天訊號</h3><div class="tblwrap"><table class="tbl"><tr><th>判斷</th><th>訊號日</th><th>分數</th><th>到今天</th><th>連續</th></tr>${rows.join('')}</table></div></div>`;
 }
 async function pageStock(code) {
   const ix = (D.index || []).find(r => r[0] === code);
@@ -203,49 +192,55 @@ async function pageStock(code) {
     <div class="badbox" style="margin-top:12px"><b>目前不支援</b>・${esc(ix[4])}</div></div>${disc()}`;
   let S; try { S = await loadStock(code); } catch (e) { S = null; }
   if (!S) return `<h1 class="pt">個股查詢</h1>${searchBox()}<div class="badbox">讀不到 ${code} 的資料。</div>${disc()}`;
-  const t = S.today, P = t.stack || {}, p = P.pred || 'none';
+  const t = S.today, P = t.judge || {}, p = P.pred || 'none', cand = P.cand;
   let pre = '';
   const outHit = trk('low').out_pool;
   if (S.status === 'out') pre = `<div class="warnbox"${tip(`這檔不在${REC()}推薦範圍,判斷照算,僅供參考。回放期間推薦範圍以外股票的判低點命中率 ${pct(outHit?.pct)}(${outHit?.n || 0} 筆)`)}>
     <b>⚠ 推薦範圍外</b>・僅供參考・池外命中 ${pct(outHit?.pct)}</div>`;
   if (S.status === 'lowvol') pre = `<div class="mutebox"${ttl('這類股票的「11 天最低」常常只差一兩檔,判斷沒有參考價值')}><b>低波動・判斷不適用</b>・漲跌中位數 ${fmt(S.move)}% &lt; ${D.meta.rules.min_move}%
-   <details style="margin-top:6px"><summary style="cursor:pointer">看模型輸出</summary><div style="margin-top:6px">今天判${LBL[p]}${P.score != null ? `(機率 ${fmt(P.score)})` : ''}。</div></details></div>`;
+   <details style="margin-top:6px"><summary style="cursor:pointer">看模型輸出</summary><div style="margin-top:6px">今天判${LBL[p]}${P.score != null ? `(分數 ${sc(P.score)})` : ''}。</div></details></div>`;
   if (S.status === 'halted') pre = `<div class="badbox"${ttl('停牌、處置或資料未更新')}><b>${S.date} 無交易</b>・今天沒有判斷</div>`;
   if (S.status === 'nodata') pre = `<div class="mutebox"><b>資料不足</b>・${(S.bars || []).length ? '至少要 16 個交易日的 K 線' : '還沒有這檔的 K 線'}</div>`;
   const dim = S.status === 'lowvol' ? 'opacity:.45;filter:grayscale(1)' : '';
   const last = S.bars[S.bars.length - 1] || [];
-  const hit = S.status !== 'pool' || p === 'none' ? null : trk(p).levels?.[P.level];
+  const hit = !LV() || S.status !== 'pool' || p === 'none' ? null : trk(p).levels?.[P.level];
   const icon = p === 'low' ? '↓' : p === 'high' ? '↑' : '–';
-  const sug = !t.stack ? '今天沒有判斷。' : p === 'low' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最低點</b>(機率 ${fmt(P.score)},信心 <b>${P.level}</b>)。${hit?.n ? `過去同信心等級的判低點,<b>${pct(hit.pct)}</b> 真的是低點(${hit.n} 筆),其餘大多是普通日子。` : ''}<br><br>
-     「低點」只代表 11 天內最低,不代表之後會漲多少。可以看接下來幾天有沒有破底:沒破底的天數越多,越可能是真的低點,但也越晚。`
-    : p === 'high' ? `模型判斷 <b>今天(${md(S.date)})收盤可能是前後 11 天的最高點</b>(機率 ${fmt(P.score)},信心 <b>${P.level}</b>)。${hit?.n ? `過去同信心等級的判高點,<b>${pct(hit.pct)}</b> 真的是高點(${hit.n} 筆)。` : ''}<br><br>
-     這個判斷只當提醒:短期可能不宜追高。`
-    : `模型判斷今天是 <b>非極值</b>(一般日子)。三類機率裡「非極值」最高(${fmt(P.p_none)})。`;
+  const CW = {low: '收盤是最近 6 天最低', high: '收盤是最近 6 天最高'};
+  const sug = !t.judge ? '今天沒有判斷。' : p === 'low' ? `今天(${md(S.date)})收盤是最近 6 天最低,而且和過去真的低點很像(分數 ${sc(P.score)} &gt; 0),所以判 <b>可能是前後 11 天的最低點</b>。<br><br>
+     「低點」只代表 11 天內最低,不代表之後會漲多少。判低點 10 次大約只有 3 次是真的;接下來幾天沒破底,越可能是真的,但也越晚。`
+    : p === 'high' ? `今天(${md(S.date)})收盤是最近 6 天最高,而且和過去真的高點很像(分數 ${sc(P.score)} &gt; 0),所以判 <b>可能是前後 11 天的最高點</b>。<br><br>
+     這個判斷只當提醒:短期可能不宜追高。判高點 10 次大約只有 3 次是真的。`
+    : cand ? `今天${CW[cand]},是${LBL[cand]}候選;但和過去真的${LBL[cand]}不夠像(分數 ${sc(P.score)} ≤ 0),所以判 <b>非極值</b>。`
+    : '今天收盤不是最近 6 天最高、也不是最低,不是候選,直接判 <b>非極值</b>(一般日子)。';
   const R = (D.research?.classification || []).find(r => r.year === '2026') || {};
   const RS = '研究結果 TW200 2026 1–9 月';
   const past = (S.signals || []).filter(x => x.pred !== 'none').slice().reverse();
   const Y = S.year || {}, yr = Y.year || S.date.slice(0, 4);
-  const pastRow = x => `<tr><td>${md(x.date)}</td><td><span class="tag ${tagCls(x.pred)}">${LBL[x.pred]}</span></td><td>${fmt(x.score)}</td><td>${x.level || '—'}</td>
+  const pastRow = x => `<tr><td>${md(x.date)}</td><td><span class="tag ${tagCls(x.pred)}">${LBL[x.pred]}</span></td><td>${sc(x.score)}</td>${LV() ? `<td>${x.level || '—'}</td>` : ''}
      <td>${x.truth == null ? '<span class="tag t-wait">待驗證</span>' : x.truth === x.pred ? '<span class="tag t-ok">對</span>' : `<span class="tag t-bad">錯・實為${LBL[x.truth]}</span>`}</td></tr>`;
-  const pastTable = rows => `<div class="tblwrap"><table class="tbl"><tr><th>日期</th><th>判斷</th><th>機率</th><th>信心</th><th>結果</th></tr>${rows.map(pastRow).join('')}</table></div>`;
+  const pastTable = rows => `<div class="tblwrap"><table class="tbl"><tr><th>日期</th><th>判斷</th><th>分數</th>${LV() ? '<th>信心</th>' : ''}<th>結果</th></tr>${rows.map(pastRow).join('')}</table></div>`;
   const yrow = k => { const r = Y[k] || {}, wait = (r.n || 0) - (r.graded || 0);
     return `<tr><td><span class="tag ${tagCls(k)}">判${LBL[k]}</span></td><td>${r.n || 0} 天${wait ? ` <span class="wait"${ttl('還沒滿 5 個交易日,還沒有答案')}>+${wait} 待驗證</span>` : ''}</td><td>${r.graded ? `${r.hits} 天` : '—'}</td><td class="pctc">${pct(r.pct)}</td></tr>`; };
   const pxTip = S.price === 'actual' ? '實際成交價(未還原);漲跌幅對參考價' : '還原價(把除權息補回去);這檔抓不到未還原價';
   const tile = (label, v, t) => `<div class="tile"${tip(t)}><div class="lbl">${label}</div><div class="kpi">${v}</div></div>`;
-  const vtip = p === 'none' ? '' : `機率 ${fmt(P.score)}・信心 ${P.level}\n${S.status !== 'pool' ? `${(STATUS[S.status] || ['池外'])[0]}股票:命中率見上方` : lvTip(hit)}`;
+  const vtip = p === 'none' ? '' : [`分數 ${sc(P.score)}(和過去真的${LBL[p]}有多像)`].concat(LV() ? [`信心 ${P.level}`, S.status !== 'pool' ? `${(STATUS[S.status] || ['池外'])[0]}股票:命中率見上方` : lvTip(hit)] : []).join('\n');
+  const steps = [
+    ['規則候選', cand ? `<span class="tag ${tagCls(cand)}">${LBL[cand]}候選</span>` : '<span class="tag t-none">不是候選</span>', cand ? CW[cand] : '收盤不是最近 6 天最高或最低'],
+    ['分數', cand ? `<b>${sc(P.score)}</b>` : '—', cand ? (P.score > 0 ? '> 0:像過去真的' + LBL[cand] : '≤ 0:不夠像,改判非極值') : '不是候選,不打分數'],
+    ['判斷', `<span class="tag ${tagCls(p)}">${LBL[p]}</span>`, '']];
   return `<h1 class="pt">個股查詢</h1>${searchBox()}
-  <div class="stack">
+  <div class="vstack">
   <div class="card"><div class="row"><h2 style="margin:0;font-size:20px">${code} ${esc(S.name)}</h2>${typeTag(S.status)}${S.market && S.market !== 'TWSE' ? `<span class="tag t-none">${MARKET[S.market] || ''}</span>` : ''}<div class="sp"></div>
    <div class="right"${ttl(pxTip)}><span class="px" style="font-size:20px">${fmt(S.close ?? t.close ?? last[4])}</span> ${chg(S.chg_pct ?? t.chg_pct)}
     <div class="asof">${S.close_date ? md(S.close_date) : md(S.date)} 收盤${S.price === 'adj' ? ' <span class="tag t-none">還原價</span>' : ''}</div></div></div></div>
   ${pre}
-  ${t.stack ? `<div class="grid2" style="${dim}">
+  ${t.judge ? `<div class="grid2" style="${dim}">
    <div class="card"><div class="verdict"><div class="vicon" style="background:${p === 'low' ? 'var(--low-bg)' : p === 'high' ? 'var(--high-bg)' : 'var(--mute-bg)'};color:${p === 'low' ? 'var(--low)' : p === 'high' ? 'var(--high)' : 'var(--ink3)'}">${icon}</div>
      <div><div class="vtitle">${p === 'none' ? '非極值・一般日子' : '可能是' + LBL[p]}</div>
-     ${p !== 'none' ? `<div class="vprob"${tip(vtip)}>${fmt(P.score)}${lv(P.level)}</div>` : ''}
+     ${p !== 'none' ? `<div class="vscore"${tip(vtip)}>分數 ${sc(P.score)}${LV() ? lv(P.level) : ''}</div>` : ''}
      ${p !== 'none' ? marks(S.active?.[p], p) : ''}</div></div>
-     <h3 style="margin-top:16px"${ttl('三類機率加起來是 1,最大的那類就是判斷。研究顯示只挑機率高的,命中率只升一點點,真的轉折點卻會漏掉很多,所以機率只當參考。')}>三類機率</h3>
-     ${bar('高點', P.p_high, 'var(--high)', fmt(P.p_high))}${bar('低點', P.p_low, 'var(--low)', fmt(P.p_low))}${bar('非極值', P.p_none, 'var(--ink3)', fmt(P.p_none))}
+     <h3 style="margin-top:16px"${ttl('收盤後先用規則挑候選,再看今天的 6 根 K 線像不像過去真的高點 / 低點。分數是 OC-SVM 的分數,越大越像,只用來排序。')}>${md(S.date)} 的判斷</h3>
+     <table class="tbl jtable">${steps.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td class="jn">${c}</td></tr>`).join('')}</table>
      ${more(sug, '怎麼解讀')}</div>
    <div class="card"><h3${ttl(`這檔 ${yr} 年每天的判斷,5 個交易日後對答案(回放 + 實際追蹤)`)}>${yr} 成績</h3>
      <table class="tbl ytable"><tr><th></th><th>判斷</th><th>對</th><th>命中率</th></tr>${yrow('low')}${yrow('high')}</table>
@@ -286,55 +281,56 @@ function pageTrack() {
   const sub = `${REC()}每天的判斷當天就存檔,不會事後修改;5 個交易日後自動對答案。資料 ${dates.first || ''} ~ ${dates.last || ''},已對答案 ${dates.n_graded || 0} 天${dates.live_start ? `,${dates.live_start} 起為實際追蹤` : ',目前都是回放'}。回放 = 上線前用同一個模型逐日產生。`;
   return `<div class="row pt"><h1${ttl(sub)}>成績追蹤</h1><div class="sp"></div>${seg(TK, [['low', '判低點'], ['high', '判高點']], 'TK')}</div>
   <div class="grid4 k2" style="margin-bottom:16px">
-   ${stat('近 20 天・前 3', pct(T.top_20?.pct), `前 3 檔,${n(T.top_20)}`)}${stat('近 60 天・前 3', pct(T.top_60?.pct), `前 3 檔,${n(T.top_60)}`)}
+   ${stat('近 20 天・前 3', pct(T.top_20?.pct), `每天分數最高的 3 檔,${n(T.top_20)}`)}${stat('近 60 天・前 3', pct(T.top_60?.pct), `每天分數最高的 3 檔,${n(T.top_60)}`)}
    ${stat(`${T.all_ytd?.year || ''} 全部`, pct(T.all_ytd?.pct), `全部判斷,${n(T.all_ytd)}\n研究結果 TW200 2026 1–9 月 ${pct(TK === 'low' ? R.prec_low : R.prec_high)}`)}
    ${stat('隨機猜中', pct(T.base_rate?.pct), `隨便挑一天剛好是${LBL[TK]}(${REC()}、已對答案的日子)`)}
   </div>
   <div class="card" style="margin-bottom:16px"><h3${ttl(`${REC()}全部判斷的命中率,60 天移動`)}>命中率・60 天移動</h3>
    ${series.length > 1 ? `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}</svg></div>` : '<div class="mutebox">對答案的天數還不夠畫圖(至少 20 天)。</div>'}</div>
-  <div class="grid2" style="margin-bottom:16px">
-   <div class="card"><h3${ttl('信心等級 = 訓練期內機率的三等分')}>信心等級</h3><table class="tbl lvtable"><tr><th>信心</th><th>命中率</th><th>對 / 判斷</th></tr>
+  <div class="${LV() ? 'grid2' : ''}" style="margin-bottom:16px">
+   ${LV() ? `<div class="card"><h3${ttl('信心等級 = 分數在訓練期同類判斷裡的三分位')}>信心等級</h3><table class="tbl lvtable"><tr><th>信心</th><th>命中率</th><th>對 / 判斷</th></tr>
     ${['高', '中', '低'].map(l => `<tr><td>${l}</td><td>${pct(lvt[l]?.pct)}</td><td>${lvt[l] ? `${lvt[l].hits} / ${lvt[l].n}` : '—'}</td></tr>`).join('')}
-    <tr><td>全部</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr></table></div>
+    <tr><td>全部</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr></table></div>` : ''}
    <div class="card"><h3${ttl('個股查詢可以查其他上市股,判斷照算,這是它們過去的命中率')}>推薦範圍以外</h3><table class="tbl lvtable"><tr><th>股票</th><th>命中率</th><th>對 / 判斷</th></tr>
     <tr><td>${REC()}</td><td>${pct(T.all?.pct)}</td><td>${T.all ? `${T.all.hits} / ${T.all.n}` : '—'}</td></tr>
     <tr><td>池外</td><td>${pct(T.out_pool?.pct)}</td><td>${T.out_pool ? `${T.out_pool.hits} / ${T.out_pool.n}` : '—'}</td></tr></table></div></div>
-  <div class="card"><h3>每日明細・前 3 檔</h3>${dailyTable(daily.slice(0, 10))}
+  <div class="card"><h3${ttl('每天判' + LBL[TK] + '裡分數最高的 3 檔')}>每日明細・前 3 檔</h3>${dailyTable(daily.slice(0, 10))}
    ${daily.length > 10 ? `<details class="more"><summary>還有 ${daily.length - 10} 天</summary>${dailyTable(daily.slice(10))}</details>` : ''}</div>
   ${disc()}`;
 }
 
 /* ---------- 研究發現 ---------- */
-/* 只放方向性結論(找得到轉折區、高低點不判反、命中率約三成 → 定位為決策輔助)。數字全部來自 findings.json,由 results/ 的結果檔產生。 */
+/* final 分支的研究結論:真高低點大多抓得到、高低點不判反、命中率約三成、多判的訊號很多、扣成本後不能當交易訊號。
+   數字全部來自 findings.json,由 results/ 的結果檔產生。 */
 function pageFindings() {
   const F = D.findings;
   if (!F) return '<div class="badbox">讀不到研究結果。</div>';
-  const r = F.recall, p = F.precision, c = F.confirm;
+  const r = F.recall, p = F.precision, yrs = F.years, span = `${yrs[0]}–${yrs[yrs.length - 1]}`;
+  const rng = k => { const v = yrs.map(y => F.by_year[y][k]); return `${pct(Math.min(...v))}–${pct(Math.max(...v))}`; };
   const hits = Math.round(p.low / 10);
   const dots = Array.from({length: 10}, (_, i) => `<i class="${i < hits ? 'on' : ''}"></i>`).join('');
-  const uses = [['判斷當提醒,不當買賣指令', '它告訴你「這裡可能是近期低點 / 高點,值得看一下」,買不買由你自己決定。'],
-    ['看「已幾天沒破底 / 沒創高」', '天數越多越可能是真的轉折,但也越晚。'],
-    ['機率只當參考', '研究顯示只挑機率高的,命中率只升一點點,卻會漏掉更多真的轉折點。'],
+  const T = F.trade || {};
+  const uses = [['看盤時的提醒,不是交易訊號', '它告訴你「這裡可能是近期低點 / 高點,值得看一下」,買不買由你自己決定。'],
+    ['看「已幾天沒破底 / 沒創高」', '真的低點後面 5 天一定不會破底(高點不會創高),所以天數越多越可能是真的轉折,但也越晚。'],
+    ['分數只用來排序', '分數是和過去真的高點 / 低點有多像,不能當成會對的比例。'],
     ['5 天後對答案', '每天的判斷都會存檔,5 個交易日後在<a href="#track">成績追蹤</a>看對了多少。']];
   return `<h1 class="pt">研究發現</h1>
-  <div class="stack">
+  <div class="vstack">
   <div class="cards">
-   <div class="find good"><h3>找得到轉折區</h3><div class="big">${pct(r.low2)} <small>低點 ±2 天</small></div>
-    ${more(`真低點、真高點當天就被判到的比例是 ${pct(r.low)} / ${pct(r.high)};放寬到前後 2 個交易日,是 ${pct(r.low2)} / ${pct(r.high2)}。轉折的「區域」大致抓得到。`)}</div>
-   <div class="find good"><h3>高低點不判反</h3><div class="big">${F.cross} <small>次・${F.years[0]}–${F.years[F.years.length - 1]}</small></div>
-    ${more(`${F.years.join('、')} 年每一天的判斷裡,真低點從沒被判成高點,真高點也從沒被判成低點。錯的都是把普通日子當成高 / 低點,方向不會弄反。`)}</div>
+   <div class="find good"><h3>真高低點大多抓得到</h3><div class="big">${pct(r.low, 0)} <small>低點找到率</small></div>
+    ${more(`${span} 三年合計,真低點 / 真高點當天就被判到的比例是 ${pct(r.low)} / ${pct(r.high)};每年 ${rng('rec_low')}(低點)、${rng('rec_high')}(高點)。放寬到前後 2 個交易日是 ${pct(r.low2)} / ${pct(r.high2)}。`)}</div>
+   <div class="find good"><h3>高低點不判反</h3><div class="big">${F.cross} <small>次・${span}</small></div>
+    ${more('判高點一定是「最近 6 天最高」、判低點一定是「最近 6 天最低」,所以真低點不會被判成高點,真高點也不會被判成低點。')}</div>
    <div class="find bad"><h3>命中率約三成</h3><div class="big">${pct(p.low)} <small>判低點</small></div>
     <div class="dots"${ttl(`10 次約對 ${hits} 次`)}>${dots}</div>
-    ${more(`判低點的命中率 ${pct(p.low)}、判高點 ${pct(p.high)}。隨便挑一天剛好是低點的機率是 ${pct(p.base_low)},模型好很多,但 10 次還是錯 7 次。`)}</div>
-   <div class="find"><h3>定位:決策輔助</h3><div class="big" style="font-size:20px">提醒,不是指令</div>
-    ${more('方向抓得到、但單一天的判斷不夠準,適合用來提醒「這附近可能是轉折」,再由你自己看線圖、基本面決定要不要動作。')}</div>
+    ${more(`三年合計判低點命中 ${pct(p.low)}、判高點 ${pct(p.high)};每年 ${rng('prec_low')}(低點)、${rng('prec_high')}(高點)。隨便挑一天剛好是低點約 ${pct(p.base_low)}。`)}</div>
+   <div class="find bad"><h3>多判的訊號很多</h3><div class="big">${fmt(F.over.low, 1)} 倍 <small>判低點 ÷ 真低點</small></div>
+    ${more(`判低點的天數是真低點的 ${fmt(F.over.low, 1)} 倍、判高點是 ${fmt(F.over.high, 1)} 倍。真的大多抓到了,但判出來的約 7 成其實是普通日子。`)}</div>
   </div>
-  <div class="card"><h2>沒破底越久,命中越高</h2>
-   <div class="tblwrap"><table class="tbl"><tr><th></th><th>剛出現</th><th>1 天</th><th>2 天</th><th>3 天</th><th>隨機</th></tr>
-    ${['low', 'high'].map(k => `<tr><td>判${LBL[k]}</td><td>${pct(c[k].k0)}</td><td>${pct(c[k].k1)}</td><td>${pct(c[k].k2)}</td><td>${pct(c[k].k3)}</td><td>${pct(c[k].base)}</td></tr>`).join('')}</table></div>
-   ${more(`天數 = 判斷之後已經幾天沒破底(低點)/ 沒創高(高點)。今日判斷把訊號依這個天數分組,每組附上這張表的研究數字。這些數字用到判斷之後那幾天的價格,所以要等到那天才知道,也就越晚。<br>${esc(c.source)}`)}</div>
+  <div class="card"><h2>看盤輔助,不是交易訊號</h2>
+   <div class="mutebox">頻繁進出會被交易成本吃掉:${T.period ? T.period[0].slice(0, 4) + '–' + T.period[1].slice(0, 4) : ''} 試過 ${T.n} 種只做多的進出方式,扣掉成本(來回 ${T.cost_pct}%)後${T.all_loss ? '全部虧損' : '多數虧損'}${T.below_hold ? ',也都輸給買進持有' : ''}。</div></div>
   <div class="card"><h2>怎麼用</h2><div class="acc">${uses.map(([b, t]) => `<details><summary>${b}</summary><p>${t}</p></details>`).join('')}</div></div>
-  ${more(`這個模型適合<b>提醒你哪裡可能是高點、低點</b>,不適合拿來自動買賣。以上是 Stacking 的研究結果(${esc(TRAIN())}、訓練門檻 0%、${F.years[0]}–${F.years[F.years.length - 1]} 三年平均),數字直接讀研究結果檔:method_kline_peak/results/ 的 ${F.sources.map(esc).join('、')}。`, '資料來源')}
+  ${more(`以上是研究結果(${esc(TRAIN())} ${F.n_stocks || ''} 檔、訓練門檻 0%、${span},${fmt(F.n_days, 0)} 個股票日),數字直接讀 method_kline_peak/results/ 的 ${F.sources.map(esc).join('、')}。`, '資料來源')}
   </div>${disc()}`;
 }
 
@@ -345,26 +341,27 @@ function pageAbout() {
   const mi = D.meta.model || {};
   const yrs = a => (a || []).map(d => d.slice(0, 4)).filter((v, i, s) => s.indexOf(v) === i).join('–');
   const faq = [['判低點就會漲嗎?', '不一定。低點只代表 11 天內最低,之後可能只是小反彈。'],
+    ['分數是什麼?', 'OC-SVM 的分數。大於 0 代表今天的 K 線落在模型學過的真高點(低點)範圍內,才會判高點(低點);越大越像,只用來排序,不能當成會對的比例。'],
     ['為什麼盤中查到的是昨天的判斷?', '判斷要用收盤價,每天 18:00 左右更新。'],
     ['價格和看盤軟體一樣嗎?', '畫面上的收盤、K 線是實際成交價(未還原),漲跌幅和看盤軟體一樣對參考價。模型判斷用的是還原價(把除權息補回去),和訓練時一致。股票分割後,分割前的價格會照比例換算。'],
     ['為什麼有些股票顯示「不適用」?', `${REC()}以外、每日漲跌幅中位數低於 ${D.meta.rules.min_move}% 的股票,高低點常常只差一兩檔,判斷沒有參考價值。`],
     ['過去的判斷會變嗎?', '不會。每天的判斷當天就存檔,之後不重算;除權息後還原價變動也不影響已存的判斷。']];
   return `<h1 class="pt">方法與說明</h1>
-  <div class="stack">
+  <div class="vstack">
   <div class="card"><h2>高點 / 低點</h2>
    <div class="grid2"><div><div class="label-demo">${bars}</div><div class="legend"><span>t−5 … t−1</span><span style="color:var(--low);font-weight:700">t(今天)</span><span>t+1 … t+5(要等 5 天)</span></div></div>
    <div class="defs"><div><span class="tag t-low">低點</span>今天收盤是 11 天最低</div><div><span class="tag t-high">高點</span>今天收盤是 11 天最高</div><div><span class="tag t-none">非極值</span>其他(約 85% 的日子)</div></div></div>
    ${more('看 11 天:今天(第 6 天)加前後各 5 天。模型只看今天和前 5 天的 6 根 K 線,所以收盤後就能判斷;但真正的答案要等 5 個交易日後才知道。')}</div>
-  <div class="card"><h2>Stacking 三步驟</h2><div class="steps">
-   <div class="step"><b>1. 看 6 根 K 線</b><span>29 個數字</span></div>
-   <div class="step"><b>2. 像不像過去的高 / 低點</b><span>AE + OC-SVM 打分數</span></div>
-   <div class="step"><b>3. 換成三類機率</b><span>邏輯迴歸・高 / 中 / 低信心</span></div></div>
-   ${more(`<p><b>1.</b> 今天和前 5 天的開高低收(除以今天收盤)和成交量(除以 10 日均量),共 29 個數字。</p>
-   <p><b>2.</b> 高點、低點各一組 AE + OC-SVM,學過去真的高點、低點長什麼樣子,對今天各打一個分數。</p>
-   <p><b>3.</b> 邏輯迴歸把兩個分數換成高點 / 低點 / 非極值三類機率,最大的那類就是判斷;機率依訓練期分布分成高 / 中 / 低三種信心。</p>
-   <p>訓練:${esc(TRAIN())}。${mi.year} 年用的模型以 ${yrs(mi.train)} 訓練:前 3 年(${yrs(mi.train_a)})學兩組分數,最後 1 年(${yrs(mi.train_b)})學邏輯迴歸,中間留 5 個交易日間隔;標籤門檻 ${D.meta.profile?.train_min_amp || 0}%,種子 ${mi.seed}。每年 1 月第 6 個交易日後自動重訓。</p>
+  <div class="card"><h2>判斷三步驟</h2><div class="steps">
+   <div class="step"><b>1. 規則挑候選</b><span>最近 6 天最高 / 最低</span></div>
+   <div class="step"><b>2. 看 6 根 K 線</b><span>29 個數字</span></div>
+   <div class="step"><b>3. 像不像過去的高 / 低點</b><span>AE + OC-SVM・分數 &gt; 0 才判</span></div></div>
+   ${more(`<p><b>1.</b> 今天收盤是最近 6 天(今天和前 5 天)最高 → 高點候選;最低 → 低點候選。不是候選的一律判非極值。真的高低點幾乎都在候選裡;判高點一定是高點候選、判低點一定是低點候選,所以高低點不會互相判反。</p>
+   <p><b>2.</b> 今天和前 5 天的開高低收(除以今天收盤)和成交量(除以 10 日均量),共 29 個數字。</p>
+   <p><b>3.</b> 高點、低點各一組:AE 把 29 個數字壓成 16 個,OC-SVM 只學過去「真的」高點(低點)長什麼樣子。候選落在 OC-SVM 的範圍內(分數 &gt; 0)才判高點(低點),否則改判非極值。分數越大越像,只用來排序。</p>
+   <p>訓練:${esc(TRAIN())} ${mi.n_pool || ''} 檔一起訓練一組模型。判哪一年就用前 4 年訓練,${mi.year} 年用 ${yrs(mi.train)},訓練期最後 5 個交易日剔除;標籤門檻 ${D.meta.profile?.train_min_amp || 0}%,種子 ${mi.seed}。每年 1 月第 6 個交易日後自動重訓。</p>
    <p>推薦範圍:${REC()}成分股,每天全部給判斷(低波動股也照樣判斷)。</p>`)}</div>
-  <div class="card"><h2${ttl(`研究結果,${TRAIN()},Stacking。錯的都是和非極值混淆,高點和低點沒有互相判錯。`)}>歷史命中率</h2><div class="tblwrap"><table class="tbl">
+  <div class="card"><h2${ttl(`研究結果,${TRAIN()}。錯的都是和非極值混淆,高點和低點沒有互相判錯。`)}>歷史命中率</h2><div class="tblwrap"><table class="tbl">
    <tr><th>年</th><th>macro-F1</th><th>低點命中</th><th>高點命中</th><th>低點找到</th><th>高點找到</th><th>隨機(低點)</th><th>判反</th></tr>
    ${C.map(r => `<tr><td>${r.year}${r.year === '2026' ? '(1–9 月)' : ''}</td><td>${pct(r.macro_f1, 2)}</td><td>${pct(r.prec_low)}</td><td>${pct(r.prec_high)}</td><td>${pct(r.rec_low)}</td><td>${pct(r.rec_high)}</td><td>${pct(r.base_low)}</td><td>${r.cross} 次</td></tr>`).join('')}</table></div></div>
   <div class="card"><h2>常見問題</h2><div class="acc">${faq.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div></div>
@@ -380,7 +377,7 @@ function go(h) { location.hash = h; }
 function header() {
   const M = D.meta, c = M.check || {};
   const yrs = (M.model?.train || []).map(d => d.slice(0, 4));
-  const t = [`判斷基準日 ${M.asof} 收盤`, `產生於 ${(M.created || '').slice(0, 16)}`, `模型 Stacking・${M.profile?.pool_label || 'TW200'} 訓練 ${yrs[0] || ''}–${yrs[1] || ''}`, `推薦範圍 ${REC()}`];
+  const t = [`判斷基準日 ${M.asof} 收盤`, `產生於 ${(M.created || '').slice(0, 16)}`, `模型 ${M.method || ''}・${M.profile?.pool_label || 'TW200'} ${M.model?.n_pool || ''} 檔訓練 ${yrs[0] || ''}–${yrs[1] || ''}`, `推薦範圍 ${REC()}`];
   if (c.online === false && M.source !== 'replay') t.push(`這次批次沒有連網,K 線只到 ${M.asof}`);
   document.getElementById('hmeta').innerHTML = `<span${ttl(t.join('\n'))}>判斷基準日 <b>${dlabel(M.asof)}</b></span>${M.source === 'replay' ? ` <span class="tag t-replay"${ttl('回放:上線前用同一個模型逐日產生的判斷')}>回放</span>` : ''}`;
   const b = [];

@@ -3,7 +3,7 @@
 每日批次(run_daily)
   1. 更新 K 線(online=False 時只用快取)
   2. 判斷基準日 = 股票池最後一個有資料的交易日;檢查池內股票是否都有這天的資料
-  3. 這天還沒有存檔 → 兩個方法對所有計算的股票做判斷,存檔(之後不重算);已有存檔 → 不動
+  3. 這天還沒有存檔 → 對所有計算的股票做判斷,存檔(之後不重算);已有存檔 → 不動
   4. 已滿 5 個交易日、還沒對答案的存檔 → 對答案並存檔
   5. 產生前端的 JSON
 回放(run_replay)
@@ -39,11 +39,8 @@ def _row(code, status, move, df, date, pred=None, m=None):
         if i > 0:
             r["chg_pct"] = round(float(df["close"].iloc[i] / df["close"].iloc[i - 1] - 1) * 100, 3)
     if pred is not None:
-        def f(x, n=4):
-            return None if x is None or not np.isfinite(x) else round(float(x), n)
-        r["stack"] = {"pred": pred.stack_pred, "score": f(pred.stack_score),
-                      "p_low": f(pred.stack_p_low), "p_none": f(pred.stack_p_none), "p_high": f(pred.stack_p_high),
-                      "level": MD.level(pred.stack_score, m["cuts"]["stack"][pred.stack_pred]) if pred.stack_pred != "none" else None}
+        sc = None if pred.score is None or not np.isfinite(pred.score) else round(float(pred.score), 6)
+        r["judge"] = {"pred": pred.pred, "cand": pred.cand if isinstance(pred.cand, str) else None, "score": sc}
     return r
 
 
@@ -118,14 +115,14 @@ def grade_pending(data, cal, log=print):
         day = ST.read_day(ts)
         out = {}
         for r in day["rows"]:
-            if r.get("stack"):
+            if r.get("judge"):
                 out[r["code"]] = grade_from(answers(r["code"]), ts)
         ST.write_grade(ts, out)
     extra = [pd.Timestamp(d) for d in ST.list_days()
              if ST.has_extra(d) and not ST.has_extra_grade(d) and (cal > pd.Timestamp(d)).sum() >= C.HOLD]
     for ts in extra:                                                          # 補算的股票也一樣 5 天後對答案
         ST.write_extra_grade(ts, {r["code"]: grade_from(answers(r["code"]), ts)
-                                  for r in ST.read_extra(ts)["rows"] if r.get("stack")})
+                                  for r in ST.read_extra(ts)["rows"] if r.get("judge")})
     if todo or extra:
         log(f"對答案:{len(todo)} 天" + (f"(另補算 {len(extra)} 天)" if extra else ""))
     return len(todo)

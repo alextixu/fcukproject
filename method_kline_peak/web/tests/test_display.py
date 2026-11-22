@@ -12,9 +12,10 @@ ASOF = pd.Timestamp("2026-09-10")
 
 
 def _official(code):
-    o = pd.read_parquet(os.path.join(C.OFFICIAL, f"{code}.parquet"))
-    o["date"] = pd.to_datetime(o["date"])
-    return o.set_index("date").sort_index()
+    """證交所官方日資料的收盤(final 移除了官方日資料快取,抽查用的中華電 2026 年收盤存在 tests/fixtures)。"""
+    with open(os.path.join(os.path.dirname(__file__), "fixtures", f"official_{code}_2026.json"), encoding="utf-8") as f:
+        c = json.load(f)["close"]
+    return pd.DataFrame({"close": list(c.values())}, index=pd.to_datetime(list(c)))
 
 
 def test_display_uses_actual_price_not_adjusted():
@@ -43,7 +44,7 @@ RAW = os.path.join(C.DATA, "prices_raw", "2412.TW.parquet")
 
 @pytest.mark.skipif(not os.path.exists(RAW), reason="還沒下載 Yahoo 未還原價")
 def test_yahoo_raw_matches_official_close():
-    """Given 已下載的 Yahoo 未還原價與 repo 裡的證交所官方日資料 / When 比對中華電 2026 年每天收盤 / Then 全部相同
+    """Given 已下載的 Yahoo 未還原價與證交所官方日資料(tests/fixtures)/ When 比對中華電 2026 年每天收盤 / Then 全部相同
     (2026-01-02 是 132.00,還原價是 127.08)"""
     raw = pd.read_parquet(RAW)
     off = _official("2412")
@@ -67,7 +68,7 @@ def test_year_stats_counts_days_hits_and_pending():
     When 算今年的對答案統計 / Then 判低點 4 天、已對 3 天、對 2 天、命中 66.7%;判高點 1 天、對 0 天;去年的不算"""
     g = pd.DataFrame([("2026-02-02", "low", "low"), ("2026-02-03", "low", "none"), ("2026-03-02", "low", "low"),
                       ("2026-09-10", "low", None), ("2026-04-01", "high", "none"), ("2025-12-30", "low", "low")],
-                     columns=["date", "stack_pred", "truth"])
+                     columns=["date", "pred", "truth"])
     y = PB.year_stats(g, "2026")
     assert y["low"] == {"n": 4, "graded": 3, "hits": 2, "pct": 66.7}
     assert y["high"] == {"n": 1, "graded": 1, "hits": 0, "pct": 0.0}

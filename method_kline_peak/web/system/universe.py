@@ -1,9 +1,9 @@
 """股票分類:池內 / 池外 / 低波動 / 資料不足 / 不支援。
 
-- 計算範圍:上市(TWSE)、上櫃(OTC)普通股(代號 4 位數字、不是 0 開頭)與 ETF,全部用同一個 Stacking 模型判斷。
+- 計算範圍:上市(TWSE)、上櫃(OTC)普通股(代號 4 位數字、不是 0 開頭)與 ETF,全部用同一個模型判斷。
   Yahoo 代號:上市 .TW、上櫃 .TWO;ETF 有上市也有上櫃,第一次下載時兩種都試,結果記在 data/tickers.json。
 - 興櫃不計算,顯示「資料不足」;特別股、存託憑證等非普通股不支援。
-  名稱與市場別來自 backtest/ncku/backtest/stock_api/stock_symbol_map.json。
+  名稱與市場別來自 web/system/stock_symbol_map.json(原 backtest/ncku 的代號表;final 分支沒有 backtest/,複製一份到這裡)。
 - 推薦範圍(status = pool):config.RECOMMEND,預設台灣 50。50 檔全部給判斷,低波動股也照樣出判斷。
   訓練用的股票池是另一份(config.POOL,預設 TW200 剔除低波動股,存在模型檔裡)。
 - 低波動:推薦範圍以外、2020-01 起每日收盤漲跌幅(絕對值)中位數 < 0.725%(同 mainline.low_vol),判斷不適用。
@@ -137,7 +137,7 @@ def classify(code, df, pool, upto=None):
 
 def pool_for_year(year, store=None, pool=None):
     """year 年使用的股票池(.TW 代號)。pool 預設為設定值 config.POOL。
-    2026 年(含)以前且研究結果檔有這個股票池:直接用結果檔記錄的清單(TW100、TW200、台灣50 剔除低波動股),和研究完全相同
+    2026 年(含)以前且研究結果檔有這個股票池:直接用結果檔記錄的清單(TW200 剔除低波動股 168 檔),和研究完全相同
     (研究 2024–2026 的 walk-forward 每年都用同一份清單);
     2027 年起:TICKER_SETS[pool] 有資料的股票,用到前一年底的資料剔除低波動股(同 mainline.load_data 的規則)。
     順序照 TICKER_SETS[pool](同 mainline.load_data):訓練資料的列順序會影響 AE / OC-SVM 的結果,順序不同就無法和研究完全一致。"""

@@ -132,7 +132,8 @@ def all_rows(date):
 
 
 def table():
-    """所有存檔攤平成一張表:每列 = 一天 × 一檔,含 Stacking 的判斷與答案(還沒答案的為 NaN)。"""
+    """所有存檔攤平成一張表:每列 = 一天 × 一檔,含判斷(pred)、規則候選(cand)、分數(score)
+    與答案(truth;還沒答案的為 NaN)。"""
     rows = []
     for d in list_days():
         day = read_day(d)
@@ -142,10 +143,10 @@ def table():
             day = dict(day, rows=day["rows"] + ex["rows"])
             g = {**g, **(read_extra_grade(d) or {})}
         for r in day["rows"]:
-            s = r.get("stack") or {}
+            s = r.get("judge") or {}
             a = g.get(r["code"]) or {}
             rows.append({"date": d, "source": day.get("source", "daily"), "code": r["code"], "status": r["status"],
                          "close": r.get("close"),
-                         "stack_pred": s.get("pred"), "stack_score": s.get("score"), "stack_level": s.get("level"),
+                         "pred": s.get("pred"), "cand": s.get("cand"), "score": s.get("score"),
                          "truth": a.get("truth"), "ret_pct": a.get("ret_pct")})
     return pd.DataFrame(rows)

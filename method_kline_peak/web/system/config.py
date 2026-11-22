@@ -1,4 +1,4 @@
-"""網頁系統的路徑與常數。研究程式碼(mainline / walkforward / stacking)直接 import,不複製。"""
+"""網頁系統的路徑與常數。研究程式碼(mainline / walkforward)直接 import,不複製。"""
 import os
 import sys
 
@@ -16,9 +16,8 @@ os.environ.setdefault("TW_CACHE_DIR", P.YF_2026_CACHE)                # 研究�
 SITE = os.path.join(WEB, "site")                                       # 靜態前端
 DATA = os.environ.get("KPWEB_DATA") or os.path.join(WEB, "data")       # 存檔(判斷、對答案、模型、K 線快取)
 SITE_DATA = os.path.join(SITE, "data")                                 # 前端讀的 JSON(每次批次重寫)
-OFFICIAL = os.environ.get("KPWEB_OFFICIAL") or P.OFFICIAL                # 證交所官方日資料(實際成交價,未還原);只用來顯示,模型一律用還原價
 RESULTS = os.path.join(KP, "results")
-SYMBOLS = os.path.join(ROOT, "backtest", "ncku", "backtest", "stock_api", "stock_symbol_map.json")
+SYMBOLS = os.path.join(WEB, "system", "stock_symbol_map.json")          # 上市 / 上櫃 / 興櫃 / ETF 代號與名稱(原 backtest/ncku 的代號表)
 
 
 def data_dir(*parts):
@@ -30,9 +29,9 @@ def data_dir(*parts):
 # 2026-11-09 使用者決定:模型用研究版 TW200(剔除低波動股)訓練;推薦範圍是台灣 50(50 檔全部給判斷,低波動股也照樣出判斷)
 POOL = os.environ.get("KPWEB_POOL", "tw200")                           # 訓練用股票池:data_loader.TICKER_SETS 的名稱,再剔除低波動股
 TRAIN_MIN_AMP = float(os.environ.get("KPWEB_TRAIN_MIN_AMP", "0"))       # 訓練門檻(%):同 walkforward.relabel,對答案仍用原本的標籤
-# 研究結果檔裡記錄的股票池清單:2026 年直接用這份,和研究完全相同
-RESEARCH_POOL_FILES = {"tw100": "backtest_long_only_tw100.json", "tw200": "backtest_long_only_tw200.json",
-                       "tw50": "backtest_long_only.json"}
+# 研究結果檔裡記錄的股票池清單:2026 年直接用這份,和研究完全相同(final 只留 TW200 的結果檔)
+RESEARCH_POOL_FILES = {"tw200": "backtest_long_only_tw200.json"}
+RESEARCH_LAST_YEAR = 2026            # 研究(final 分支)涵蓋的最後一年:這年(含)以前的模型用研究快取訓練,和研究完全相同
 POOL_LABELS = {"tw50": "台灣 50", "tw100": "TW100", "tw200": "TW200", "tw500": "TW500"}
 RECOMMEND = os.environ.get("KPWEB_RECOMMEND", "tw50")                   # 推薦範圍:今日判斷、成績追蹤只看這些股票(不剔除低波動股)
 
@@ -70,9 +69,7 @@ MIN_BARS = 16                         # 10 日均量 + 6 根 K
 CHART_BARS = 60                       # 個股頁 K 線:判斷基準日那年整年,不到這個根數時往前補足
 HISTORY_START = "2016-01-01"
 RAW_START = "2025-01-01"              # 畫面用的實際成交價(Yahoo 未還原價)從這天起下載;只用來顯示
-# 2026-11-09 使用者決定:Stacking 是最終版,主軸完全拿掉(模型、存檔、網頁都只有 Stacking)
-METHODS = ("stack",)
-METHOD_NAMES = {"stack": "Stacking"}
-LEVEL_METHODS = ("stack",)                       # 顯示信心等級(高 / 中 / 低)的方法
-DEFAULT_METHOD = "stack"
+# 2026-11-22 使用者決定:判斷方法改成和 final 分支相同(規則候選 → AE + OC-SVM),網頁只有這一種方法
+METHOD_NAME = "規則候選 + AE + OC-SVM"
+SHOW_LEVELS = False                   # 信心等級:回放資料驗證後決定(見 README)
 KIND = {"low": "低點", "high": "高點", "none": "非極值"}

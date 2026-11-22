@@ -243,6 +243,12 @@ class PriceStore:
         return rep
 
 
+def research_store():
+    """研究快取(common/cache/yf_2026,還原價到 2026-09-10)的唯讀讀取器:2026 年(含)以前的模型用這份資料訓練,
+    和 final 分支的 walk-forward 用同一份資料,模型才會完全相同。不下載、不寫檔。"""
+    return PriceStore(root=C.P.YF_2026_CACHE, seed_dir="", downloader=None)
+
+
 def raw_store(root=None, downloader=yf_download_raw):
     """畫面用的實際成交價(Yahoo 未還原價)快取:data/prices_raw/,從 RAW_START 起。"""
     return PriceStore(root=root or C.data_dir("prices_raw"), seed_dir="", downloader=downloader, history_start=C.RAW_START)
