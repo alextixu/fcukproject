@@ -105,6 +105,22 @@ for ax, y in zip(axs, YEARS):
 fig.tight_layout(w_pad=2.5)
 save(fig, "f_conf.png")
 
+# 三年合計混淆矩陣(單一,字放大:圖以原尺寸放上 A1 時格內數字約 26pt)
+fig, ax = plt.subplots(figsize=(6.6, 5.6))
+rp = tot / tot.sum(1, keepdims=True)
+ax.imshow(rp, cmap="Blues", vmin=0, vmax=1)
+for i in range(3):
+    for j in range(3):
+        ax.text(j, i, f"{tot[i, j]:,}\n{rp[i, j] * 100:.1f}%", ha="center", va="center", fontsize=26, linespacing=1.15,
+                color="white" if rp[i, j] > 0.55 else INK)
+ax.set_xticks(range(3)); ax.set_xticklabels(["判" + n for n in NAMES], fontsize=24)
+ax.set_yticks(range(3)); ax.set_yticklabels(["真" + n for n in NAMES], fontsize=24)
+ax.xaxis.tick_top()
+for i, j in ((0, 2), (2, 0)):
+    ax.add_patch(Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False, ec=HI, lw=4))
+clean_ax(ax)
+save(fig, "f_conf_total.png")
+
 # ───────── 3. 比較:隨機猜 / 只用規則 / 本系統(三年合計,由 baseline 檔逐年數字加總) ─────────
 def pooled(years, src):
     t = {"days": 0, "lo_t": 0, "lo_p": 0, "lo_c": 0, "hi_t": 0, "hi_p": 0, "hi_c": 0}

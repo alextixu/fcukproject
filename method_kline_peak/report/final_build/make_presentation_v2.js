@@ -161,9 +161,9 @@ s.addText("為什麼先用規則,再用 OC-SVM", { placeholder: "title" });
   box(9.4, 3.35, "OC-SVM", "只學真的高(低)點", true);
   T(s, [{ text: pc(NUM.rule_filtered_share), options: { bold: true, fontSize: 28, color: C.accent3 } }, { text: "  的日子直接判非極值", options: { fontSize: 16, color: C.text2 } }],
     { x: 4.4, y: 4.6, w: 4.8, h: 0.85, align: "center", valign: "middle" });
-  pending(s, 0.6, 5.75, 12.15, 0.75, "結論說法待定", 16);
+  T(s, "設計:先縮小範圍,再用只學正樣本的 OC-SVM 分辨候選", { x: 0.6, y: 5.75, w: 12.15, h: 0.6, fontSize: 20, bold: true, color: C.text2, align: "center" });
 }
-s.addNotes(`為什麼分兩步?因為高點和低點加起來只占約 14%,如果直接拿一般的分類器來學三類,模型很容易傾向把所有日子都判成占多數的非極值。所以第一步先用規則:真正的高點,收盤一定是最近六天最高;真正的低點,一定是最近六天最低。不是候選的日子直接判非極值,三年下來有 ${pc(NUM.rule_filtered_share)} 的日子在這一步被判為非極值,而真正的高低點全部都留在候選裡。第二步,在候選裡用 OC-SVM 分辨,它只用「真的高點」(或真的低點)學一個範圍,新的候選落在範圍內才保留。(這一頁的結論說法待定。)`);
+s.addNotes(`當初為什麼這樣設計?因為高點和低點加起來只占約 14%,如果直接拿一般的分類器來學三類,模型很容易傾向把所有日子都判成占多數的非極值。所以我們分兩步。第一步先用規則縮小範圍:真正的高點,收盤一定是最近六天最高;真正的低點,一定是最近六天最低。不是候選的日子直接判非極值。實測下來,三年有 ${pc(NUM.rule_filtered_share)} 的日子在這一步就被判為非極值,而真正的高低點全部留在候選裡。第二步,在候選裡用 OC-SVM 分辨真假。OC-SVM 是單類支持向量機,只用真的高點(或真的低點)學一個範圍,新的候選落在範圍內才保留,所以不需要在三類之間權衡。這一步實際帶來什麼效果,我們在第 8 頁用數字說明。`);
 
 // ═════ 7. 成果:量化 ═════
 s = pres.addSlide({ masterName: "CONTENT" });
@@ -201,7 +201,9 @@ s.addText("和隨機猜、只用規則比較", { placeholder: "title" });
     [v("本系統", { align: "left", bold: true }), v(pc(NUM.mine_from_baseline.macro_f1, 2), { bold: true }), v(NUM.mine_from_baseline.signal_days.toLocaleString(), { bold: true })]];
   s.addTable(rows, { x: 0.6, y: 1.55 + hc, w: wc, colW: [1.45, 1.6, 1.8], rowH: 0.45, fontSize: 14, fontFace: THEME.bodyFontFace,
     color: HEX.dk1, border: { type: "solid", pt: 0.75, color: HEX.accent6 } });
-  pending(s, 0.6, 1.75 + hc + 1.8, wc, 6.75 - (1.75 + hc + 1.8), "結論說法待定", 14);
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.6, y: 1.75 + hc + 1.8, w: wc, h: 6.75 - (1.75 + hc + 1.8), rectRadius: 0.08, fill: { color: HEX.dk1 }, line: { type: "none" } });
+  T(s, [{ text: "成績主要來自規則", options: { breakLine: true, bold: true, fontSize: 17 } }, { text: `AE + OC-SVM:訊號少約兩成,命中率持平`, options: { fontSize: 14 } }],
+    { x: 0.8, y: 1.75 + hc + 1.8, w: wc - 0.4, h: 6.75 - (1.75 + hc + 1.8), color: C.background1, valign: "middle" });
   const rx = 5.85, rw = 12.75 - rx;
   T(s, "聯發科 2025(表現較佳的個股)", { x: rx, y: 1.35, w: rw, h: 0.4, fontSize: 16, bold: true, color: C.text2 });
   const ih = 3.25, iw = fitH("f_2454.png", ih);
@@ -211,7 +213,7 @@ s.addText("和隨機猜、只用規則比較", { placeholder: "title" });
    [`${mtk["高點"]["命中率"].toFixed(1)}%`, "高點命中率", C.accent1], [`${mtk["低點"]["命中率"].toFixed(1)}%`, "低點命中率", C.accent2]]
     .forEach(([v, l, col], i) => stat(s, rx + i * (w + 0.25), y, w, h, v, l, col, 24));
 }
-s.addNotes(`左邊比較三種做法,數字都是 168 檔、三年合計。隨機猜:找到率和命中率都等於轉折點的比例,約 ${pc(NUM.random)},macro-F1 是 33.33%。只用規則,也就是把所有候選都直接當成高低點:真正的高低點全部找到,找到率 100%,命中率 ${pc(RU.both_prec)},macro-F1 ${pc(RU.macro_f1, 2)},判為高低點的天數是 ${RU.signal_days.toLocaleString()} 天。本系統:找到率 ${pc(NUM.both_rec)},命中率 ${pc(NUM.both_prec)},macro-F1 ${pc(NUM.mine_from_baseline.macro_f1, 2)},判為高低點的天數少了約 ${pc(NUM.signal_days_fewer)}。(和只用規則相比的結論說法待定。)右邊是聯發科 2025 年,這是 168 檔裡表現較佳的個股。上面是真實的高低點,下面是系統每天的判斷,實心代表判對、空心代表判錯。這一年真高點 ${mtk["高點"]["真"]} 個、真低點 ${mtk["低點"]["真"]} 個;系統判高點 ${mtk["高點"]["判"]} 天,對 ${mtk["高點"]["對"]} 天,判低點 ${mtk["低點"]["判"]} 天,對 ${mtk["低點"]["對"]} 天,高點找到 ${mtk["高點"]["找到率_當天"]}%、低點找到 ${mtk["低點"]["找到率_當天"]}%,命中率分別是 ${mtk["高點"]["命中率"].toFixed(1)}% 和 ${mtk["低點"]["命中率"].toFixed(1)}%,沒有任何判反。`);
+s.addNotes(`左邊比較三種做法,數字都是 168 檔、三年合計。隨機猜:找到率和命中率都等於轉折點的比例,約 ${pc(NUM.random)},macro-F1 是 33.33%。只用規則,也就是把所有候選都直接當成高低點:真正的高低點全部找到,找到率 100%,命中率 ${pc(RU.both_prec)},macro-F1 ${pc(RU.macro_f1, 2)},判為高低點的天數是 ${RU.signal_days.toLocaleString()} 天。本系統:找到率 ${pc(NUM.both_rec)},命中率 ${pc(NUM.both_prec)},macro-F1 ${pc(NUM.mine_from_baseline.macro_f1, 2)},判為高低點的天數少了約 ${pc(NUM.signal_days_fewer)}。這裡有一個重要的研究發現:成績主要來自規則。只用規則,命中率就有 ${pc(RU.both_prec)},是隨機的約 4 倍,而且一個轉折都不會漏掉。AE 加 OC-SVM 這一步的作用,是把判斷的天數再減少約兩成,但命中率持平,從 ${pc(RU.both_prec)} 變成 ${pc(NUM.both_prec)},找到率則從 100% 降到 ${pc(NUM.both_rec)}。也就是說,訊號變少了,但沒有變得更容易判對;模型還分辨不出候選裡哪些是真的轉折。這也是我們未來要改進的方向。右邊是聯發科 2025 年,這是 168 檔裡表現較佳的個股。上面是真實的高低點,下面是系統每天的判斷,實心代表判對、空心代表判錯。這一年真高點 ${mtk["高點"]["真"]} 個、真低點 ${mtk["低點"]["真"]} 個;系統判高點 ${mtk["高點"]["判"]} 天,對 ${mtk["高點"]["對"]} 天,判低點 ${mtk["低點"]["判"]} 天,對 ${mtk["低點"]["對"]} 天,高點找到 ${mtk["高點"]["找到率_當天"]}%、低點找到 ${mtk["低點"]["找到率_當天"]}%,命中率分別是 ${mtk["高點"]["命中率"].toFixed(1)}% 和 ${mtk["低點"]["命中率"].toFixed(1)}%,沒有任何判反。`);
 
 // ═════ 9. 能不能拿來交易 ═════
 s = pres.addSlide({ masterName: "CONTENT" });
@@ -232,7 +234,7 @@ s = pres.addSlide({ masterName: "CONTENT" });
 s.addText("應用價值", { placeholder: "title" });
 {
   const cols = [["誰會用", ["自主投資人", "看盤軟體"]], ["效益", null], ["競爭對手", ["傳統技術指標", "KD、RSI 要等幾天"]]];
-  const w = (12.15 - 0.3 * 2) / 3, y = 1.5, h = 3.9;
+  const w = (12.15 - 0.3 * 2) / 3, y = 1.5, h = 4.7;
   cols.forEach(([head, items], i) => {
     const x = 0.6 + i * (w + 0.3);
     card(s, { x, y, w, h });
@@ -248,10 +250,9 @@ s.addText("應用價值", { placeholder: "title" });
       T(s, "只用 CPU", { x: x + 0.3, y: y + 3.35, w: w - 0.5, h: 0.45, fontSize: 16, bold: true, color: C.accent3 });
     }
   });
-  pending(s, 0.6, 5.7, 12.15, 0.75, "待補:市場規模(有出處的公開數字,標註出處)", 16);
-  T(s, `實測環境:${TM.env};記憶體峰值 判斷 ${TM.mem_pred} MB、訓練 ${TM.mem_train} MB`, { x: 0.6, y: 6.55, w: 12.15, h: 0.35, fontSize: 12, color: C.text2, align: "right" });
+  T(s, `實測環境:${TM.env};記憶體峰值 判斷 ${TM.mem_pred} MB、訓練 ${TM.mem_train} MB`, { x: 0.6, y: 6.4, w: 12.15, h: 0.35, fontSize: 12, color: C.text2, align: "right" });
 }
-s.addNotes(`這個系統可以給誰用?第一類是自主投資人:每天收盤後,不用一檔一檔看K線,系統先把可能是高點或低點的股票挑出來,再由自己判斷要不要進一步研究。第二類是看盤軟體:可以把這個判斷當成一個提醒功能,放在既有的看盤畫面裡。效益的部分是實測的數字:在 ${TM.env} 的環境下,判斷 168 檔股票一天只要 ${TM.day_s} 秒,其中模型本身只占 ${TM.model_s} 秒,其餘是整理資料;訓練一個年份的模型 ${TM.train_s} 秒;記憶體峰值判斷時 ${TM.mem_pred} MB、訓練時 ${TM.mem_train} MB,全程只用 CPU,不需要 GPU。競爭對手是傳統技術指標,例如 KD、RSI,它們通常要等轉折發生幾天後才反應;我們的系統則是在收盤當天就給出判斷,而且每一次判斷都會存檔、五天後對答案,命中率是公開可驗證的。市場規模的部分,我們會用有出處的公開統計數字補上並標註出處。`);
+s.addNotes(`這個系統可以給誰用?第一類是自主投資人:每天收盤後,不用一檔一檔看K線,系統先把可能是高點或低點的股票挑出來,再由自己判斷要不要進一步研究。第二類是看盤軟體:可以把這個判斷當成一個提醒功能,放在既有的看盤畫面裡。效益的部分是實測的數字:在 ${TM.env} 的環境下,判斷 168 檔股票一天只要 ${TM.day_s} 秒,其中模型本身只占 ${TM.model_s} 秒,其餘是整理資料;訓練一個年份的模型 ${TM.train_s} 秒;記憶體峰值判斷時 ${TM.mem_pred} MB、訓練時 ${TM.mem_train} MB,全程只用 CPU,不需要 GPU。競爭對手是傳統技術指標,例如 KD、RSI,它們通常要等轉折發生幾天後才反應;我們的系統則是在收盤當天就給出判斷,而且每一次判斷都會存檔、五天後對答案,命中率是公開可驗證的。`);
 
 // ═════ 11. Demo ═════
 s = pres.addSlide({ masterName: "CONTENT" });
@@ -272,7 +273,7 @@ s.addNotes("接下來示範網頁系統。第一個畫面是今日判斷:每天�
 s = pres.addSlide({ masterName: "CONTENT" });
 s.addText("結論", { placeholder: "title" });
 {
-  const hl = [["收盤當天判斷", "只用當天以前的資料"], [`找到約 8 成轉折`, `命中率約為隨機的 4 倍`], ["高低點從不判反", "168 檔 × 三年逐年驗證"]];
+  const hl = [["收盤當天判斷", "只用當天以前的資料"], [`找到約 8 成轉折`, `命中率約為隨機的 4 倍`], ["成績主要來自規則", "AE + OC-SVM:訊號少約兩成"]];
   const w = (12.15 - 0.3 * 2) / 3, y = 1.45, h = 2.2;
   hl.forEach(([a, b], i) => {
     const x = 0.6 + i * (w + 0.3);
@@ -283,13 +284,13 @@ s.addText("結論", { placeholder: "title" });
   const y2 = 4.0, w2 = (12.15 - 0.3) / 2;
   card(s, { x: 0.6, y: y2, w: w2, h: 2.65 });
   T(s, "未來展望", { x: 0.9, y: y2 + 0.25, w: w2 - 0.5, h: 0.55, fontSize: 20, bold: true, color: C.accent3 });
-  T(s, [{ text: "序列模型", options: { breakLine: true, fontSize: 24, bold: true } }, { text: "每日自動更新", options: { fontSize: 24, bold: true } }],
+  T(s, [{ text: "分辨真假候選(例如序列模型)", options: { breakLine: true, fontSize: 22, bold: true } }, { text: "每日自動更新", options: { fontSize: 22, bold: true } }],
     { x: 0.9, y: y2 + 0.95, w: w2 - 0.5, h: 1.5, paraSpaceAfter: 10 });
   card(s, { x: 0.6 + w2 + 0.3, y: y2, w: w2, h: 2.65 });
   T(s, "致謝", { x: 0.9 + w2 + 0.3, y: y2 + 0.25, w: w2 - 0.5, h: 0.55, fontSize: 20, bold: true, color: C.accent3 });
   T(s, "感謝李俊宏老師的指導", { x: 0.9 + w2 + 0.3, y: y2 + 0.95, w: w2 - 0.5, h: 0.8, fontSize: 24, bold: true });
 }
-s.addNotes(`最後總結三個亮點。第一,系統在收盤當天就做判斷,只用當天以前的資料,不需要等轉折發生後好幾天。第二,在 168 檔股票、三年逐年驗證下,找到約 8 成的轉折點,命中率約為隨機的 4 倍。第三,高點和低點從來不會判反。我們也誠實面對限制:判出來的訊號裡,仍有約七成不是真的轉折,所以它是看盤的輔助,而不是交易訊號。未來我們想做兩件事:一是嘗試序列模型,看更長的K線脈絡,希望減少誤判;二是讓網頁每天收盤後自動更新。最後,感謝李俊宏老師一路以來的指導,也謝謝各位的聆聽,我們的報告到這裡,歡迎提問。`);
+s.addNotes(`最後總結三個亮點。第一,系統在收盤當天就做判斷,只用當天以前的資料,不需要等轉折發生後好幾天。第二,在 168 檔股票、三年逐年驗證下,找到約 8 成的轉折點,命中率約為隨機的 4 倍,而且高點和低點從來不會判反。第三,我們也找到成績的來源:主要來自規則篩候選,AE 加 OC-SVM 讓訊號少了約兩成,但命中率持平。因為判出來的訊號仍有約七成不是真的轉折,它是看盤的輔助,而不是交易訊號。未來我們想做兩件事:一是讓模型能分辨候選裡的真假,例如用序列模型看更長的K線脈絡;二是讓網頁每天收盤後自動更新。最後,感謝李俊宏老師一路以來的指導,也謝謝各位的聆聽,我們的報告到這裡,歡迎提問。`);
 
 async function fixEastAsianFont(file, face) {
   const JSZip = require("jszip");

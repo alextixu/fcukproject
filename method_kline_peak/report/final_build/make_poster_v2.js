@@ -154,24 +154,26 @@ pill(RX, ry, "成果 1  K 線型態特徵", 8.6);
 // (2)
 pill(RX, ry, "成果 2  模型成績", 6.9);
 {
-  const y0 = ry + 1.2;
-  const th = 2.6, ch = 2.4;
-  rect({ x: RX, y: y0 - 0.2, w: RW, h: th + ch + 1.4, fill: { color: CARD } });
+  const y0 = ry + 1.2, th = 2.3, tw = 7.3, cpw = 6.4;
+  const cfh = 4.6, cfw = wOf("f_conf_total.png", cfh);
+  const cph = hOf("f_compare.png", cpw), blockH = Math.max(th + 0.15 + cph, cfh + 0.55) + 1.1;
+  rect({ x: RX, y: y0 - 0.2, w: RW, h: blockH, fill: { color: CARD } });
   const hd = (t) => ({ text: t, options: { bold: true, fill: { color: INK }, color: "FFFFFF", align: "center", valign: "middle" } });
   const v = (t, o = {}) => ({ text: t, options: { align: "center", valign: "middle", ...o } });
-  const rows = [[hd("測試年"), hd("macro-F1"), hd("找到率 低/高"), hd("命中率 低/高")]];
-  ["2024", "2025", "2026"].forEach((yy) => { const r = NUM.yearly[yy];
-    rows.push([v(yy, { bold: true }), v(pc(r.macro_f1, 2)), v(`${pc(r.low_rec)}/${pc(r.high_rec)}`), v(`${pc(r.low_prec)}/${pc(r.high_prec)}`)]); });
-  rows.push([v("三年合計", { bold: true }), v("—"), v(`${pc(NUM.low_rec)}/${pc(NUM.high_rec)}`), v(`${pc(NUM.low_prec)}/${pc(NUM.high_prec)}`)]);
-  const tw = 7.3;
-  s.addTable(rows, { x: RX + 0.3, y: y0, w: tw, colW: [1.45, 1.45, 2.2, 2.2], rowH: th / 5, fontSize: 19, fontFace: FONT, color: INK,
+  const RU = NUM.rule, MB = NUM.mine_from_baseline;
+  const rows = [[hd("三年合計"), hd("macro-F1"), hd("找到率"), hd("命中率")],
+    [v("隨機猜", { bold: true }), v("33.33%"), v(pc(NUM.random)), v(pc(NUM.random))],
+    [v("只用規則", { bold: true }), v(pc(RU.macro_f1, 2)), v(pc(RU.both_rec)), v(pc(RU.both_prec))],
+    [v("本系統", { bold: true }), v(pc(MB.macro_f1, 2)), v(pc(NUM.both_rec)), v(pc(NUM.both_prec))]];
+  s.addTable(rows, { x: RX + 0.3, y: y0, w: tw, colW: [1.75, 1.85, 1.85, 1.85], rowH: th / 4, fontSize: 22, fontFace: FONT, color: INK,
     border: { type: "solid", pt: 1, color: LINE } });
-  const cw = RW - tw - 0.8, chh = Math.min(hOf("f_compare.png", cw), th + 0.1);
-    img("f_compare.png", RX + tw + 0.55, y0 + (th - hOf("f_compare.png", cw)) / 2, cw, hOf("f_compare.png", cw), "找到率與命中率比較:隨機猜、只用規則、本系統");
-  const cfw = wOf("f_conf.png", ch);
-  img("f_conf.png", RX + (RW - cfw) / 2, y0 + th + 0.25, cfw, ch, "2024–2026 混淆矩陣");
-  T("混淆矩陣:橘框(高低點判反)三年都是 0", { x: RX + 0.3, y: y0 + th + ch + 0.3, w: RW - 0.6, h: 0.6, fontSize: 24, color: INK2, align: "center" });
-  ry = y0 + th + ch + 1.2 + 0.3;
+  img("f_compare.png", RX + 0.3 + (tw - cpw) / 2, y0 + th + 0.15, cpw, cph, "找到率與命中率比較:隨機猜、只用規則、本系統");
+  const cx = RX + 0.3 + tw + 0.4 + (RW - tw - 1.0 - cfw) / 2;
+  img("f_conf_total.png", cx, y0, cfw, cfh, "三年合計混淆矩陣");
+  T("三年合計;橘框(判反)= 0", { x: RX + tw + 0.6, y: y0 + cfh + 0.05, w: RW - tw - 0.8, h: 0.5, fontSize: 24, color: INK2, align: "center" });
+  T([{ text: "成績主要來自規則;", options: { bold: true, color: INK } }, { text: `AE + OC-SVM 讓訊號少約兩成(${pc(NUM.signal_days_fewer)}),命中率持平。` }],
+    { x: RX + 0.3, y: y0 + blockH - 0.95, w: RW - 0.6, h: 0.65, fontSize: 26, color: INK2, align: "center", valign: "middle" });
+  ry = y0 + blockH + 0.1;
 }
 // (3)
 pill(RX, ry, "成果 3  實驗結果", 6.9);
