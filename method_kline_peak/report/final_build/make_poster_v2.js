@@ -57,11 +57,11 @@ pill(M, y, "摘要", 3.2);
 rect({ x: M, y: y + 1.0, w: CW, h: 3.0, fill: { color: CARD } });
 const B = (t) => ({ text: t, options: { bold: true, color: INK } }), N_ = (t) => ({ text: t });
 T([N_("台股每天的局部高點、低點各只占約 7%,人工每天看盤費時。本系統在收盤當天只看最近 "), B("6 根 K 線"),
-  N_(",轉成 "), B("29 維型態特徵"), N_(",先以規則篩出候選日,再以自編碼器(AE)壓縮、單類支持向量機(OC-SVM)判斷像不像真正的高點或低點。以 "),
+  N_(",轉成 "), B("29 維型態特徵"), N_(",先以規則篩出候選日,再以"), B("自編碼器(AE)"), N_("壓縮、"), B("單類支持向量機(OC-SVM)"), N_("判斷像不像真正的高點或低點。以 "),
   B("168 檔股票、2024–2026 三年逐年驗證"), N_(`:真正的轉折點${pc(NUM.both_rec)}被找到(`), B("約 8 成"),
   N_(`),命中率 ${pc(NUM.both_prec)} 是隨機猜(${pc(NUM.random)})的 `), B("約 4 倍"), N_(",且"), B("高低點從不判反"),
   N_("。但多判的訊號仍多,本系統"), B("定位為看盤輔助"), N_(",而非自動交易訊號。")],
-  { x: M + 0.45, y: y + 1.15, w: CW - 0.9, h: 2.7, fontSize: 29, color: INK2, valign: "middle", lineSpacingMultiple: 1.2 });
+  { x: M + 0.3, y: y + 1.15, w: CW - 0.6, h: 2.7, fontSize: 29, color: INK2, valign: "middle", lineSpacingMultiple: 1.2 });
 
 // ── 系統流程 ──
 y = 8.25;
