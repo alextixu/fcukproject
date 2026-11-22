@@ -1,11 +1,12 @@
-"""南電 8046 2024:29 維 / 2 日 K × 主軸 / Stacking 四組對照(2026-11-22 使用者要求;設定同 feat2day_compare.py,8d50f0e)。
+"""一檔股票 2024:29 維 / 2 日 K × 主軸 / Stacking 四組對照(2026-11-22 使用者要求;設定同 feat2day_compare.py,8d50f0e)。
 
-TW200 剔除低波動 168 檔、測試 2024、種子 42、訓練門檻 0%。
-29 維兩組直接讀 results/outputs_8046_2024_tw200_amp0.csv(不重跑);2day10 的每日判斷上次沒有存檔,
-用同一套設定(ML.FEATURES = "2day10"、AE 潛在 4 維)重新產生 2024,並和 feat2day_compare_tw200.json 的南電 Stacking 數字核對。
+TW200 剔除低波動 168 檔、測試 2024、種子 42、訓練門檻 0%;2day10 的 AE 潛在 4 維。四組都是全部 168 檔一起跑的
+walk-forward 結果,再取出指定的股票(預設南電 8046)。每日判斷用同一套設定重新產生,並核對:
+  168 檔 2024 的混淆矩陣 = feat2day_compare_tw200.json(兩組特徵 × 兩方法);
+  南電另核對 29 維兩組 = results/outputs_8046_2024_tw200_amp0.csv、Stacking 數字 = feat2day_compare_tw200.json 的南電。
 圖:收盤 + 真實標籤、29 維 · 主軸、29 維 · Stacking、2 日 K · 主軸、2 日 K · Stacking(標在判斷日 t,不畫持有期間)。
-用法: python method_kline_peak/report/feat2day_4way.py
-輸出: results/feat2day_8046_2024_tw200_4way.png、results/feat2day_8046_2024_tw200_4way.json
+用法: python method_kline_peak/report/feat2day_4way.py [3661.TW](預設 8046.TW)
+輸出: results/feat2day_<代號>_2024_tw200_4way.png、results/feat2day_<代號>_2024_tw200_4way.json
 """
 import json
 import os
@@ -25,30 +26,46 @@ import mainline as ML  # noqa: E402
 import walkforward as WF  # noqa: E402
 import backtest_years as BY  # noqa: E402
 import compare_postproc as CP  # noqa: E402
+from confusion import summarize  # noqa: E402
 from export_windows import ticker_names  # noqa: E402
+from feasibility import clean  # noqa: E402
+from paper_aeocsvm import NAMES  # noqa: E402
 from learn5_trade6 import FLAT, UP, DOWN  # noqa: E402
 
-POOL, YEAR, TK = "tw200", 2024, "8046.TW"
+POOL, YEAR = "tw200", 2024
+KEY = "confusion_rows_true_cols_pred(漲,不漲不跌,跌)"
 LAB = {"低點": UP, "非極值": FLAT, "高點": DOWN}
 GROUPS = [("29 維 · 主軸", "shape29", "主軸"), ("29 維 · Stacking", "shape29", "Stacking 邏輯迴歸"),
           ("2 日 K · 主軸", "2day10", "主軸"), ("2 日 K · Stacking", "2day10", "Stacking 邏輯迴歸")]
 
 
 def main():
-    csv = pd.read_csv(os.path.join(ML.OUT, f"outputs_{TK[:4]}_{YEAR}_{POOL}_amp0.csv"), parse_dates=["date"])
-    dates, close = csv["date"].to_numpy(), csv["close"].to_numpy()
-    y = csv["真實標籤"].map(LAB).to_numpy()
-    preds = {("shape29", m): csv[f"{m} 判斷"].map(LAB).to_numpy() for m in ("主軸", "Stacking 邏輯迴歸")}
-
+    TK = sys.argv[1] if len(sys.argv) > 1 else "8046.TW"
     data = ML.load_data(pool=POOL)
-    ML.FEATURES = "2day10"
-    panel, fc = ML.build_panel(data, 6, [], features="2day10")
-    for m in ("主軸", "Stacking 邏輯迴歸"):
-        sig, _ = WF.run_year(panel, fc, YEAR, BY.SOURCE_FACTORIES[m]())
-        s = sig[sig.ticker == TK].set_index("date").reindex(pd.DatetimeIndex(dates))
-        assert s["pred"].notna().all() and (s["y"].to_numpy() == y).all()
-        preds[("2day10", m)] = s["pred"].astype(int).to_numpy()
+    assert TK in data, f"{TK} 不在 {POOL} 剔除低波動後的股票池"
+    full = json.load(open(os.path.join(ML.OUT, "feat2day_compare_tw200.json"), encoding="utf-8"))
+    preds, pool_ok, dates, y = {}, {}, None, None
+    for f in ("shape29", "2day10"):
+        ML.FEATURES = f
+        panel, fc = ML.build_panel(data, 6, [], features=f)
+        for m in ("主軸", "Stacking 邏輯迴歸"):
+            sig, _ = WF.run_year(panel, fc, YEAR, BY.SOURCE_FACTORIES[m]())
+            cm = summarize(sig["y"].to_numpy(), sig["pred"].to_numpy(), NAMES)[KEY]
+            pool_ok[(f, m)] = cm == full["results"][f][str(YEAR)][m][KEY]           # 168 檔 2024 = 上次的結果
+            s = sig[sig.ticker == TK].sort_values("date")
+            if dates is None:
+                dates, y = s["date"].to_numpy(), s["y"].to_numpy()
+            assert (s["date"].to_numpy() == dates).all() and (s["y"].to_numpy() == y).all()
+            preds[(f, m)] = s["pred"].to_numpy()
     ML.FEATURES = "shape29"
+    assert all(pool_ok.values()), pool_ok
+    close = clean(data[TK])["close"].loc[pd.DatetimeIndex(dates)].to_numpy()
+    csv_path = os.path.join(ML.OUT, f"outputs_{TK[:4]}_{YEAR}_{POOL}_amp0.csv")
+    if os.path.exists(csv_path):                                                   # 南電:29 維 = 既有的每日輸出
+        csv = pd.read_csv(csv_path, parse_dates=["date"])
+        assert (csv["date"].to_numpy() == dates).all() and (csv["真實標籤"].map(LAB).to_numpy() == y).all()
+        for m in ("主軸", "Stacking 邏輯迴歸"):
+            assert (csv[f"{m} 判斷"].map(LAB).to_numpy() == preds[("shape29", m)]).all()
 
     res = {"pool": POOL, "year": YEAR, "ticker": TK, "groups": {}}
     for title, f, m in GROUPS:
@@ -56,8 +73,9 @@ def main():
         c = CP.counts(y, p)
         c["高低點判反"] = int(((p == UP) & (y == DOWN)).sum() + ((p == DOWN) & (y == UP)).sum())
         res["groups"][title] = {"features": f, "method": m, **c}
-    ref = json.load(open(os.path.join(ML.OUT, "feat2day_compare_tw200.json"), encoding="utf-8"))["8046_2024_stack"]
-    res["核對_feat2day_compare"] = {f: all(res["groups"][t][s] == {k: v for k, v in ref[f][s].items()} for s in ("低點", "高點"))
+    ref = full["8046_2024_stack"] if TK == "8046.TW" else None                     # 南電另核對個股 Stacking 數字
+    res["核對_feat2day_compare"] = {f: pool_ok[(f, "主軸")] and pool_ok[(f, m)]
+                                    and (ref is None or all(res["groups"][t][s] == ref[f][s] for s in ("低點", "高點")))
                                     for t, f, m in GROUPS if m != "主軸"}
     print(json.dumps(res, ensure_ascii=False))
     with open(os.path.join(ML.OUT, f"feat2day_{TK[:4]}_{YEAR}_{POOL}_4way.json"), "w", encoding="utf-8") as fh:
