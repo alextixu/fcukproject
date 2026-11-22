@@ -394,7 +394,8 @@ def validate():
             rnd = random_runs(mkt, net["trades"], spec["K"])
             e["隨機進場_扣成本"] = {"n": len(rnd), "median": round(float(np.median(rnd)), 2), "p5": round(float(np.percentile(rnd, 5)), 2),
                               "p95": round(float(np.percentile(rnd, 95)), 2), "all": rnd}
-            e["高於隨機95分位"] = e["扣成本"]["total_return_pct"] > e["隨機進場_扣成本"]["p95"]
+            e["高於隨機95分位"] = bool(e["扣成本"]["total_return_pct"] > e["隨機進場_扣成本"]["p95"])
+            e["贏過隨機次數"] = int(sum(x < e["扣成本"]["total_return_pct"] for x in rnd))
         res["results"][key] = e
         curves[key] = (old["equity"], net["equity"])
         print(key, e["扣成本"], e.get("隨機進場_扣成本", {}).get("p95"), flush=True)
