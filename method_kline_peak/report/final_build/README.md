@@ -22,3 +22,14 @@ soffice --headless --convert-to pdf ../專題海報_v2.pptx            # 再用 
 
 網頁截圖:claude/kline-peak-web-app 4832aa2 的 today_desktop、stock_pool_2454_desktop;7ce69e3 的 track_desktop(資料到 2026-11-20)。
 裁切框(x0, y0, x1, y1,單位 px):簡報第 11 頁 web_today = today (0,0,1280,546)、web_2454_search = 2454 (60,240,1220,640)、web_2454_year = 2454 (60,648,1220,1126)、web_track = track (0,0,1280,590);海報成果二 web_p_today = today (0,0,1280,960)、web_p_2454 = 2454 (60,250,1220,1120)、web_p_track = track (0,0,1280,960)。
+
+## 簡報 v3(`../專題簡報_v3.pptx`)
+
+```bash
+python3 figs_v3.py /tmp/fin ./fig                     # 第 2 頁主視覺 fig/f_swing.png(聯發科 2025 年 6–9 月,讀 outputs_2454_2025_tw200.csv)
+PPTX_SKILL=<pptx skill 目錄> node make_presentation_v3.js
+```
+
+- 12 頁,左上角標段落名稱(封面 / 問題動機 / 系統架構 / 方法技術 / 成果數據 / 應用價值 / Demo / 結論);其餘數字與圖同 v2(fig/numbers.json、final 的結果檔)。
+- 第 2 頁的波段價差 +15.8%(2025-06-30 → 07-11)、+12.9%(09-02 → 09-16)由 csv 的還原收盤價算出。
+- 第 11 頁四格截圖與講稿同 v2。
