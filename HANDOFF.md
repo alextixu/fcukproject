@@ -31,9 +31,9 @@ git worktree add ../fcuk-report claude/kline-peak-report-pptx   # 簡報、海�
 
 | 分支 | 用途 | 我交接時的 commit |
 |---|---|---|
-| `final` | 最終版程式碼；簡報 v1 / v2 / v3、海報 v2、Word v2 | 07894bb |
+| `final` | 最終版程式碼；簡報 v1 / v2 / v3、海報 v2、Word v2、`HANDOFF.md`（就是這份說明） | 以 `git log -1 origin/final` 為準 |
 | `claude/kline-peak-web-app` | 網頁系統 `method_kline_peak/web/` | 7ce69e3 |
-| `claude/kline-peak-report-pptx` | 成品的產生程式 `method_kline_peak/report/final_build/`、`thesis_build_v2/` | 44e3974，之後可能多一筆架構圖的 commit |
+| `claude/kline-peak-report-pptx` | 成品的產生程式 `method_kline_peak/report/final_build/`、`thesis_build_v2/` | f70498b |
 | `claude/kline-peak-predict-tool` | 完整研究紀錄（含淘汰的方法與實驗），只供查閱 | a8a1332 |
 | `kline-peak-new` | 組員的另一套方法，沒有採用 | d6c74ef |
 | `main` | 舊版，**不要動** | 3120815 |
@@ -165,7 +165,7 @@ python method_kline_peak/web/run.py serve                        # 開 http://lo
 |---|---|---|
 | 簡報 v1 | `專題簡報_v1.pptx` | 組員做的，有沒根據的數字（2 毫秒、年收入 6 億等），不用 |
 | 簡報 v2 | `專題簡報_v2.pptx` | 舊大綱，保留 |
-| **簡報 v3** | `專題簡報_v3.pptx` | **目前版本**。12 頁，備忘稿有逐字講稿，約 11–12 分鐘 |
+| **簡報 v3** | `專題簡報_v3.pptx` | **目前版本**。12 頁，備忘稿有逐字講稿，約 11–12 分鐘；第 4 頁已換成新的四管線架構圖 |
 | 海報 v2 | `專題海報_v2.pptx / .pdf / .png` | A1 直式，定稿 |
 | Word v2 | `專題研究報告_v2.docx` | 32 頁，照逢甲專題研究報告格式規範。轉 PDF 前要在 Word 對目錄、圖目錄、表目錄各按一次「更新功能變數」 |
 | 網頁 | 雲端版：https://claude.ai/artifact/BdK1rkGGJNDKEWbdbfdsDZ | 資料到 2026-11-20；推薦範圍 168 檔；全部上市 / 上櫃 / ETF 可查。本地版要照「一之 4」重新產生 |
@@ -217,10 +217,7 @@ python method_kline_peak/web/run.py serve                        # 開 http://lo
 
 ## 五、還沒完成的事（等我指示再做）
 
-1. **簡報 v3 第 4 頁的系統架構圖重畫。** 我嫌原圖太差，給過一份參考圖集（LLM Engineer's Handbook 風格）。要求：
-   - 分成四個管線大框：資料（Yahoo 股價 → 每日更新 → K 線資料庫）、特徵（6 根 K 線 → 29 維型態 → 規則候選的菱形判斷）、訓練（前 4 年資料 → 標籤 → AE → OC-SVM，高點低點各一組 → 模型庫）、判斷與服務（今日特徵 → 載入模型 → 分數 → 高點 / 低點 / 非極值 → 判斷存檔 → 5 天後對答案 → 網頁 ↔ 使用者）。
-   - 風格：細線圓角大框、框內上方粗體名稱；淡色圓角模組（淡橘 = 處理步驟、淡黃 = 輸入輸出、淡綠 = 服務或決策）；黑白線條的圓柱資料庫圖示；細的圓角折線箭頭，端點有小圓點，旁邊小字標出流過去的資料；人形使用者圖示；次要流向用虛線；白底、留白多、線不交叉、字少。
-   - 雲端的報告 session 正在畫。請先 `git fetch`，看 `claude/kline-peak-report-pptx` 在 44e3974 之後有沒有新 commit。有的話新圖在 `method_kline_peak/report/final_build/fig/f_arch_v2.png`，簡報 v3 也會更新，要把新的 v3 複製到 `final`。沒有的話等我指示再重畫。
+1. ~~簡報 v3 第 4 頁的系統架構圖重畫~~ **已完成**（報告分支 f70498b，已複製到 `final`）。新圖是四個管線（A 資料、B 特徵、C 訓練、D 判斷與服務）的 2×2 版面，高解析檔在 `final` 的 `method_kline_peak/report/系統架構圖_v2.png`，產生程式是報告分支的 `report/final_build/figs_arch.py`。我還沒看過成品，可能會要求修改。
 2. **專題介紹影片（約 3 分鐘）。** 系上規定發表前要交。可行做法：用瀏覽器自動操作錄下網頁 Demo、投影片轉圖、ffmpeg 合成、燒字幕；旁白我自己錄。參考影片是系上頻道的「110-A10.肢體辨識健身系統」（https://youtu.be/uttg6YnH28k）。雲端看不到它的內容，本地可以看；需要時先看過，把它的架構整理給我。
 3. 海報的「系統流程」和 Word 的架構圖要不要換成新架構圖，還沒決定。
 4. 海報摘要和 Word v2 的動機仍寫「人工每天看盤費時」，簡報 v3 已改成「找出極值環境」。要不要統一，還沒決定。
