@@ -123,31 +123,12 @@ s.addText("現有做法的限制,與我們的一句話", { placeholder: "title" 
 }
 s.addNotes(`現在常見的做法有兩個限制。第一是 KD、RSI 這類技術指標,它們用過去一段時間的價格平滑計算,通常要等轉折發生後好幾天才反應,看到訊號時,最好的位置往往已經過去。第二是一般的分類模型:因為非極值占了 ${pc(NUM.share_non)},模型就算全部猜非極值,準確率也有 ${pc(NUM.share_non)},看起來很高,卻一個高點或低點都找不到,所以不能只看準確率。因此我們後面看兩個指標:找到率,是真正的高低點有幾成被找出來;命中率,是系統說是高低點的日子裡,有幾成是真的。我們的突破是:在收盤當天就判斷,而且只用當天以前的資料,不偷看未來。用一句話說明我們的專題:我們開發一套 K 線高低點辨識系統,在收盤當天就指出股價是否處在極值環境;在 168 檔股票、三年的逐年驗證中,找到約 8 成的高低點,命中率從隨機的 ${RAND} 提高到 ${pc(NUM.both_prec)}。這裡的隨機 ${RAND},就是隨便挑一天剛好是高點或低點的比例。接下來先看系統的整體架構。`);
 
-// ═════ 4. 系統架構 ═════
+// ═════ 4. 系統架構:四個管線(fig/f_arch_v2.png 由 figs_arch.py 產生,畫布 = 投影片實際尺寸 12.15 × 5.6 吋) ═════
 s = pres.addSlide({ masterName: "CONTENT" });
 sec(s, "系統架構");
 s.addText("整體流程", { placeholder: "title" });
-{
-  const steps = ["每日股價", "規則篩候選", "29 維\n型態", "AE +\nOC-SVM"];
-  const bw = 1.85, gap = 0.45, y = 2.75, h = 1.5;
-  steps.forEach((t, i) => {
-    const x = 0.6 + i * (bw + gap);
-    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: bw, h, rectRadius: 0.1, fill: { color: i === 3 ? HEX.dk1 : HEX.lt2 }, line: { type: "none" } });
-    T(s, t, { x, y, w: bw, h, fontSize: 20, bold: true, align: "center", valign: "middle", color: i === 3 ? C.background1 : C.text1 });
-    arrow(s, x + bw + 0.07, y + h / 2, gap - 0.14);
-  });
-  const ox = 0.6 + 4 * (bw + gap), ow = 1.55;
-  [["高點", HEX.accent1], ["非極值", HEX.accent5], ["低點", HEX.accent2]].forEach(([t, col], i) => {
-    const yy = 2.05 + i * 1.0;
-    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: ox, y: yy, w: ow, h: 0.8, rectRadius: 0.08, fill: { color: "FFFFFF" }, line: { color: col, width: 2 } });
-    T(s, t, { x: ox, y: yy, w: ow, h: 0.8, fontSize: 20, bold: true, align: "center", valign: "middle", color: col });
-  });
-  const wx = ox + ow + 0.45;
-  arrow(s, ox + ow + 0.07, y + h / 2, 0.31);
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: wx, y, w: 12.75 - wx, h, rectRadius: 0.1, fill: { color: HEX.lt2 }, line: { type: "none" } });
-  T(s, "網頁", { x: wx, y, w: 12.75 - wx, h, fontSize: 20, bold: true, align: "center", valign: "middle" });
-}
-s.addNotes("這是系統的整體流程。每天收盤後抓股價;先用規則篩出候選:今天收盤是最近六天最高,是高點候選,最低是低點候選,其他日子直接判為非極值。候選日的六根 K 線轉成 29 維型態特徵,再交給高點、低點各一組的 AE 加 OC-SVM,判斷它像不像過去真正的高點或低點。最後輸出高點、低點或非極值,存檔並顯示在網頁上。");
+img(s, "f_arch_v2.png", 0.6, 1.3, 12.15, 5.6, "系統架構:資料管線、特徵管線、訓練管線、判斷與服務管線");
+s.addNotes("系統分成四條管線。A 是資料管線:每天從 Yahoo 抓股價,更新到 K 線資料庫。B 是特徵管線:取最近六根 K 線,先用規則判斷今天收盤是不是最近六天的最高或最低;不是,就直接判為非極值;是,就把六根 K 線轉成 29 維型態特徵。C 是訓練管線:用前四年的資料,依前後五天、共十一天的最高或最低貼上標籤,高點和低點各訓練一組 AE,把 29 維壓縮到 16 維,再訓練 OC-SVM,存進模型庫。D 是判斷與服務管線:每天把今天的特徵和候選交給載入的模型打分數,判出高點、低點或非極值,存檔並顯示在網頁上;五個交易日後再對答案,對錯回到成績追蹤。使用者就在網頁上查看今日判斷、個股和成績。");
 
 // ═════ 5. 方法技術:三個模組 ═════
 s = pres.addSlide({ masterName: "CONTENT" });
